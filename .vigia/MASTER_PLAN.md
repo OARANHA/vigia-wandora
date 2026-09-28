@@ -223,13 +223,13 @@ Modelo de branches desejado:
 
 A procedência, licença, baseline, política de sincronização e script de preparação já estão registrados no repositório.
 
-**Ainda falta importar o código do Latitude.**
+**O baseline do Latitude já foi importado para `upstream/latitude`.**
 
-Neste momento o repositório `OARANHA/vigia-wandora` possui somente a branch `main`.
+A branch `upstream/latitude` contém um snapshot de conteúdo exato do baseline `93f0733dc7596005dcb061ca163a016d4d86e3e2`.
 
-Portanto, `upstream/latitude` ainda precisa ser criada com o baseline real do Latitude.
+Validação concluída em 2026-09-28: o tree SHA do snapshot no repositório Vigia é `993bb208505c49dfbd13cb04644fcf8a79a6cdcc`, idêntico ao tree SHA do commit upstream.
 
-Esse é o próximo passo técnico do produto.
+O próximo passo técnico é validar build/self-host do Latitude sem customização.
 
 ## 10. Regra de customização
 
@@ -275,8 +275,8 @@ O controle da API do Portainer via Remote-Ops-MCP já foi configurado e validado
 
 ### Etapa A — trazer o motor para dentro do Vigia
 
-1. criar/importar `upstream/latitude`;
-2. preservar licença e avisos;
+1. [x] criar/importar `upstream/latitude`;
+2. [x] preservar licença e avisos;
 3. criar branch de integração;
 4. validar build/self-host do Latitude sem customização.
 
@@ -332,6 +332,6 @@ O diferencial que merece código próprio é a combinação de:
 
 ## 14. Próxima ação objetiva
 
-**Importar o baseline real do Latitude para uma branch `upstream/latitude` e validar o build.**
+**Validar o build/self-host do baseline importado em `upstream/latitude`.**
 
 Somente depois disso começar branding, tradução e mudanças visuais.

@@ -37,3 +37,14 @@ Ao atualizar o motor:
 7. só então integrar em `main`.
 
 Evitar alterações cosméticas espalhadas pelo monorepo quando uma configuração de branding, token, tradução ou wrapper resolver o mesmo problema.
+
+## Estado da importação
+
+Em 2026-09-28, o baseline inicial foi importado para `upstream/latitude`.
+
+A importação foi validada comparando o tree SHA completo:
+
+- upstream: `993bb208505c49dfbd13cb04644fcf8a79a6cdcc`
+- Vigia: `993bb208505c49dfbd13cb04644fcf8a79a6cdcc`
+
+Os valores são idênticos, comprovando equivalência de conteúdo do snapshot.

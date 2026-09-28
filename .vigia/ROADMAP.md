@@ -7,7 +7,7 @@
 - [x] Confirmar licença MIT do upstream
 - [x] Registrar política de atualização do upstream
 - [x] Registrar marca e posicionamento inicial
-- [ ] Importar baseline do Latitude preservando procedência
+- [x] Importar baseline do Latitude preservando procedência
 - [ ] Confirmar build local/self-host
 
 ## Fase 1 — Vigia mínimo vendável

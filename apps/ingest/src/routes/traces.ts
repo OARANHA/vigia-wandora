@@ -40,10 +40,9 @@ const traceIngestionBillingLayers = Layer.mergeAll(
 )
 
 const buildRejectionMessage = (rejected: number): string =>
-  `${rejected} span(s) rejected: no project could be resolved. ` +
-  "Set a valid project slug with the `latitude.project` span attribute, the `latitude.project` " +
-  "OTEL resource attribute, or the `X-Latitude-Project` export header. If you already set one, " +
-  "check that the slug exists in this Latitude organization."
+  `${rejected} span(s) rejeitado(s): nenhum projeto pôde ser identificado. ` +
+  "Configure um projeto válido no cabeçalho `X-Vigia-Project` do exportador OTLP. " +
+  "Se ele já estiver configurado, confirme se o slug existe nesta empresa no Vigia."
 
 type RateLimitedTraceResult = {
   readonly limitedBy: "requests" | "bytes"

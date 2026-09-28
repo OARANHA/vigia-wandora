@@ -1,10 +1,70 @@
 name: vigia-infrastructure
 
 services:
+  traefik-config:
+    image: alpine:3.22
+    container_name: vigia-traefik-config
+    restart: "no"
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        cat > /dynamic/vigia.yml <<'EOF'
+        http:
+          routers:
+            vigia-ingest:
+              rule: "Host(`vigia.wandora.com.br`) && Method(`POST`) && Path(`/v1/traces`)"
+              entryPoints:
+                - websecure
+              priority: 300
+              tls:
+                certResolver: letsencrypt
+              service: vigia-ingest
+
+            vigia-api:
+              rule: "Host(`vigia.wandora.com.br`) && (PathPrefix(`/v1/`) || PathPrefix(`/.well-known/`))"
+              entryPoints:
+                - websecure
+              priority: 200
+              tls:
+                certResolver: letsencrypt
+              service: vigia-api
+
+            vigia-web:
+              rule: "Host(`vigia.wandora.com.br`)"
+              entryPoints:
+                - websecure
+              priority: 100
+              tls:
+                certResolver: letsencrypt
+              service: vigia-web
+
+          services:
+            vigia-web:
+              loadBalancer:
+                servers:
+                  - url: "http://vigia-web:3000"
+
+            vigia-api:
+              loadBalancer:
+                servers:
+                  - url: "http://vigia-api:3001"
+
+            vigia-ingest:
+              loadBalancer:
+                servers:
+                  - url: "http://vigia-ingest:3002"
+        EOF
+    volumes:
+      - traefik_dynamic:/dynamic
+
   traefik:
     image: traefik:v3.7.13
     container_name: vigia-traefik
     restart: unless-stopped
+    depends_on:
+      traefik-config:
+        condition: service_completed_successfully
     command:
       - --entrypoints.web.address=:80
       - --entrypoints.websecure.address=:443
@@ -25,7 +85,7 @@ services:
       - "443:443"
     volumes:
       - traefik_letsencrypt:/letsencrypt
-      - ../production/traefik-vigia.yml:/etc/traefik/dynamic/vigia.yml:ro
+      - traefik_dynamic:/etc/traefik/dynamic:ro
     networks:
       - vigia-edge
     healthcheck:
@@ -38,6 +98,8 @@ services:
 volumes:
   traefik_letsencrypt:
     name: vigia_traefik_letsencrypt
+  traefik_dynamic:
+    name: vigia_traefik_dynamic
 
 networks:
   vigia-edge:

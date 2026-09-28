@@ -28,12 +28,27 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check changed web files
-        run: |
-          pnpm --filter @app/web exec biome check             src/lib/product.ts             'src/routes/_authenticated/-components/create-project-modal.tsx'             'src/routes/_authenticated/-lib/loader.ts'             'src/routes/_authenticated/projects/$projectSlug/-components/onboarding-flow.tsx'             'src/routes/_authenticated/projects/$projectSlug/-components/traces-empty-onboarding.tsx'             'src/routes/_authenticated/projects/$projectSlug/-components/vigia-connection-instructions.tsx'             'src/routes/_authenticated/projects/$projectSlug/-components/vigia-connection.test.ts'             'src/routes/_authenticated/projects/$projectSlug/-components/vigia-connection.ts'             'src/routes/_authenticated/projects/$projectSlug/onboarding.tsx'
+        run: >
+          pnpm --filter @app/web exec biome check
+          src/lib/product.ts
+          'src/routes/_authenticated/-components/create-project-modal.tsx'
+          'src/routes/_authenticated/-lib/loader.ts'
+          'src/routes/_authenticated/projects/$projectSlug/-components/onboarding-flow.tsx'
+          'src/routes/_authenticated/projects/$projectSlug/-components/onboarding/onboarding-legacy-types.ts'
+          'src/routes/_authenticated/projects/$projectSlug/-components/onboarding/onboarding-right-pane.tsx'
+          'src/routes/_authenticated/projects/$projectSlug/-components/onboarding/steps/role-step.tsx'
+          'src/routes/_authenticated/projects/$projectSlug/-components/traces-empty-onboarding.tsx'
+          'src/routes/_authenticated/projects/$projectSlug/-components/vigia-connection-instructions.tsx'
+          'src/routes/_authenticated/projects/$projectSlug/-components/vigia-connection.test.ts'
+          'src/routes/_authenticated/projects/$projectSlug/-components/vigia-connection.ts'
+          'src/routes/_authenticated/projects/$projectSlug/onboarding.tsx'
 
       - name: Check changed ingest files
-        run: |
-          pnpm --filter @app/ingest exec biome check             src/middleware/project.test.ts             src/middleware/project.ts             src/routes/traces.ts
+        run: >
+          pnpm --filter @app/ingest exec biome check
+          src/middleware/project.test.ts
+          src/middleware/project.ts
+          src/routes/traces.ts
 
   typecheck:
     uses: ./.github/workflows/typecheck.yml

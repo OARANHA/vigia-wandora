@@ -144,3 +144,19 @@ Validação do slice no SHA `2389b307d675e1ae95e6507144d07bafa5b48841`:
 Observação: um `pnpm check` global anterior expôs diagnósticos preexistentes do baseline fora deste slice. Por isso a validação de estilo deste trabalho foi isolada aos arquivos alterados, sem tratar dívida upstream não relacionada como parte deste escopo.
 
 Ainda não houve deploy do Vigia nem smoke test público de ingestão em `vigia.wandora.com.br`. Esse teste depende da primeira stack executável e da rota dinâmica do Traefik.
+
+
+## Preparação do runtime público
+
+Em 2026-09-28, o runtime de produção foi consolidado e validado sem ainda ser implantado:
+
+- Compose canônico: `deploy/production/compose.yml`;
+- roteamento canônico: `deploy/production/traefik-vigia.yml`;
+- workflow de imagens: `.github/workflows/vigia-images.yml`;
+- Compose válido no CI;
+- builds dos seis serviços de aplicação/migration concluídos com sucesso;
+- pull anônimo de todas as seis imagens `ghcr.io/oaranha/vigia-*:main` concluído com sucesso.
+
+O Portainer continua sem uma stack `vigia` e a VPS continua sem containers Vigia. A rota pública ainda não foi aplicada no Traefik.
+
+A criação automatizada da stack foi bloqueada antes da execução quando o fluxo tentou transportar os segredos obrigatórios do Compose. Nenhum segredo foi salvo. O deploy deve continuar apenas quando esses valores puderem ser injetados por um mecanismo seguro do operador/Portainer.

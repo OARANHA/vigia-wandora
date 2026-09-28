@@ -30,6 +30,42 @@ O Vigia deve funcionar para:
 
 A Wandora será o primeiro cliente real, mas arquiteturalmente deve usar o Vigia como qualquer outro cliente.
 
+### Wandora como vendedora e consumidora do Vigia
+
+A Wandora terá dois papéis simultâneos:
+
+- **vendedora do Vigia** como um produto independente apresentado e comercializado em `wandora.com.br`;
+- **cliente do Vigia**, enviando a telemetria e os eventos de negócio de seus próprios agentes para a mesma plataforma.
+
+O Vigia deve permanecer como a fonte de verdade de observabilidade. O painel da Wandora pode consumir uma API resumida do Vigia para mostrar indicadores operacionais próprios, como:
+
+- agentes ativos;
+- saúde geral;
+- problemas e alertas;
+- custo;
+- volume de execuções;
+- indicadores de resultado.
+
+A investigação detalhada continua no Vigia. O padrão desejado é:
+
+```text
+Wandora Dashboard
+       |
+       | API resumida
+       v
+      Vigia
+       |
+       +-- saúde / alertas / custo / impacto
+       |
+       +-- investigação completa no produto Vigia
+```
+
+O frontend completo do Vigia não deve ser duplicado dentro da Wandora. A Wandora exibe resumo e contexto; o Vigia cuida de configuração, análise profunda, traces, evals e operação especializada.
+
+Futuramente, um fluxo de SSO pode permitir que um usuário saia do painel Wandora em "Abrir no Vigia" e entre diretamente no contexto do agente/projeto correspondente.
+
+Essa relação cria um ciclo estratégico: a Wandora usa primeiro as novas capacidades do Vigia em produção, valida valor e problemas reais e depois oferece as capacidades maduras aos clientes externos.
+
 ## 3. Experiência que queremos vender
 
 O onboarding precisa parecer produto SaaS, não projeto de consultoria.

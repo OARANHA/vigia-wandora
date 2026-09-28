@@ -1,7 +1,7 @@
 http:
   routers:
     vigia-ingest:
-      rule: "Host(`vigia.wandora.com.br`) && Path(`/v1/traces`)"
+      rule: "Host(`vigia.wandora.com.br`) && Method(`POST`) && Path(`/v1/traces`)"
       entryPoints:
         - websecure
       priority: 300

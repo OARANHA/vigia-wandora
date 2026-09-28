@@ -28,6 +28,10 @@ A Wandora terá papel duplo:
 
 O Vigia continua sendo produto independente e fonte de verdade de observabilidade.
 
+Como decisão de infraestrutura e operação, o Vigia pertence ao ecossistema corporativo da Wandora, mas deve rodar em infraestrutura própria e não depender do runtime da Wandora. A VPS do Vigia deve possuir seu próprio Docker, Traefik, Portainer, bancos e volumes. A Wandora consome o Vigia externamente como qualquer outro cliente.
+
+O plano de administração usa `mcp.wandora.com.br` apenas como control plane externo. Uma indisponibilidade da infraestrutura da Wandora não deve derrubar o runtime do Vigia.
+
 A Wandora pode consumir uma API resumida do Vigia para exibir indicadores próprios em seu painel, enquanto investigação detalhada, configuração, traces, evals e operação especializada permanecem no Vigia.
 
 Evitar duplicar o frontend completo do Vigia dentro da Wandora. Preferir resumo na Wandora e navegação para o Vigia quando for necessária análise profunda.
@@ -103,15 +107,11 @@ A observabilidade básica (ingestão e visualização de traces) funciona sem cr
 
 ## Publicação no Traefik
 
-Estado verificado em 2026-09-28:
+Decisão atual: o Vigia será publicado pela infraestrutura própria da VPS Vigia, não pelo Traefik da VPS Wandora.
 
-- Traefik de produção: `traefik:v3.7.13`, saudável;
-- rede de borda: `wandora-edge`;
-- configuração dinâmica via file provider em `/opt/wandora/stacks/traefik/dynamic`;
-- ACME/Let's Encrypt via DNS challenge Cloudflare;
-- `vigia.wandora.com.br` resolve pelo Cloudflare, porém ainda não possui router/certificado de origem no Traefik e atualmente retorna HTTP 526.
+A VPS dedicada do Vigia terá seu próprio Traefik e rede de borda. O host público permanece `vigia.wandora.com.br`. O hostname administrativo preferido é `ops.vigia.wandora.com.br`, destinado ao Portainer/console operacional e separado da aplicação pública.
 
-O deploy do Vigia só será considerado completo quando houver serviço na `wandora-edge`, router dinâmico para `vigia.wandora.com.br`, TLS válido e smoke test HTTPS bem-sucedido.
+O deploy só será considerado completo quando o DNS apontar para a VPS Vigia, o Traefik próprio emitir TLS válido e o smoke test HTTPS/OTLP funcionar sem depender da rede `wandora-edge` da Wandora.
 
 
 ## Onboarding de agente e conexão OTLP

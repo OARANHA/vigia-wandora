@@ -13,7 +13,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     env:
       NODE_ENV: test
     steps:
@@ -43,8 +43,8 @@ jobs:
       - name: Check web
         run: pnpm --filter @app/web check
 
+      - name: Build web dependency graph
+        run: pnpm turbo run build --filter @app/web
+
       - name: Typecheck web
         run: pnpm --filter @app/web typecheck
-
-      - name: Build web
-        run: pnpm --filter @app/web build

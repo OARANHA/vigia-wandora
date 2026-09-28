@@ -18,6 +18,9 @@
 - [ ] Onboarding do projeto/agente em PT-BR
 - [ ] Navegação principal em PT-BR
 - [ ] Configuração de URLs/subdomínios
+- [ ] Publicar `vigia.wandora.com.br` no Traefik (file provider + Let's Encrypt)
+- [ ] Conectar stack Vigia à rede `wandora-edge`
+- [ ] Validar HTTPS público sem HTTP 526
 - [ ] Remover referências comerciais desnecessárias ao Latitude
 - [ ] Dashboard simplificado para visão empresarial
 - [ ] Primeiro fluxo "Conecte seu agente"

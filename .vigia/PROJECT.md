@@ -38,10 +38,10 @@ Futuramente, SSO pode conectar os dois produtos com um fluxo "Abrir no Vigia".
 
 - Nome oficial: **Vigia**
 - Assinatura: **Vigia by Wandora**
-- URL planejada: `vigia.wandora.com.br`
-- App: `app.vigia.wandora.com.br`
-- API: `api.vigia.wandora.com.br`
-- Ingestão: `ingest.vigia.wandora.com.br`
+- URL principal: `vigia.wandora.com.br` (**já existente no DNS/Cloudflare**)
+- App separado: `app.vigia.wandora.com.br` (opcional/futuro)
+- API: `api.vigia.wandora.com.br` (planejado)
+- Ingestão: `ingest.vigia.wandora.com.br` (planejado)
 
 ## Estado
 
@@ -100,3 +100,15 @@ Self-host completo usa:
 - serviços web, api, ingest, workers, workflows e migrations.
 
 A observabilidade básica (ingestão e visualização de traces) funciona sem credenciais de provedor de IA. Recursos dependentes de geração, embeddings ou reranking exigem os provedores correspondentes.
+
+## Publicação no Traefik
+
+Estado verificado em 2026-09-28:
+
+- Traefik de produção: `traefik:v3.7.13`, saudável;
+- rede de borda: `wandora-edge`;
+- configuração dinâmica via file provider em `/opt/wandora/stacks/traefik/dynamic`;
+- ACME/Let's Encrypt via DNS challenge Cloudflare;
+- `vigia.wandora.com.br` resolve pelo Cloudflare, porém ainda não possui router/certificado de origem no Traefik e atualmente retorna HTTP 526.
+
+O deploy do Vigia só será considerado completo quando houver serviço na `wandora-edge`, router dinâmico para `vigia.wandora.com.br`, TLS válido e smoke test HTTPS bem-sucedido.

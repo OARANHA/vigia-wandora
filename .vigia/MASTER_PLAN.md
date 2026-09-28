@@ -194,14 +194,14 @@ Marca:
 - **Vigia**
 - assinatura: **Vigia by Wandora**
 
-URLs planejadas:
+URLs:
 
-- `vigia.wandora.com.br`
-- `app.vigia.wandora.com.br`
-- `api.vigia.wandora.com.br`
-- `ingest.vigia.wandora.com.br`
+- `vigia.wandora.com.br` — **domínio já existente** e entrada pública inicial do Vigia;
+- `app.vigia.wandora.com.br` — opcional/futuro se houver necessidade real de separar site e aplicação;
+- `api.vigia.wandora.com.br` — planejado;
+- `ingest.vigia.wandora.com.br` — planejado.
 
-Podemos simplificar a URL do app futuramente se isso melhorar a experiência.
+Para o primeiro produto executável, preferir a simplicidade de usar `vigia.wandora.com.br` como URL principal em vez de criar subdomínios adicionais antes da necessidade.
 
 ## 9. Estratégia de upstream Latitude
 
@@ -292,6 +292,27 @@ Segredos não entram no repositório público.
 
 O controle da API do Portainer via Remote-Ops-MCP já foi configurado e validado.
 
+### Traefik e domínio público
+
+Estado verificado em 2026-09-28:
+
+- `vigia.wandora.com.br` já existe no DNS/Cloudflare;
+- o Traefik de produção está saudável e conectado à rede `wandora-edge`;
+- o Traefik usa `providers.file.directory=/etc/traefik/dynamic`; portanto **Docker labels não criam a rota automaticamente**;
+- ainda não existe router dinâmico para `vigia.wandora.com.br`;
+- enquanto não houver router/certificado de origem, o host responde Cloudflare HTTP 526.
+
+No deploy do Vigia é obrigatório:
+
+1. conectar o serviço web do Vigia à rede externa `wandora-edge`;
+2. criar configuração dinâmica do Traefik (preferencialmente `dynamic/vigia.yml`);
+3. configurar `Host(\`vigia.wandora.com.br\`)` no entrypoint `websecure`;
+4. usar `tls.certResolver: letsencrypt`;
+5. apontar o service do Traefik para o nome DNS interno/porta do container Vigia;
+6. validar certificado, HTTPS e resposta da aplicação antes de considerar o deploy concluído.
+
+Não alterar o Traefik em produção antes de existir um serviço Vigia válido para receber a rota.
+
 ## 12. Ordem de execução
 
 ### Etapa A — trazer o motor para dentro do Vigia
@@ -309,7 +330,8 @@ O controle da API do Portainer via Remote-Ops-MCP já foi configurado e validado
 4. navegação em PT-BR;
 5. URLs/configuração próprias;
 6. remover referências comerciais desnecessárias ao Latitude;
-7. subir como stack Git no Portainer.
+7. subir como stack Git no Portainer;
+8. conectar à `wandora-edge` e publicar `vigia.wandora.com.br` no Traefik com TLS válido.
 
 ### Etapa C — conexão do primeiro agente
 

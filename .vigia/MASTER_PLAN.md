@@ -30,6 +30,8 @@ O Vigia deve funcionar para:
 
 A Wandora será o primeiro cliente real, mas arquiteturalmente deve usar o Vigia como qualquer outro cliente.
 
+**Fronteira corporativa:** o Vigia é um produto da corporação Wandora, porém é uma unidade operacional independente. Seu runtime não deve depender da VPS, rede Docker, Traefik ou Portainer da Wandora. Essa separação é intencional e também serve como referência para a futura oferta Vigia Private.
+
 ### Wandora como vendedora e consumidora do Vigia
 
 A Wandora terá dois papéis simultâneos:
@@ -273,19 +275,19 @@ Somente modificar profundamente o motor quando for necessário para o produto.
 
 ## 11. Implantação daqui para frente
 
-Novo padrão Wandora:
+Padrão de implantação do Vigia:
 
 ```text
 GitHub
    |
    v
-Portainer Stack criada a partir de Git
+Portainer próprio da VPS Vigia
    |
    v
-Environment Variables / secrets no Portainer ou secrets da VPS
+Environment Variables / secrets da VPS Vigia
    |
    v
-Docker
+Docker + Traefik próprios do Vigia
 ```
 
 Não usar `docker compose up` manual como mecanismo normal para novos projetos.
@@ -296,26 +298,17 @@ Segredos não entram no repositório público.
 
 O controle da API do Portainer via Remote-Ops-MCP já foi configurado e validado.
 
-### Traefik e domínio público
+### Traefik, Portainer e domínio público
 
-Estado verificado em 2026-09-28:
+Decisão consolidada em 2026-09-28:
 
-- `vigia.wandora.com.br` já existe no DNS/Cloudflare;
-- o Traefik de produção está saudável e conectado à rede `wandora-edge`;
-- o Traefik usa `providers.file.directory=/etc/traefik/dynamic`; portanto **Docker labels não criam a rota automaticamente**;
-- ainda não existe router dinâmico para `vigia.wandora.com.br`;
-- enquanto não houver router/certificado de origem, o host responde Cloudflare HTTP 526.
+- `vigia.wandora.com.br` continua como entrada pública do produto;
+- a VPS dedicada do Vigia terá Docker, Traefik e Portainer próprios;
+- a rede de borda do Vigia será própria e não reutilizará `wandora-edge`;
+- `ops.vigia.wandora.com.br` é o hostname administrativo preferido para o Portainer/console operacional;
+- `mcp.wandora.com.br` permanece somente como control plane externo da corporação, sem participar do caminho de runtime do Vigia.
 
-No deploy do Vigia é obrigatório:
-
-1. conectar o serviço web do Vigia à rede externa `wandora-edge`;
-2. criar configuração dinâmica do Traefik (preferencialmente `dynamic/vigia.yml`);
-3. configurar `Host(\`vigia.wandora.com.br\`)` no entrypoint `websecure`;
-4. usar `tls.certResolver: letsencrypt`;
-5. apontar o service do Traefik para o nome DNS interno/porta do container Vigia;
-6. validar certificado, HTTPS e resposta da aplicação antes de considerar o deploy concluído.
-
-Não alterar o Traefik em produção antes de existir um serviço Vigia válido para receber a rota.
+O runtime do Vigia deve continuar funcional mesmo se a VPS da Wandora estiver indisponível.
 
 ## 12. Ordem de execução
 
@@ -335,7 +328,7 @@ Não alterar o Traefik em produção antes de existir um serviço Vigia válido 
 5. URLs/configuração próprias;
 6. remover referências comerciais desnecessárias ao Latitude;
 7. subir como stack Git no Portainer;
-8. conectar à `wandora-edge` e publicar `vigia.wandora.com.br` no Traefik com TLS válido.
+8. publicar `vigia.wandora.com.br` no Traefik próprio da VPS Vigia com TLS válido.
 
 ### Etapa C — conexão do primeiro agente
 
@@ -395,6 +388,6 @@ O empacotamento e o caminho de registry já foram comprovados antes de tocar pro
 - seis targets Docker do Vigia compilados com sucesso;
 - seis imagens `ghcr.io/oaranha/vigia-*:main` puxadas anonimamente com sucesso no gate do PR #24.
 
-O Portainer de produção continua sem stack `vigia`, e o host continua sem containers Vigia. A rota do Traefik também não foi ativada.
+A tentativa na VPS Wandora foi abandonada e seus artefatos foram removidos. O primeiro runtime será implantado exclusivamente na VPS dedicada do Vigia.
 
 A automação disponível para criar a stack exige receber os segredos como variáveis. O controle de segurança bloqueou esse transporte antes da execução; portanto nenhum segredo foi persistido e nenhuma stack foi criada. O próximo passo é fornecer os segredos diretamente por um canal operacional seguro do Portainer/host, criar a stack Git, validar saúde e recursos, e somente depois instalar a configuração dinâmica do Traefik.

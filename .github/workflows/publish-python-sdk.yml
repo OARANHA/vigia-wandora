@@ -1,0 +1,43 @@
+name: Publish Python SDK
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to publish from
+        required: false
+        type: string
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to publish from
+        required: false
+        type: string
+
+jobs:
+  publish:
+    name: Build and Publish
+    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'latitude-dev/latitude-llm' }}
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+
+      - name: Publish
+        uses: ./.github/actions/publish-pypi-package
+        with:
+          package_path: packages/sdk/python
+          pypi_package: latitude-sdk
+          tag_prefix: python-sdk
+          release_name: Python SDK
+          pypi_token: ${{ secrets.PYPI_TOKEN }}
+          target_commitish: ${{ inputs.ref || github.sha }}
+          # Fern-generated: `ruff format` would rewrite ~780 files that the next
+          # `pnpm generate:sdk` reverts, and the lint findings are in code we do
+          # not hand-maintain.
+          run_ruff: "false"

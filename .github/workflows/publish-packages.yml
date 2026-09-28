@@ -1,0 +1,108 @@
+name: Publish Packages
+
+on:
+  push:
+    branches:
+      - development
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-packages-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish-typescript-telemetry:
+    permissions:
+      contents: write
+      id-token: write
+    uses: ./.github/workflows/publish-typescript-telemetry.yml
+    with:
+      ref: ${{ github.sha }}
+    secrets: inherit
+
+  publish-typescript-sdk:
+    permissions:
+      contents: write
+      id-token: write
+    uses: ./.github/workflows/publish-typescript-sdk.yml
+    with:
+      ref: ${{ github.sha }}
+    secrets: inherit
+
+  publish-claude-code-telemetry:
+    permissions:
+      contents: write
+      id-token: write
+    uses: ./.github/workflows/publish-claude-code-telemetry.yml
+    with:
+      ref: ${{ github.sha }}
+    secrets: inherit
+
+  publish-openclaw-telemetry:
+    permissions:
+      contents: write
+      id-token: write
+    uses: ./.github/workflows/publish-openclaw-telemetry.yml
+    with:
+      ref: ${{ github.sha }}
+    secrets: inherit
+
+  publish-openclaw-telemetry-cli:
+    permissions:
+      contents: write
+      id-token: write
+    uses: ./.github/workflows/publish-openclaw-telemetry-cli.yml
+    with:
+      ref: ${{ github.sha }}
+    secrets: inherit
+
+  publish-pi-telemetry:
+    permissions:
+      contents: write
+      id-token: write
+    uses: ./.github/workflows/publish-pi-telemetry.yml
+    with:
+      ref: ${{ github.sha }}
+    secrets: inherit
+
+  publish-python-telemetry:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish-python-telemetry.yml
+    with:
+      ref: ${{ github.sha }}
+    secrets: inherit
+
+  publish-hermes-telemetry:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish-hermes-telemetry.yml
+    with:
+      ref: ${{ github.sha }}
+    secrets: inherit
+
+  publish-prime-intellect-telemetry:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish-prime-intellect-telemetry.yml
+    with:
+      ref: ${{ github.sha }}
+    secrets: inherit
+
+  publish-python-sdk:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish-python-sdk.yml
+    with:
+      ref: ${{ github.sha }}
+    secrets: inherit
+
+  publish-cli:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/publish-cli.yml
+    with:
+      ref: ${{ github.sha }}
+    secrets: inherit

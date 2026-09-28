@@ -9,10 +9,31 @@ permissions:
   contents: read
 
 jobs:
-  check:
-    uses: ./.github/workflows/check.yml
-    with:
-      ref: ${{ github.sha }}
+  check-slice:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 25
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Check changed web files
+        run: |
+          pnpm --filter @app/web exec biome check             src/lib/product.ts             'src/routes/_authenticated/-components/create-project-modal.tsx'             'src/routes/_authenticated/-lib/loader.ts'             'src/routes/_authenticated/projects/$projectSlug/-components/onboarding-flow.tsx'             'src/routes/_authenticated/projects/$projectSlug/-components/traces-empty-onboarding.tsx'             'src/routes/_authenticated/projects/$projectSlug/-components/vigia-connection-instructions.tsx'             'src/routes/_authenticated/projects/$projectSlug/-components/vigia-connection.test.ts'             'src/routes/_authenticated/projects/$projectSlug/-components/vigia-connection.ts'             'src/routes/_authenticated/projects/$projectSlug/onboarding.tsx'
+
+      - name: Check changed ingest files
+        run: |
+          pnpm --filter @app/ingest exec biome check             src/middleware/project.test.ts             src/middleware/project.ts             src/routes/traces.ts
 
   typecheck:
     uses: ./.github/workflows/typecheck.yml

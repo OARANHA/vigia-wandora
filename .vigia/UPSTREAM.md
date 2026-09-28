@@ -6,6 +6,8 @@ O Vigia parte do projeto open source Latitude:
 
 - Repositório: `latitude-dev/latitude-llm`
 - Branch de referência: `development`
+- Baseline inicial: `93f0733dc7596005dcb061ca163a016d4d86e3e2`
+- Data do baseline: 2026-09-23
 - Licença observada no bootstrap: MIT
 - Copyright upstream: Latitude Data SL
 

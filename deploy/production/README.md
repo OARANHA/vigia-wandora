@@ -1,6 +1,8 @@
 # Vigia production runtime
 
-Este diretório contém o runtime reproduzível do primeiro deploy público do Vigia.
+Este diretório contém o runtime reproduzível e canônico do primeiro deploy público do Vigia.
+
+Arquivos canônicos: `deploy/production/compose.yml`, `deploy/production/traefik-vigia.yml` e `.github/workflows/vigia-images.yml`. Evite criar um segundo Compose ou workflow concorrente para o mesmo runtime.
 
 ## Modelo
 

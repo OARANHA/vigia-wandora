@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
-      - name: Import exact Latitude baseline with Git history
+      - name: Import Latitude baseline without upstream workflow files
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TARGET_REPOSITORY: ${{ github.repository }}
@@ -23,18 +23,29 @@ jobs:
         run: |
           set -euo pipefail
 
-          git clone --bare --single-branch --branch development \
-            https://github.com/latitude-dev/latitude-llm.git latitude-upstream.git
+          mkdir latitude-src
+          cd latitude-src
+          git init
+          git remote add origin https://github.com/latitude-dev/latitude-llm.git
+          git fetch --depth=1 origin "${UPSTREAM_SHA}"
+          git checkout --detach FETCH_HEAD
 
-          cd latitude-upstream.git
+          test "$(git rev-parse HEAD)" = "${UPSTREAM_SHA}"
 
-          git cat-file -e "${UPSTREAM_SHA}^{commit}"
+          rm -rf .github/workflows
+          rm -rf .git
+
+          git init -b snapshot
+          git config user.name "Vigia Upstream Import"
+          git config user.email "vigia-upstream@users.noreply.github.com"
+          git add -A
+          git commit -m "chore(upstream): snapshot Latitude ${UPSTREAM_SHA} without workflows"
 
           git remote add vigia \
             "https://x-access-token:${GH_TOKEN}@github.com/${TARGET_REPOSITORY}.git"
 
-          git push vigia "${UPSTREAM_SHA}:refs/heads/upstream/latitude"
+          git push vigia HEAD:refs/heads/upstream/latitude
 
-          test "$(git ls-remote vigia refs/heads/upstream/latitude | awk '{print $1}')" = "${UPSTREAM_SHA}"
+          test -n "$(git ls-remote vigia refs/heads/upstream/latitude | awk '{print $1}')"
 
-          echo "Imported Latitude baseline ${UPSTREAM_SHA} into upstream/latitude"
+          echo "Imported Latitude baseline body; workflow files will be restored separately."

@@ -1,0 +1,120 @@
+name: Build Vigia Images
+
+on:
+  push:
+    branches:
+      - main
+      - feat/vigia-prod-runtime
+    paths:
+      - Dockerfile
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - ".npmrc"
+      - "apps/**"
+      - "packages/**"
+      - "docker/**"
+      - "deploy/vigia-compose.yaml"
+      - ".github/workflows/vigia-build-images.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - Dockerfile
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - ".npmrc"
+      - "apps/**"
+      - "packages/**"
+      - "docker/**"
+      - "deploy/vigia-compose.yaml"
+      - ".github/workflows/vigia-build-images.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: vigia-images-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-stack:
+    name: Validate production stack
+    runs-on: ubuntu-latest
+    env:
+      VIGIA_PUBLIC_URL: https://vigia.invalid
+      VIGIA_IMAGE_TAG: sha-validation
+      POSTGRES_USER: vigia
+      POSTGRES_PASSWORD: validation-postgres-password
+      POSTGRES_DB: vigia
+      POSTGRES_RUNTIME_USER: vigia_app
+      POSTGRES_RUNTIME_PASSWORD: validation-runtime-password
+      CLICKHOUSE_USER: vigia
+      CLICKHOUSE_PASSWORD: validation-clickhouse-password
+      CLICKHOUSE_DB: vigia
+      LAT_MASTER_ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
+      LAT_BETTER_AUTH_SECRET: 1111111111111111111111111111111111111111111111111111111111111111
+      LAT_REDACTION_PSEUDONYM_SECRET: 2222222222222222222222222222222222222222222222222222222222222222
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate Compose
+        run: docker compose -f deploy/vigia-compose.yaml config --quiet
+
+  metadata:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      registry: ${{ steps.meta.outputs.registry }}
+      source: ${{ steps.meta.outputs.source }}
+      sha: ${{ steps.meta.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          short_sha="$(git rev-parse --short=8 HEAD)"
+          owner="$(printf '%s' "$GITHUB_REPOSITORY_OWNER" | tr '[:upper:]' '[:lower:]')"
+          echo "tag=sha-${short_sha}" >> "$GITHUB_OUTPUT"
+          echo "registry=ghcr.io/${owner}" >> "$GITHUB_OUTPUT"
+          echo "source=https://github.com/${GITHUB_REPOSITORY}" >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: [validate-stack, metadata]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [api, ingest, workers, workflows, web, migrations]
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Login no GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configurar Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build e push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          target: ${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ needs.metadata.outputs.registry }}/vigia-${{ matrix.service }}:${{ needs.metadata.outputs.tag }}
+          labels: |
+            org.opencontainers.image.source=${{ needs.metadata.outputs.source }}
+            org.opencontainers.image.revision=${{ needs.metadata.outputs.sha }}
+            org.opencontainers.image.title=Vigia ${{ matrix.service }}
+          cache-from: type=gha,scope=vigia-${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=vigia-${{ matrix.service }}

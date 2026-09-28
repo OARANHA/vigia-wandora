@@ -3,14 +3,14 @@ import { Button, Input, Select, Text } from "@repo/ui"
 import { PhoneNumberField } from "../../../../../../../components/phone-number-field.tsx"
 import { fieldErrorsAsStrings } from "../../../../../../../lib/form-server-action.ts"
 import { phoneNumberError, phoneNumberSubmitError } from "../../../../../../../lib/phone-countries.ts"
-import type { OnboardingForm } from "../../onboarding-flow.tsx"
+import type { LegacyOnboardingForm } from "../onboarding-legacy-types.ts"
 
 export function Left({
   form,
   isSubmitting,
   onNext,
 }: {
-  readonly form: OnboardingForm
+  readonly form: LegacyOnboardingForm
   readonly isSubmitting: boolean
   readonly onNext: () => void
 }) {

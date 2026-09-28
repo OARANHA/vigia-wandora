@@ -27,7 +27,7 @@ export function CreateProjectModal({ open, onClose }: { open: boolean; onClose: 
           const slug = projects?.find((p) => p.id === projectId)?.slug
           if (slug) {
             await router.navigate({
-              to: "/projects/$projectSlug",
+              to: "/projects/$projectSlug/onboarding",
               params: { projectSlug: slug },
             })
           }
@@ -36,7 +36,7 @@ export function CreateProjectModal({ open, onClose }: { open: boolean; onClose: 
         onError: (error) => {
           toast({
             variant: "destructive",
-            title: "Error creating project",
+            title: "Não foi possível criar o agente",
             description: toUserMessage(error),
           })
         },
@@ -49,8 +49,8 @@ export function CreateProjectModal({ open, onClose }: { open: boolean; onClose: 
       open={open}
       dismissible
       onOpenChange={onClose}
-      title="Create Project"
-      description="Create a new project to start adding your prompts."
+      title="Criar agente"
+      description="Crie um agente para conectar suas execuções ao Vigia."
       footer={
         <>
           <CloseTrigger />
@@ -60,7 +60,7 @@ export function CreateProjectModal({ open, onClose }: { open: boolean; onClose: 
               void form.handleSubmit()
             }}
           >
-            Create Project
+            Criar agente
           </Button>
         </>
       }
@@ -77,11 +77,11 @@ export function CreateProjectModal({ open, onClose }: { open: boolean; onClose: 
               <Input
                 required
                 type="text"
-                label="Name"
+                label="Nome do agente"
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value)}
                 errors={fieldErrorsAsStrings(field.state.meta.errors)}
-                placeholder="My awesome project"
+                placeholder="Agente de atendimento"
               />
             )}
           </form.Field>

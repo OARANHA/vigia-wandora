@@ -6,7 +6,8 @@ import { useMemo, useRef, useState } from "react"
 import { useApiKeysCollection } from "../../../../../domains/api-keys/api-keys.collection.ts"
 import { projectScopeData, projectScopeKey, useProjectScope } from "../../../../../domains/projects/project-scope.tsx"
 import { countTracesByProject } from "../../../../../domains/traces/traces.functions.ts"
-import { TelemetryInstructions } from "./onboarding/steps/telemetry-instructions.tsx"
+import { DEFAULT_VIGIA_AGENT_STACK } from "./vigia-connection.ts"
+import { VigiaConnectionInstructions } from "./vigia-connection-instructions.tsx"
 
 /**
  * Empty state for a project that has never received a trace. Keeps the surface
@@ -32,7 +33,7 @@ export function TracesEmptyOnboarding({
    * Explicit API-key token to display (sandbox passes its `lat_sandbox_` key).
    * When omitted, the card reads the live org's default key from the collection.
    */
-  readonly apiKeyToken?: string | null
+  readonly apiKeyToken?: string | null | undefined
 }) {
   const queryClient = useQueryClient()
   // When mounted under a sandbox scope, the poll + cache invalidation target the
@@ -125,8 +126,8 @@ export function TracesEmptyOnboarding({
       <TracesSetupSheet
         open={setupOpen}
         onClose={() => setSetupOpen(false)}
-        projectId={projectId}
         projectSlug={projectSlug}
+        apiKeyToken={apiKeyToken}
       />
     </div>
   )
@@ -205,11 +206,11 @@ function ConnectCard({
     return keys.find((k) => k.name === DEFAULT_API_KEY_NAME)?.token ?? null
   }, [apiKeysList, scope, apiKeyToken])
 
-  const headline = orgHasConnectedProjects ? "Send traces to this project" : "Waiting for your first trace"
+  const headline = orgHasConnectedProjects ? "Envie traces para este agente" : "Aguardando o primeiro trace"
   const subcopy = orgHasConnectedProjects
-    ? "Your organization already sends traces to Latitude. Point some traffic at this project's slug, or set it up from scratch."
-    : "This is where your traces will appear. Instrument your app with Latitude to start streaming them in."
-  const ctaLabel = orgHasConnectedProjects ? "Full setup instructions" : "Set up tracing"
+    ? "Sua empresa já envia traces ao Vigia. Use este projeto na configuração do agente ou refaça a conexão abaixo."
+    : "As execuções do agente aparecerão aqui assim que o OpenTelemetry começar a enviar traces ao Vigia."
+  const ctaLabel = orgHasConnectedProjects ? "Ver configuração" : "Conectar ao Vigia"
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-5">
@@ -226,15 +227,15 @@ function ConnectCard({
 
       <div className="flex flex-col items-start gap-2">
         <div className="flex flex-row items-center gap-2">
-          <Text.H6 color="foregroundMuted">Project slug</Text.H6>
-          <CopyableText value={projectSlug} size="sm" ellipsis tooltip="Copy project slug" />
+          <Text.H6 color="foregroundMuted">Projeto</Text.H6>
+          <CopyableText value={projectSlug} size="sm" ellipsis tooltip="Copiar projeto" />
         </div>
         <div className="flex flex-row items-center gap-2">
-          <Text.H6 color="foregroundMuted">API key</Text.H6>
+          <Text.H6 color="foregroundMuted">Chave Vigia</Text.H6>
           {defaultApiKeyToken ? (
-            <CopyableText value={defaultApiKeyToken} size="sm" ellipsis tooltip="Copy API key" />
+            <CopyableText value={defaultApiKeyToken} size="sm" ellipsis tooltip="Copiar chave Vigia" />
           ) : (
-            <Text.H6 color="foregroundMuted">Use any key from Settings → API Keys.</Text.H6>
+            <Text.H6 color="foregroundMuted">Use uma chave disponível em Configurações → API Keys.</Text.H6>
           )}
         </div>
       </div>
@@ -256,7 +257,7 @@ function TraceWaitingIndicator({ traceReceived }: { readonly traceReceived: bool
         <Icon icon={Loader2Icon} size="sm" color="foregroundMuted" className="animate-spin" />
       )}
       <Text.H5 color={traceReceived ? "success" : "foregroundMuted"}>
-        {traceReceived ? "Your first trace just arrived" : "Waiting for your first trace…"}
+        {traceReceived ? "Primeiro trace recebido pelo Vigia" : "Aguardando o primeiro trace…"}
       </Text.H5>
     </div>
   )
@@ -266,25 +267,29 @@ function TraceWaitingIndicator({ traceReceived }: { readonly traceReceived: bool
 function TracesSetupSheet({
   open,
   onClose,
-  projectId,
   projectSlug,
+  apiKeyToken,
 }: {
   readonly open: boolean
   readonly onClose: () => void
-  readonly projectId: string
   readonly projectSlug: string
+  readonly apiKeyToken?: string | null | undefined
 }) {
   return (
-    <Sheet open={open} onClose={onClose} closeAriaLabel="Close setup panel">
+    <Sheet open={open} onClose={onClose} closeAriaLabel="Fechar configuração">
       <div className="flex h-full w-screen max-w-[600px] flex-col bg-background">
         <div className="flex shrink-0 flex-row items-center justify-between border-b border-border px-6 py-4">
-          <Text.H4 weight="medium">Set up tracing</Text.H4>
+          <Text.H4 weight="medium">Conectar ao Vigia</Text.H4>
           <Button variant="outline" className="h-8 w-8 p-0" onClick={onClose}>
             <Icon icon={XIcon} size="sm" />
           </Button>
         </div>
         <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
-          <TelemetryInstructions projectId={projectId} projectSlug={projectSlug} importFollowUp="go-to-imports" />
+          <VigiaConnectionInstructions
+            projectSlug={projectSlug}
+            source={DEFAULT_VIGIA_AGENT_STACK}
+            apiKeyToken={apiKeyToken}
+          />
         </div>
       </div>
     </Sheet>

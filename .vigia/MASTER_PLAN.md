@@ -248,9 +248,13 @@ Checkpoint do merge:
 - `pnpm check`, `pnpm typecheck` e build do web passaram no HEAD integrado;
 - marca textual, metadados, login, perfil inicial e seleção de empresa já usam Vigia/PT-BR.
 
-Ainda existem referências e copy do Latitude no onboarding profundo de projeto/agente e em outras áreas autenticadas. Isso é trabalho pendente, não concluído.
+O onboarding de projeto/agente e a conexão OTLP já possuem uma camada própria Vigia/PT-BR. O cliente escolhe como o agente foi desenvolvido, recebe endpoint/chave/projeto do Vigia, configura OpenTelemetry e a interface detecta o primeiro trace.
 
-O próximo passo técnico é adaptar o onboarding de projeto/agente e a conexão OTLP para que o cliente se conecte ao Vigia sem precisar conhecer Latitude.
+O contrato público do MVP usa `https://vigia.wandora.com.br/v1/traces` e o cabeçalho `X-Vigia-Project`. O ingest mantém `X-Latitude-Project` apenas como alias de compatibilidade interna.
+
+Ainda existem referências e copy do Latitude em outras áreas autenticadas. Isso continua pendente.
+
+O próximo passo de runtime é publicar a primeira stack executável e validar um trace real pelo domínio público. Depois disso, o próximo slice de produto é responder: **“o que significa sucesso para este agente?”**.
 
 ## 10. Regra de customização
 
@@ -335,11 +339,11 @@ Não alterar o Traefik em produção antes de existir um serviço Vigia válido 
 
 ### Etapa C — conexão do primeiro agente
 
-1. expor ingest OTLP;
-2. criar tela "Conecte seu agente";
-3. gerar endpoint/chave/projeto;
-4. receber primeiro trace;
-5. mostrar estado "Conectado".
+1. [x] expor contrato Vigia sobre o ingest OTLP existente;
+2. [x] criar tela "Conecte seu agente";
+3. [x] mostrar endpoint/chave/projeto;
+4. [ ] receber primeiro trace no runtime público;
+5. [x] detectar primeiro trace e mostrar estado "Conectado" na aplicação.
 
 ### Etapa D — produto vendável
 
@@ -375,4 +379,6 @@ O diferencial que merece código próprio é a combinação de:
 
 ## 14. Próxima ação objetiva
 
-**Adaptar o onboarding de projeto/agente e a conexão OTLP para a experiência Vigia, sem expor Latitude ao cliente.**
+**Fazer o primeiro deploy executável do Vigia, publicar `vigia.wandora.com.br` pelo Traefik e validar um trace OTLP real ponta a ponta.**
+
+Depois do smoke test público, avançar para a definição de sucesso por agente e Business Events.

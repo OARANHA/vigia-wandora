@@ -1,14 +1,14 @@
 import type { ComponentProps } from "react"
-import type { OnboardingStep } from "../onboarding-flow.tsx"
 import { CarouselSlide, CarouselTrack } from "./carousel-track.tsx"
 import { OnboardingGallery } from "./onboarding-gallery.tsx"
+import type { LegacyOnboardingStep } from "./onboarding-legacy-types.ts"
 import * as FlaggersStep from "./steps/flaggers-step.tsx"
 import * as SlackStep from "./steps/slack-step.tsx"
 import * as TelemetryStep from "./steps/telemetry-step.tsx"
 
 type RightSlide = "intro" | "flaggers" | "slack" | "telemetry"
 
-const STEP_TO_RIGHT_SLIDE: Record<OnboardingStep, RightSlide> = {
+const STEP_TO_RIGHT_SLIDE: Record<LegacyOnboardingStep, RightSlide> = {
   role: "intro",
   flaggers: "flaggers",
   slack: "slack",
@@ -24,8 +24,8 @@ export function OnboardingRightPane({
   availableFlaggers,
   traceReceived = false,
 }: {
-  readonly steps: ReadonlyArray<OnboardingStep>
-  readonly currentStep: OnboardingStep
+  readonly steps: ReadonlyArray<LegacyOnboardingStep>
+  readonly currentStep: LegacyOnboardingStep
   readonly enabledFlaggerSlugs: ComponentProps<typeof FlaggersStep.Right>["enabledFlaggerSlugs"]
   readonly availableFlaggers: ComponentProps<typeof FlaggersStep.Right>["availableFlaggers"]
   readonly traceReceived?: boolean

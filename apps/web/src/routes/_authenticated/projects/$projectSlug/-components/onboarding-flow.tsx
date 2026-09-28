@@ -1,322 +1,353 @@
-import { useMountEffect, useToast } from "@repo/ui"
-import { useForm } from "@tanstack/react-form"
-import { useQuery } from "@tanstack/react-query"
+import { Button, Icon, Input, Text, useToast } from "@repo/ui"
 import { useNavigate } from "@tanstack/react-router"
-import { useCallback, useRef, useState } from "react"
-import { invalidateProjectFlaggers, useProjectFlaggers } from "../../../../../domains/flaggers/flaggers.collection.ts"
-import {
-  configureProjectFlaggersForOnboarding,
-  listAvailableFlaggers,
-} from "../../../../../domains/flaggers/flaggers.functions.ts"
-import type { FlaggerPresetSlug } from "../../../../../domains/flaggers/presets.ts"
-import { useProjectsCollection } from "../../../../../domains/projects/projects.collection.ts"
+import { CheckCircle2, Loader2 } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { SelectorChip } from "../../../../../components/selector-chip.tsx"
+import { VigiaBrand } from "../../../../../components/vigia-brand.tsx"
 import { completeProjectOnboarding, updateProject } from "../../../../../domains/projects/projects.functions.ts"
 import { countTracesByProject } from "../../../../../domains/traces/traces.functions.ts"
-import { submitOnboarding } from "../../../../../domains/users/user.functions.ts"
 import { getQueryClient } from "../../../../../lib/data/query-client.tsx"
 import { toUserMessage } from "../../../../../lib/errors.ts"
-import { createFormSubmitHandler } from "../../../../../lib/form-server-action.ts"
-import { composePhoneNumber } from "../../../../../lib/phone-countries.ts"
-import { OnboardingRightPane } from "./onboarding/onboarding-right-pane.tsx"
-import * as FlaggersStep from "./onboarding/steps/flaggers-step.tsx"
-import * as RoleStep from "./onboarding/steps/role-step.tsx"
-import {
-  EMPTY_ONBOARDING_FORM_VALUES,
-  requiredRoleStepFields,
-  resolveHeardAboutUs,
-} from "./onboarding/steps/role-step-form.ts"
-import * as SlackStep from "./onboarding/steps/slack-step.tsx"
-import * as TelemetryStep from "./onboarding/steps/telemetry-step.tsx"
+import { DEFAULT_VIGIA_AGENT_STACK, VIGIA_AGENT_STACKS, type VigiaAgentStackId } from "./vigia-connection.ts"
+import { VigiaConnectionInstructions } from "./vigia-connection-instructions.tsx"
 
-export const ONBOARDING_STEPS = ["role", "flaggers", "slack", "telemetry"] as const
+export const ONBOARDING_STEPS = ["agent", "connect"] as const
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
-
-// Helper exists purely for type inference — `useForm` has 12 generic parameters and
-// `ReturnType<typeof useForm<T>>` doesn't auto-default the rest. Calling it here in a
-// never-invoked function lets TS infer the full instance type from the actual call shape.
-function _onboardingFormTypeHelper() {
-  return useForm({
-    defaultValues: EMPTY_ONBOARDING_FORM_VALUES,
-  })
-}
-export type OnboardingForm = ReturnType<typeof _onboardingFormTypeHelper>
 
 export function OnboardingFlow({
   projectId,
   projectSlug,
   projectName: initialProjectName,
   persistedProjectName,
-  slackEnvConfigured,
   initialStep,
-  flashInstalled,
-  flashError,
+  initialSource = DEFAULT_VIGIA_AGENT_STACK,
   onOpenProjectTraces,
 }: {
   readonly projectId: string
   readonly projectSlug: string
   readonly projectName: string
   readonly persistedProjectName: string
-  readonly slackEnvConfigured: boolean
   readonly initialStep?: OnboardingStep
-  readonly flashInstalled?: "ok"
-  readonly flashError?: string
+  readonly initialSource?: VigiaAgentStackId
   readonly onOpenProjectTraces: (projectId: string) => Promise<void>
 }) {
   const { toast } = useToast()
   const navigate = useNavigate()
+  const [step, setStep] = useState<OnboardingStep>(initialStep ?? "agent")
+  const [projectName, setProjectName] = useState(initialProjectName)
+  const [source, setSource] = useState<VigiaAgentStackId>(initialSource)
+  const [isSavingAgent, setIsSavingAgent] = useState(false)
+  const [traceReceived, setTraceReceived] = useState(false)
 
-  const slackStepEnabled = slackEnvConfigured
+  const projectIdRef = useRef(projectId)
+  const onOpenProjectTracesRef = useRef(onOpenProjectTraces)
+  const toastRef = useRef(toast)
+  projectIdRef.current = projectId
+  onOpenProjectTracesRef.current = onOpenProjectTraces
+  toastRef.current = toast
 
-  const resolvedInitialStep: OnboardingStep = initialStep ?? "role"
-
-  const [step, setStep] = useState<OnboardingStep>(resolvedInitialStep)
-
-  const goToStep = useCallback(
-    (next: OnboardingStep) => {
-      setStep(next)
-      void navigate({
-        to: "/projects/$projectSlug/onboarding",
-        params: { projectSlug },
-        search: (prev: Record<string, unknown>) => ({ ...prev, step: next }),
-        replace: true,
-      })
-    },
-    [navigate, projectSlug],
-  )
-
-  useMountEffect(() => {
-    if (!flashInstalled && !flashError) return
-    if (flashInstalled === "ok") {
-      toast({ description: "Slack connected" })
-    } else if (flashError === "oauth_failed") {
-      toast({
-        variant: "destructive",
-        description: "Couldn't complete the Slack install. Please try again.",
-      })
-    }
+  const goToStep = (next: OnboardingStep, selectedSource = source) => {
+    setStep(next)
     void navigate({
       to: "/projects/$projectSlug/onboarding",
       params: { projectSlug },
-      search: ({ installed: _installed, error: _error, ...rest }: Record<string, unknown>) => rest,
+      search: { step: next, source: selectedSource },
       replace: true,
     })
-  })
-
-  const [projectName, setProjectName] = useState(initialProjectName)
-  const [selectedFlaggerSlugs, setSelectedFlaggerSlugs] = useState<ReadonlySet<string> | null>(null)
-  const [isSavingFlaggers, setIsSavingFlaggers] = useState(false)
-  const { data: allProjects = [] } = useProjectsCollection()
-  // The demo to explore is now the shared, pre-created showcase (merged into the
-  // collection as the `isShowcase` row) rather than a per-org seeded sample.
-  const sampleProject = allProjects.find((project) => project.isShowcase === true)
-
-  const form = useForm({
-    defaultValues: EMPTY_ONBOARDING_FORM_VALUES,
-    onSubmit: createFormSubmitHandler(
-      async (values) => {
-        const heardAboutUs = resolveHeardAboutUs(values)
-        // `handleAdvanceFromRole` gates on this, so an empty answer here would
-        // mean a programming error rather than user input.
-        if (heardAboutUs === "") return
-        await submitOnboarding({
-          data: {
-            jobTitle: values.jobTitle,
-            phoneNumber: composePhoneNumber(values.phoneCallingCode, values.phoneNumber),
-            heardAboutUs,
-            stackChoice: "production-agent",
-            projectId,
-          },
-        })
-      },
-      {
-        onSuccess: () => goToStep("flaggers"),
-        onError: (error) => {
-          toast({ variant: "destructive", description: toUserMessage(error) })
-        },
-      },
-    ),
-  })
-
-  const handleAdvanceFromRole = async () => {
-    const fields = requiredRoleStepFields(form.state.values)
-    await Promise.all(fields.map((field) => form.validateField(field, "change")))
-    const hasErrors = fields.some((field) => (form.getFieldMeta(field)?.errors.length ?? 0) > 0)
-    if (hasErrors) return
-    void form.handleSubmit()
   }
 
-  const { data: projectFlaggers = [], isLoading: isLoadingProjectFlaggers } = useProjectFlaggers(projectId)
-  const { data: availableFlaggers = [], isLoading: isLoadingAvailableFlaggers } = useQuery({
-    queryKey: ["availableFlaggers"],
-    queryFn: () => listAvailableFlaggers(),
-  })
-
-  const availableFlaggerSlugs = availableFlaggers.map((flagger) => flagger.slug)
-  const currentEnabledFlaggerSlugs = new Set(
-    projectFlaggers.filter((flagger) => flagger.enabled).map((flagger) => flagger.slug),
-  )
-  const enabledFlaggerSlugs =
-    selectedFlaggerSlugs ?? (projectFlaggers.length > 0 ? currentEnabledFlaggerSlugs : new Set(availableFlaggerSlugs))
-
-  const toggleFlaggerSelection = (slug: string) => {
-    setSelectedFlaggerSlugs((current) => {
-      const next = new Set(current ?? enabledFlaggerSlugs)
-      if (next.has(slug)) {
-        next.delete(slug)
-      } else {
-        next.add(slug)
-      }
-      return next
-    })
+  const handleSourceChange = (nextSource: VigiaAgentStackId) => {
+    setSource(nextSource)
   }
 
-  const applyFlaggerPreset = (enabledSlugs: ReadonlyArray<FlaggerPresetSlug>) => {
-    setSelectedFlaggerSlugs(new Set(enabledSlugs))
-  }
-
-  const handleConfigureFlaggers = async () => {
-    const trimmedProjectName = projectName.trim()
-    if (!trimmedProjectName) {
-      toast({ variant: "destructive", description: "Project name is required" })
+  const handleSaveAgent = async () => {
+    const trimmedName = projectName.trim()
+    if (!trimmedName) {
+      toast({ variant: "destructive", description: "Informe um nome para o agente." })
       return
     }
 
-    setIsSavingFlaggers(true)
+    setIsSavingAgent(true)
     try {
-      if (trimmedProjectName !== persistedProjectName) {
-        await updateProject({ data: { id: projectId, name: trimmedProjectName } })
+      if (trimmedName !== persistedProjectName) {
+        await updateProject({ data: { id: projectId, name: trimmedName } })
         await getQueryClient().invalidateQueries({ queryKey: ["projects"] })
       }
-      await configureProjectFlaggersForOnboarding({
-        data: {
-          projectId,
-          enabledSlugs: availableFlaggerSlugs.filter((slug) => enabledFlaggerSlugs.has(slug)),
-        },
-      })
-      await invalidateProjectFlaggers(projectId)
-      goToStep(slackStepEnabled ? "slack" : "telemetry")
+      goToStep("connect")
     } catch (error) {
-      toast({ variant: "destructive", description: toUserMessage(error) })
+      toast({
+        variant: "destructive",
+        title: "Não foi possível salvar o agente",
+        description: toUserMessage(error),
+      })
     } finally {
-      setIsSavingFlaggers(false)
+      setIsSavingAgent(false)
     }
   }
 
-  const [traceReceived, setTraceReceived] = useState(false)
-  const pollTimeoutRef = useRef<number | undefined>(undefined)
-  const redirectTimeoutRef = useRef<number | undefined>(undefined)
-  const projectIdRef = useRef(projectId)
-  const onOpenProjectTracesRef = useRef(onOpenProjectTraces)
-  projectIdRef.current = projectId
-  onOpenProjectTracesRef.current = onOpenProjectTraces
+  useEffect(() => {
+    if (step !== "connect") return
 
-  useMountEffect(() => {
     let cancelled = false
+    let pollTimeout: number | undefined
+    let redirectTimeout: number | undefined
 
-    const clearTimers = () => {
-      if (pollTimeoutRef.current !== undefined) {
-        window.clearTimeout(pollTimeoutRef.current)
-        pollTimeoutRef.current = undefined
+    const schedulePoll = () => {
+      if (!cancelled) {
+        pollTimeout = window.setTimeout(() => void poll(), 3000)
       }
-      if (redirectTimeoutRef.current !== undefined) {
-        window.clearTimeout(redirectTimeoutRef.current)
-        redirectTimeoutRef.current = undefined
+    }
+
+    const finishConnection = async () => {
+      setTraceReceived(true)
+      try {
+        await completeProjectOnboarding({ data: { projectId: projectIdRef.current } })
+        await getQueryClient().invalidateQueries({ queryKey: ["projects"] })
+      } catch (error) {
+        toastRef.current({
+          variant: "destructive",
+          description: toUserMessage(error),
+        })
       }
+
+      if (cancelled) return
+      redirectTimeout = window.setTimeout(() => {
+        if (!cancelled) {
+          void onOpenProjectTracesRef.current(projectIdRef.current)
+        }
+      }, 1800)
     }
 
     const poll = async () => {
       if (cancelled) return
-      try {
-        const count = await countTracesByProject({
-          data: { projectId: projectIdRef.current },
-        })
-        if (cancelled) return
-        if (count > 0) {
-          setTraceReceived(true)
-          redirectTimeoutRef.current = window.setTimeout(() => {
-            if (!cancelled) void onOpenProjectTracesRef.current(projectIdRef.current)
-          }, 3000)
-          return
-        }
-      } finally {
-        if (!cancelled && redirectTimeoutRef.current === undefined) {
-          pollTimeoutRef.current = window.setTimeout(() => void poll(), 3000)
-        }
+
+      const count = await countTracesByProject({
+        data: { projectId: projectIdRef.current },
+      }).catch(() => 0)
+
+      if (cancelled) return
+      if (count < 1) {
+        schedulePoll()
+        return
       }
+
+      await finishConnection()
     }
 
     void poll()
+
     return () => {
       cancelled = true
-      clearTimers()
+      if (pollTimeout !== undefined) window.clearTimeout(pollTimeout)
+      if (redirectTimeout !== undefined) window.clearTimeout(redirectTimeout)
     }
-  })
-
-  const handleOpenSampleProject = async () => {
-    if (!sampleProject) return
-    try {
-      await completeProjectOnboarding({ data: { projectId } })
-      await getQueryClient().invalidateQueries({ queryKey: ["projects"] })
-      await navigate({ to: "/projects/$projectSlug", params: { projectSlug: sampleProject.slug } })
-    } catch (error) {
-      toast({ variant: "destructive", description: toUserMessage(error) })
-    }
-  }
-
-  const telemetryBackStep: OnboardingStep = slackStepEnabled ? "slack" : "flaggers"
-
-  const activeSteps: ReadonlyArray<OnboardingStep> = slackStepEnabled
-    ? ["role", "flaggers", "slack", "telemetry"]
-    : ["role", "flaggers", "telemetry"]
+  }, [step])
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-row overflow-hidden bg-background">
-      <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-y-auto overscroll-y-contain px-6 pt-12 pb-16 sm:px-12 sm:pt-16 sm:pb-20 lg:w-1/2 lg:border-r lg:border-border lg:px-24 lg:pt-24 lg:pb-32 [scrollbar-gutter:stable]">
-        {step === "role" ? (
-          <RoleStep.Left
-            form={form}
-            isSubmitting={form.state.isSubmitting}
-            onNext={() => void handleAdvanceFromRole()}
-          />
-        ) : step === "flaggers" ? (
-          <FlaggersStep.Left
-            availableFlaggers={availableFlaggers}
-            isLoadingAvailableFlaggers={isLoadingAvailableFlaggers}
-            isLoadingProjectFlaggers={isLoadingProjectFlaggers}
-            enabledFlaggerSlugs={enabledFlaggerSlugs}
-            toggleFlaggerSelection={toggleFlaggerSelection}
-            applyFlaggerPreset={applyFlaggerPreset}
-            projectName={projectName}
-            onProjectNameChange={setProjectName}
-            isSavingFlaggers={isSavingFlaggers}
-            onBack={() => goToStep("role")}
-            onContinue={() => void handleConfigureFlaggers()}
-          />
-        ) : step === "slack" ? (
-          <SlackStep.Left
-            projectSlug={projectSlug}
-            onBack={() => goToStep("flaggers")}
-            onContinue={() => goToStep("telemetry")}
-          />
-        ) : (
-          <TelemetryStep.Left
-            traceReceived={traceReceived}
-            projectId={projectId}
-            projectSlug={projectSlug}
-            sampleProjectSlug={sampleProject?.slug}
-            onBack={() => goToStep(telemetryBackStep)}
-            onOpenSampleProject={() => void handleOpenSampleProject()}
-          />
-        )}
+      <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-y-auto px-6 py-12 sm:px-12 lg:w-1/2 lg:px-20 lg:py-16">
+        <div className="flex w-full max-w-[640px] flex-col gap-10 self-center">
+          <div className="flex items-start">
+            <VigiaBrand />
+          </div>
+
+          {step === "agent" ? (
+            <AgentStep
+              projectName={projectName}
+              source={source}
+              isSaving={isSavingAgent}
+              onProjectNameChange={setProjectName}
+              onSourceChange={handleSourceChange}
+              onContinue={() => void handleSaveAgent()}
+            />
+          ) : (
+            <ConnectionStep
+              projectSlug={projectSlug}
+              source={source}
+              traceReceived={traceReceived}
+              onBack={() => goToStep("agent")}
+            />
+          )}
+        </div>
       </div>
 
-      <OnboardingRightPane
-        steps={activeSteps}
-        currentStep={step}
-        enabledFlaggerSlugs={enabledFlaggerSlugs}
-        availableFlaggers={availableFlaggers}
-        traceReceived={traceReceived}
-      />
+      <OnboardingSummary step={step} source={source} traceReceived={traceReceived} />
+    </div>
+  )
+}
+
+function AgentStep({
+  projectName,
+  source,
+  isSaving,
+  onProjectNameChange,
+  onSourceChange,
+  onContinue,
+}: {
+  readonly projectName: string
+  readonly source: VigiaAgentStackId
+  readonly isSaving: boolean
+  readonly onProjectNameChange: (value: string) => void
+  readonly onSourceChange: (source: VigiaAgentStackId) => void
+  readonly onContinue: () => void
+}) {
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-2">
+        <Text.H2 weight="medium">Conecte seu primeiro agente</Text.H2>
+        <Text.H4 color="foregroundMuted">
+          Dê um nome ao agente e conte como ele foi desenvolvido. O Vigia prepara a conexão por OpenTelemetry.
+        </Text.H4>
+      </div>
+
+      <div className="flex flex-col gap-6">
+        <Input
+          required
+          type="text"
+          label="Nome do agente"
+          value={projectName}
+          onChange={(event) => onProjectNameChange(event.target.value)}
+          placeholder="Agente de atendimento"
+        />
+
+        <div className="flex flex-col gap-3">
+          <Text.H5M>Como seu agente foi desenvolvido?</Text.H5M>
+          <div className="flex flex-row flex-wrap gap-2">
+            {VIGIA_AGENT_STACKS.map((stack) => (
+              <SelectorChip
+                key={stack.id}
+                selected={source === stack.id}
+                onSelect={() => onSourceChange(stack.id)}
+                label={stack.label}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-end">
+        <Button disabled={isSaving} onClick={onContinue}>
+          {isSaving ? "Salvando…" : "Ver instruções de conexão"}
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function ConnectionStep({
+  projectSlug,
+  source,
+  traceReceived,
+  onBack,
+}: {
+  readonly projectSlug: string
+  readonly source: VigiaAgentStackId
+  readonly traceReceived: boolean
+  readonly onBack: () => void
+}) {
+  return (
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-row items-center gap-2">
+          {traceReceived ? (
+            <Icon icon={CheckCircle2} size="sm" color="success" />
+          ) : (
+            <Icon icon={Loader2} size="sm" color="foregroundMuted" className="animate-spin" />
+          )}
+          <Text.H5 color={traceReceived ? "success" : "foregroundMuted"}>
+            {traceReceived ? "Conectado! Primeiro trace recebido." : "Aguardando a primeira execução…"}
+          </Text.H5>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Text.H2 weight="medium">{traceReceived ? "Seu agente está conectado" : "Conecte o agente ao Vigia"}</Text.H2>
+          <Text.H4 color="foregroundMuted">
+            {traceReceived
+              ? "A conexão foi validada. Abrindo os traces do agente…"
+              : "Copie a configuração abaixo, execute o agente e deixe esta tela aberta. O Vigia detecta a conexão automaticamente."}
+          </Text.H4>
+        </div>
+      </div>
+
+      <VigiaConnectionInstructions projectSlug={projectSlug} source={source} />
+
+      {!traceReceived ? (
+        <div className="flex items-center">
+          <Button variant="outline" onClick={onBack}>
+            Voltar e editar
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+function OnboardingSummary({
+  step,
+  source,
+  traceReceived,
+}: {
+  readonly step: OnboardingStep
+  readonly source: VigiaAgentStackId
+  readonly traceReceived: boolean
+}) {
+  const stack = VIGIA_AGENT_STACKS.find((entry) => entry.id === source)
+
+  return (
+    <div className="hidden h-full min-h-0 w-1/2 shrink-0 flex-col justify-center overflow-hidden bg-secondary px-16 lg:flex">
+      <div className="flex w-full max-w-[480px] flex-col gap-8 self-center">
+        <div className="flex flex-col gap-2">
+          <Text.H3 weight="medium">Do agente ao primeiro trace</Text.H3>
+          <Text.H5 color="foregroundMuted">
+            O cliente configura OpenTelemetry uma vez. O restante da observabilidade acontece dentro do Vigia.
+          </Text.H5>
+        </div>
+
+        <ProgressItem
+          number="1"
+          title="Identificar o agente"
+          description={stack ? `Tecnologia selecionada: ${stack.label}` : "Nome e tecnologia do agente"}
+          complete={step === "connect" || traceReceived}
+        />
+        <ProgressItem
+          number="2"
+          title="Conectar por OTLP"
+          description={
+            traceReceived
+              ? "Primeiro trace recebido pelo Vigia."
+              : step === "connect"
+                ? "Aguardando uma execução do agente."
+                : "Endpoint, chave e projeto serão mostrados no próximo passo."
+          }
+          active={step === "connect" && !traceReceived}
+          complete={traceReceived}
+        />
+      </div>
+    </div>
+  )
+}
+
+function ProgressItem({
+  number,
+  title,
+  description,
+  active = false,
+  complete = false,
+}: {
+  readonly number: string
+  readonly title: string
+  readonly description: string
+  readonly active?: boolean
+  readonly complete?: boolean
+}) {
+  return (
+    <div className="flex flex-row items-start gap-3">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background">
+        {complete ? <Icon icon={CheckCircle2} size="sm" color="success" /> : <Text.H6>{number}</Text.H6>}
+      </div>
+      <div className="flex flex-col gap-1">
+        <Text.H5M>{title}</Text.H5M>
+        <Text.H6 color={active ? "foreground" : "foregroundMuted"}>{description}</Text.H6>
+      </div>
     </div>
   )
 }

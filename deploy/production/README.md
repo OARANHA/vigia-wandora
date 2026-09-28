@@ -7,13 +7,13 @@ Arquivos canônicos: `deploy/production/compose.yml`, `deploy/production/traefik
 ## Modelo
 
 - imagens da aplicação são construídas no GitHub Actions a partir do próprio repositório;
-- a stack é criada no Portainer a partir de Git;
-- segredos entram apenas como variáveis do Portainer;
-- Traefik continua fora da stack e usa file provider;
+- a stack é criada no Portainer próprio da VPS Vigia a partir de Git;
+- segredos entram apenas como variáveis/segredos da infraestrutura do Vigia;
+- Traefik é próprio da VPS Vigia e continua separado da stack de aplicação;
 - web, API e ingest compartilham o host público `vigia.wandora.com.br` por roteamento de path;
-- somente `web`, `api` e `ingest` entram na rede externa `wandora-edge`;
+- somente `web`, `api` e `ingest` entram na rede externa de borda do próprio Vigia;
 - object storage usa o driver `fs` em volume compartilhado no host único, evitando SeaweedFS neste primeiro runtime;
-- retenção inicial de telemetria: 30 dias, deliberadamente conservadora porque o host de produção estava com 83% do disco raiz ocupado antes do deploy.
+- retenção inicial de telemetria: 30 dias; a VPS dedicada foi provisionada com 200 GB SSD e o consumo real será medido antes de ampliar a retenção.
 
 ## Registry
 
@@ -36,4 +36,6 @@ O primeiro runtime usa Mailpit somente como sink de e-mail de bootstrap, exposto
 
 ## Traefik
 
-O arquivo `traefik-vigia.yml` é a cópia versionada da configuração esperada no file provider do Traefik. A configuração ativa continua no host em `/opt/wandora/stacks/traefik/dynamic/vigia.yml`.
+O arquivo `traefik-vigia.yml` continuará como configuração versionada de roteamento, mas deve ser aplicado no Traefik da VPS Vigia. O runtime não deve depender do Traefik nem da rede Docker da VPS Wandora.
+
+Hostname administrativo preferido: `ops.vigia.wandora.com.br` para Portainer/console operacional. Esse hostname não faz parte da API pública do produto.

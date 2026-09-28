@@ -229,7 +229,16 @@ A branch `upstream/latitude` contém um snapshot de conteúdo exato do baseline 
 
 Validação concluída em 2026-09-28: o tree SHA do snapshot no repositório Vigia é `993bb208505c49dfbd13cb04644fcf8a79a6cdcc`, idêntico ao tree SHA do commit upstream.
 
-O próximo passo técnico é validar build/self-host do Latitude sem customização.
+Build/self-host do baseline foi validado em 2026-09-28 no GitHub Actions:
+
+- Node 25 + pnpm 10.33.0;
+- `pnpm install --frozen-lockfile`;
+- `pnpm build`;
+- validação de `docker-stack.yml` com `docker compose ... config --quiet`.
+
+Todos os passos concluíram com sucesso.
+
+O próximo passo técnico é criar a branch de integração do Vigia e iniciar branding/PT-BR sem contaminar `upstream/latitude`.
 
 ## 10. Regra de customização
 
@@ -278,7 +287,7 @@ O controle da API do Portainer via Remote-Ops-MCP já foi configurado e validado
 1. [x] criar/importar `upstream/latitude`;
 2. [x] preservar licença e avisos;
 3. criar branch de integração;
-4. validar build/self-host do Latitude sem customização.
+4. [x] validar build/self-host do Latitude sem customização.
 
 ### Etapa B — primeiro Vigia executável
 
@@ -332,6 +341,4 @@ O diferencial que merece código próprio é a combinação de:
 
 ## 14. Próxima ação objetiva
 
-**Validar o build/self-host do baseline importado em `upstream/latitude`.**
-
-Somente depois disso começar branding, tradução e mudanças visuais.
+**Criar a branch de integração do Vigia a partir do baseline validado e iniciar branding, tradução e onboarding em PT-BR.**

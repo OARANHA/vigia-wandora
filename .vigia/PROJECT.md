@@ -47,3 +47,15 @@ Futuramente, SSO pode conectar os dois produtos com um fluxo "Abrir no Vigia".
 
 Bootstrap iniciado em 2026-09-28.
 Upstream técnico escolhido: `latitude-dev/latitude-llm`, branch `development`.
+
+## Baseline técnico validado
+
+Em 2026-09-28, o baseline Latitude `93f0733dc7596005dcb061ca163a016d4d86e3e2` foi importado para `upstream/latitude`, validado por tree SHA idêntico e compilado com sucesso em GitHub Actions.
+
+Validações concluídas:
+
+- dependências com lockfile;
+- build completo do workspace;
+- modelo self-host `docker-stack.yml`.
+
+A próxima fase é a integração visual e de produto do Vigia, mantendo `upstream/latitude` limpo.

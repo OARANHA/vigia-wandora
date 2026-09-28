@@ -8,7 +8,7 @@
 - [x] Registrar política de atualização do upstream
 - [x] Registrar marca e posicionamento inicial
 - [x] Importar baseline do Latitude preservando procedência
-- [ ] Confirmar build local/self-host
+- [x] Confirmar build local/self-host
 
 ## Fase 1 — Vigia mínimo vendável
 

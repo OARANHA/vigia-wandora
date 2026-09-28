@@ -52,7 +52,8 @@ export const VIGIA_AGENT_STACKS: ReadonlyArray<{
   {
     id: "opentelemetry",
     label: "Outro / OpenTelemetry",
-    guidance: "Qualquer runtime compatível com OpenTelemetry pode enviar traces diretamente para o Vigia por OTLP HTTP.",
+    guidance:
+      "Qualquer runtime compatível com OpenTelemetry pode enviar traces diretamente para o Vigia por OTLP HTTP.",
   },
 ]
 

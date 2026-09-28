@@ -1,0 +1,238 @@
+import { NotFoundError, type ScoreId } from "@domain/shared"
+import { Effect } from "effect"
+import { SIGNAL_FLAGGER_SLUG_SAMPLE_LIMIT } from "../constants.ts"
+import type { Score } from "../entities/score.ts"
+import type { ScoreRepositoryShape } from "../ports/score-repository.ts"
+
+const EMPTY_PAGE = { items: [], hasMore: false, limit: 50, offset: 0 } as const
+
+export const createFakeScoreRepository = (overrides?: Partial<ScoreRepositoryShape>) => {
+  const scores = new Map<string, Score>()
+  const isCanonicalEvaluationScore = (score: Score, evaluationId: string) =>
+    score.sourceType === "evaluation" && score.sourceId === evaluationId && score.draftedAt === null
+
+  const repository: ScoreRepositoryShape = {
+    findById: (id) => {
+      const score = scores.get(id)
+      if (!score) return Effect.fail(new NotFoundError({ entity: "Score", id }))
+      return Effect.succeed(score)
+    },
+    save: (score) => {
+      scores.set(score.id, score)
+      return Effect.void
+    },
+    assignSignalIfUnowned: ({ scoreId, signalId, updatedAt }) => {
+      const score = scores.get(scoreId)
+      if (!score || score.signalId !== null) {
+        return Effect.succeed(false)
+      }
+
+      scores.set(scoreId, {
+        ...score,
+        signalId,
+        updatedAt,
+      })
+      return Effect.succeed(true)
+    },
+    reassignSignal: ({ projectId, fromSignalIds, toSignalId, updatedAt }) => {
+      const from = new Set<string>(fromSignalIds)
+      const moving = [...scores.values()].filter(
+        (score) => score.projectId === projectId && score.signalId !== null && from.has(score.signalId),
+      )
+      for (const score of moving) {
+        scores.set(score.id, { ...score, signalId: toSignalId, updatedAt })
+      }
+      const earliest = moving.reduce<Date | null>(
+        (oldest, score) => (oldest === null || score.createdAt < oldest ? score.createdAt : oldest),
+        null,
+      )
+      return Effect.succeed({ count: moving.length, earliestCreatedAt: earliest })
+    },
+    findEarliestCreatedAtBySignalId: ({ projectId, signalId }) =>
+      Effect.succeed(
+        [...scores.values()]
+          .filter((score) => score.projectId === projectId && score.signalId === signalId)
+          .reduce<Date | null>(
+            (oldest, score) => (oldest === null || score.createdAt < oldest ? score.createdAt : oldest),
+            null,
+          ),
+      ),
+    delete: (id: ScoreId) => {
+      scores.delete(id)
+      return Effect.void
+    },
+    existsByEvaluationIdAndScope: ({ projectId, evaluationId, traceId, sessionId }) =>
+      Effect.succeed(
+        [...scores.values()].some((score) => {
+          if (score.projectId !== projectId || !isCanonicalEvaluationScore(score, evaluationId)) {
+            return false
+          }
+
+          if (sessionId) {
+            return score.sessionId === sessionId
+          }
+
+          return score.traceId === traceId
+        }),
+      ),
+    findByEvaluationIdAndTraceId: ({ projectId, evaluationId, traceId }) =>
+      Effect.succeed(
+        [...scores.values()].find(
+          (score) =>
+            score.projectId === projectId &&
+            isCanonicalEvaluationScore(score, evaluationId) &&
+            score.traceId === traceId,
+        ) ?? null,
+      ),
+    listByProjectId: () => Effect.succeed(EMPTY_PAGE),
+    listBySourceId: () => Effect.succeed(EMPTY_PAGE),
+    listByTraceId: () => Effect.succeed(EMPTY_PAGE),
+    listByTraceIds: () => Effect.succeed(EMPTY_PAGE),
+    listBySessionsAndTraces: ({ organizationId, projectId, sessionIds, traceIds, createdAtTo }) =>
+      Effect.succeed(
+        [...scores.values()].filter(
+          (score) =>
+            score.organizationId === organizationId &&
+            score.projectId === projectId &&
+            score.createdAt <= createdAtTo &&
+            ((score.sessionId !== null && sessionIds.includes(score.sessionId)) ||
+              (score.traceId !== null && traceIds.includes(score.traceId))),
+        ),
+      ),
+    countAnnotationsByTraceIds: () => Effect.succeed([]),
+    listBySessionId: () => Effect.succeed(EMPTY_PAGE),
+    listBySpanId: () => Effect.succeed(EMPTY_PAGE),
+    listBySignalId: () => Effect.succeed(EMPTY_PAGE),
+    countDistinctSessionsBySignalId: ({ projectId, signalId, since }) =>
+      Effect.succeed(
+        new Set(
+          [...scores.values()]
+            .filter(
+              (score) =>
+                score.projectId === projectId &&
+                score.signalId === signalId &&
+                score.draftedAt === null &&
+                score.createdAt.getTime() >= since.getTime(),
+            )
+            // `||`, not `??`: the SQL side treats an empty id as absent (`nullif`), so a
+            // fake that kept `""` as a key would count unrelated scores as one session.
+            .map((score) => score.sessionId || score.traceId || score.id),
+        ).size,
+      ),
+    findPublishedSystemAnnotationByTraceAndFeedback: ({ projectId, traceId, feedback }) =>
+      Effect.succeed(
+        [...scores.values()].find(
+          (score) =>
+            score.projectId === projectId &&
+            score.sourceType === "annotation" &&
+            score.sourceId === "SYSTEM" &&
+            score.traceId === traceId &&
+            score.feedback === feedback &&
+            score.draftedAt === null,
+        ) ?? null,
+      ),
+    findPublishedSystemAnnotationByAnchor: ({ projectId, sessionId, flaggerSlug, contentHash }) =>
+      Effect.succeed(
+        [...scores.values()].find((score) => {
+          if (
+            score.projectId !== projectId ||
+            score.sourceType !== "annotation" ||
+            score.sourceId !== "SYSTEM" ||
+            score.sessionId !== sessionId ||
+            score.draftedAt !== null
+          ) {
+            return false
+          }
+
+          const metadata = score.metadata as { flaggerSlug?: string; contentHash?: string } | null
+          return metadata?.flaggerSlug === flaggerSlug && metadata?.contentHash === contentHash
+        }) ?? null,
+      ),
+    findPublishedSystemVerdictByGeneration: ({ projectId, sessionId, flaggerSlug, analysisHash }) =>
+      Effect.succeed(
+        [...scores.values()].find((score) => {
+          if (
+            score.projectId !== projectId ||
+            score.sourceType !== "annotation" ||
+            score.sourceId !== "SYSTEM" ||
+            score.sessionId !== sessionId ||
+            score.draftedAt !== null
+          ) {
+            return false
+          }
+
+          const metadata = score.metadata as { flaggerSlug?: string; analysisHash?: string } | null
+          return metadata?.flaggerSlug === flaggerSlug && metadata?.analysisHash === analysisHash
+        }) ?? null,
+      ),
+    listPublishedSystemAnnotationsBySession: ({ projectId, sessionId, flaggerSlug, limit = 200 }) =>
+      Effect.succeed(
+        [...scores.values()]
+          .filter(
+            (score) =>
+              score.projectId === projectId &&
+              score.sourceType === "annotation" &&
+              score.sourceId === "SYSTEM" &&
+              score.sessionId === sessionId &&
+              score.draftedAt === null &&
+              (flaggerSlug === undefined ||
+                (score.metadata as { flaggerSlug?: string } | null)?.flaggerSlug === flaggerSlug),
+          )
+          .slice(0, limit),
+      ),
+    listFlaggerSlugsBySignalId: ({ projectId, signalId }) =>
+      Effect.succeed(
+        (() => {
+          // Mirror the Postgres impl exactly: take the most-recent
+          // `SIGNAL_FLAGGER_SLUG_SAMPLE_LIMIT` SYSTEM annotation occurrences for
+          // the issue, *then* collapse to distinct slugs ordered by most-recent.
+          // Applying the same sample cap means fake-backed tests can't observe
+          // slugs that production would drop on noisy issues.
+          const candidates = [...scores.values()]
+            .filter(
+              (score) =>
+                score.projectId === projectId &&
+                score.signalId === signalId &&
+                score.sourceType === "annotation" &&
+                score.sourceId === "SYSTEM" &&
+                score.draftedAt === null,
+            )
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+            .slice(0, SIGNAL_FLAGGER_SLUG_SAMPLE_LIMIT)
+
+          const lastSeenBySlug = new Map<string, Date>()
+          for (const score of candidates) {
+            const slug = (score.metadata as { flaggerSlug?: unknown }).flaggerSlug
+            if (typeof slug !== "string" || slug.length === 0) continue
+            const previous = lastSeenBySlug.get(slug)
+            if (previous === undefined || score.createdAt > previous) {
+              lastSeenBySlug.set(slug, score.createdAt)
+            }
+          }
+          return [...lastSeenBySlug.entries()].sort(([, a], [, b]) => b.getTime() - a.getTime()).map(([slug]) => slug)
+        })(),
+      ),
+    listFlaggerSlugSampleBySignalId: ({ projectId, signalId }) =>
+      Effect.succeed(
+        [...scores.values()]
+          .filter(
+            (score) =>
+              score.projectId === projectId &&
+              score.signalId === signalId &&
+              score.draftedAt === null &&
+              !score.passed &&
+              !score.errored,
+          )
+          .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          .slice(0, SIGNAL_FLAGGER_SLUG_SAMPLE_LIMIT)
+          .map((score) => {
+            if (score.sourceType !== "annotation" || score.sourceId !== "SYSTEM") return null
+            const slug = (score.metadata as { flaggerSlug?: unknown }).flaggerSlug
+            return typeof slug === "string" && slug.length > 0 ? slug : null
+          }),
+      ),
+    ...overrides,
+  }
+
+  return { repository, scores }
+}

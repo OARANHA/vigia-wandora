@@ -1,0 +1,754 @@
+import { BILLING_OVERAGE_SYNC_THROTTLE_MS, buildBillingOverageDedupeKey } from "@domain/billing"
+import type { DomainEvent, EventEnvelope, EventPayloads } from "@domain/events"
+import type { QueueConsumer, QueuePublisherShape } from "@domain/queue"
+import { SCORE_PUBLICATION_DEBOUNCE } from "@domain/scores"
+import {
+  CONSOLIDATION_THROTTLE_MS,
+  ESCALATION_CHECK_THROTTLE_MS,
+  SIGNAL_FEEDBACK_THROTTLE_MS,
+  SIGNAL_PROMOTION_THROTTLE_MS,
+  SIGNAL_RECONCILE_CONSOLIDATION_THROTTLE_MS,
+  SIGNAL_REFRESH_THROTTLE_MS,
+} from "@domain/signals"
+import { TRACE_END_DEBOUNCE_MS } from "@domain/spans"
+import { isPostHogTracked } from "@platform/analytics-posthog"
+import { EventEnvelopeSchema } from "@platform/queue-bullmq"
+import { createLogger, withTracing } from "@repo/observability"
+import { hash } from "@repo/utils"
+import { Data, Effect } from "effect"
+
+class UnhandledEventError extends Data.TaggedError("UnhandledEventError")<{
+  readonly name: string
+  readonly eventId: string
+}> {}
+
+const logger = createLogger("domain-events")
+
+type EventHandlerMap = {
+  [E in keyof EventPayloads]: (event: DomainEvent<E, EventPayloads[E]>) => Effect.Effect<void, unknown>
+}
+
+type EventHandlerFn = (e: DomainEvent) => Effect.Effect<void, unknown>
+
+// TODO(signals): remove once the outbox + domain-events queue have fully drained of legacy
+// `Issue*` event names (post-deploy). Bridges in-flight rows written before the rename so they
+// still dispatch instead of dead-lettering on UnhandledEventError.
+const EVENT_NAME_ALIASES: Record<string, keyof EventPayloads> = {
+  IssueCreated: "SignalCreated",
+  IssueEscalated: "SignalEscalated",
+  IssueAssigneeChanged: "SignalAssigneeChanged",
+  IssueEscalationEnded: "SignalEscalationEnded",
+  ScoreAssignedToIssue: "ScoreAssignedToSignal",
+}
+
+export const createDomainEventsWorker = ({
+  consumer,
+  publisher: pub,
+}: {
+  consumer: QueueConsumer
+  publisher: QueuePublisherShape
+}) => {
+  const buildTraceIngestedDedupeKey = (
+    prefix: string,
+    input: { organizationId: string; projectId: string; traceId: string },
+  ) => `${prefix}:${input.organizationId}:${input.projectId}:${input.traceId}`
+
+  // Trailing throttle: a pass that ran immediately could absorb a candidate that qualified in the same transaction.
+  const publishConsolidate = (payload: { organizationId: string; projectId: string; signalId: string }) =>
+    pub.publish(
+      "issues",
+      "consolidate",
+      { organizationId: payload.organizationId, projectId: payload.projectId, signalId: payload.signalId },
+      {
+        dedupeKey: `org:${payload.organizationId}:issues:consolidate:${payload.signalId}`,
+        throttleMs: CONSOLIDATION_THROTTLE_MS,
+      },
+    )
+
+  const publishScoreCreatedFanOut = (payload: EventPayloads["ScoreCreated"]) =>
+    Effect.all(
+      [
+        pub.publish("issues", "discovery", payload, {
+          dedupeKey: `issues:discovery:${payload.scoreId}:${payload.status}`,
+        }),
+        pub.publish("annotation-scores", "publishHumanAnnotation", payload, {
+          dedupeKey: `annotation-scores:publish-human:${payload.scoreId}`,
+          debounceMs: SCORE_PUBLICATION_DEBOUNCE,
+        }),
+      ],
+      { concurrency: "unbounded" },
+    ).pipe(Effect.asVoid)
+
+  const handlers: EventHandlerMap = {
+    MagicLinkEmailRequested: (event) =>
+      hash(event.payload.magicLinkUrl).pipe(
+        Effect.flatMap((magicLinkHash) =>
+          pub.publish("magic-link-email", "send", event.payload, {
+            dedupeKey: `emails:magic-link:${magicLinkHash}`,
+          }),
+        ),
+      ),
+
+    InvitationEmailRequested: (event) =>
+      hash(event.payload.invitationUrl).pipe(
+        Effect.flatMap((invitationHash) =>
+          pub.publish("invitation-email", "send", event.payload, {
+            dedupeKey: `emails:invitation:${invitationHash}`,
+          }),
+        ),
+      ),
+
+    UserDeletionRequested: (event) =>
+      pub.publish("user-deletion", "delete", event.payload, {
+        dedupeKey: `users:deletion:${event.payload.userId}`,
+      }),
+
+    TracesIngested: (event) => {
+      const [firstTraceId] = event.payload.traceIds
+      const isSandbox = event.payload.isSandbox ?? false
+      return Effect.all(
+        [
+          ...event.payload.traceIds.map((traceId) =>
+            pub.publish(
+              "trace-end",
+              "run",
+              {
+                organizationId: event.payload.organizationId,
+                projectId: event.payload.projectId,
+                traceId,
+                isSandbox,
+              },
+              {
+                dedupeKey: buildTraceIngestedDedupeKey("trace-end:run", {
+                  organizationId: event.payload.organizationId,
+                  projectId: event.payload.projectId,
+                  traceId,
+                }),
+                debounceMs: TRACE_END_DEBOUNCE_MS,
+                attempts: 10,
+                backoff: { type: "exponential", delayMs: 1_000 },
+              },
+            ),
+          ),
+          // Session-level work (signals:match, session analysis) is published downstream via the
+          // trace-end → session-end chain, not here.
+          // Not gated on `isSandbox`: first-trace detection is onboarding/marketing
+          // telemetry, not LLM work. Outbound marketing/notification suppression for
+          // sandbox orgs is AGE-113's concern (handled downstream), not this PR's.
+          ...(firstTraceId
+            ? [
+                pub.publish(
+                  "projects",
+                  "checkFirstTrace",
+                  {
+                    organizationId: event.payload.organizationId,
+                    projectId: event.payload.projectId,
+                    traceId: firstTraceId,
+                  },
+                  {
+                    dedupeKey: `projects:first-trace:${event.payload.projectId}`,
+                  },
+                ),
+              ]
+            : []),
+          ...(event.payload.billing
+            ? [
+                pub.publish(
+                  "billing",
+                  "recordTraceUsageBatch",
+                  {
+                    organizationId: event.payload.organizationId,
+                    projectId: event.payload.projectId,
+                    traceIds: event.payload.traceIds,
+                    planSlug: event.payload.billing.planSlug,
+                    planSource: event.payload.billing.planSource,
+                    periodStart: event.payload.billing.periodStart,
+                    periodEnd: event.payload.billing.periodEnd,
+                    includedCredits: event.payload.billing.includedCredits,
+                    overageAllowed: event.payload.billing.overageAllowed,
+                    isSandbox,
+                  },
+                  {
+                    attempts: 10,
+                    backoff: { type: "exponential", delayMs: 1_000 },
+                  },
+                ),
+              ]
+            : []),
+        ],
+        { concurrency: "unbounded" },
+      ).pipe(Effect.asVoid)
+    },
+
+    ScoreCreated: (event) => publishScoreCreatedFanOut(event.payload),
+
+    // Throttled: the first assignment schedules the refresh for `now + 8h`,
+    // and subsequent assignments within the window are dropped so a constant
+    // annotation stream cannot starve the refresh. The escalation check is
+    // pushed under a 15-min throttle so it fires within at most that window
+    // of any new score — the same check evaluates BOTH entry and exit, so
+    // an actively-burning issue gets exit-evaluated every 15 minutes for
+    // free. Once activity stops, the hourly `sweepEscalating` cron takes
+    // over (see `apps/workers/src/server.ts`) — that's what guarantees the
+    // dwell / 24h backstop / 72h timeout exits actually fire when no more
+    // `ScoreAssignedToSignal` events arrive.
+    ScoreAssignedToSignal: (event) =>
+      Effect.all(
+        [
+          pub.publish("issues", "refresh", event.payload, {
+            dedupeKey: `issues:refresh:${event.payload.signalId}`,
+            throttleMs: SIGNAL_REFRESH_THROTTLE_MS,
+          }),
+          pub.publish("issues", "checkEscalation", event.payload, {
+            dedupeKey: `issues:check-escalation:${event.payload.signalId}`,
+            throttleMs: ESCALATION_CHECK_THROTTLE_MS,
+          }),
+          ...(event.payload.unpromoted === true ? [publishConsolidate(event.payload)] : []),
+        ],
+        { concurrency: "unbounded" },
+      ).pipe(Effect.asVoid),
+
+    // Announces nothing: a discovered signal earns that at promotion. A new row is always a candidate.
+    SignalCreated: (event) => publishConsolidate(event.payload),
+
+    SignalsConsolidated: (event) =>
+      pub.publish(
+        "issues",
+        "reconcileConsolidation",
+        {
+          organizationId: event.payload.organizationId,
+          projectId: event.payload.projectId,
+          survivorId: event.payload.survivorId,
+        },
+        {
+          dedupeKey: `org:${event.payload.organizationId}:issues:reconcile-consolidation:${event.payload.survivorId}:${event.payload.consolidatedAt}`,
+          leadingThrottleMs: SIGNAL_RECONCILE_CONSOLIDATION_THROTTLE_MS,
+        },
+      ),
+
+    // The gate passed; the signal is not promoted yet. `issues:promoteSignal`
+    // names it from its cluster and stamps the latch, then emits
+    // `SignalPromoted` for the announcements below.
+    //
+    // Leading throttle rather than a bare dedupe key: a bare key becomes a
+    // BullMQ jobId, failed jobs are retained, and a permanently failed promotion
+    // would shadow every later publish so the signal could never promote. The
+    // marker expires instead, so the next score to re-qualify it retries.
+    SignalQualifiedForPromotion: (event) =>
+      pub.publish(
+        "issues",
+        "promoteSignal",
+        {
+          organizationId: event.payload.organizationId,
+          projectId: event.payload.projectId,
+          signalId: event.payload.signalId,
+        },
+        {
+          dedupeKey: `org:${event.payload.organizationId}:issues:promote-signal:${event.payload.signalId}`,
+          leadingThrottleMs: SIGNAL_PROMOTION_THROTTLE_MS,
+        },
+      ),
+
+    // Where a discovered signal becomes real, and by now it is fully formed —
+    // `promoted_at` is stamped and the name is its cluster's, not the raw
+    // feedback sentence it was created from. Same notification kind and same
+    // dispatch trigger as before, fired once the signal earned them.
+    SignalPromoted: (event) =>
+      Effect.all(
+        [
+          pub.publish(
+            "notifications",
+            "request-signal-discovered-notifications",
+            {
+              organizationId: event.payload.organizationId,
+              projectId: event.payload.projectId,
+              signalId: event.payload.signalId,
+              discoveredAt: event.payload.promotedAt,
+            },
+            { dedupeKey: `notifications:request-signal-discovered:${event.payload.signalId}` },
+          ),
+          pub.publish(
+            "agent-dispatch",
+            "request",
+            {
+              organizationId: event.payload.organizationId,
+              projectId: event.payload.projectId,
+              signalId: event.payload.signalId,
+              source: "signal",
+            },
+            { dedupeKey: `agent-dispatch:request-signal:${event.payload.signalId}` },
+          ),
+        ],
+        { concurrency: "unbounded" },
+      ).pipe(Effect.asVoid),
+
+    SignalEscalated: (event) =>
+      pub.publish("alert-incidents", "signal-escalated", event.payload, {
+        dedupeKey: `alert-incidents:signal.escalating:${event.payload.signalId}:${event.payload.escalatedAt}`,
+      }),
+
+    SignalRegressed: (event) =>
+      Effect.all(
+        [
+          pub.publish(
+            "notifications",
+            "request-signal-regressed-notifications",
+            {
+              organizationId: event.payload.organizationId,
+              projectId: event.payload.projectId,
+              signalId: event.payload.signalId,
+              regressedAt: event.payload.regressedAt,
+              triggerScoreId: event.payload.triggerScoreId,
+            },
+            {
+              dedupeKey: `notifications:request-signal-regressed:${event.payload.signalId}:${event.payload.triggerScoreId}`,
+            },
+          ),
+          pub.publish(
+            "agent-dispatch",
+            "request",
+            {
+              organizationId: event.payload.organizationId,
+              projectId: event.payload.projectId,
+              signalId: event.payload.signalId,
+              source: "signal",
+              trigger: "signal.regressed",
+            },
+            {
+              dedupeKey: `agent-dispatch:request-signal-regressed:${event.payload.signalId}:${event.payload.triggerScoreId}`,
+            },
+          ),
+        ],
+        { concurrency: "unbounded" },
+      ).pipe(Effect.asVoid),
+
+    SignalEscalationEnded: (event) =>
+      pub.publish("alert-incidents", "signal-escalation-ended", event.payload, {
+        dedupeKey: `alert-incidents:signal.escalation-ended:${event.payload.signalId}:${event.payload.endedAt}`,
+      }),
+
+    SignalFeedbackSubmitted: (event) =>
+      pub.publish("issues", "reviewFlaggerOccurrences", event.payload, {
+        dedupeKey: `org:${event.payload.organizationId}:issues:feedback-review:${event.payload.signalId}`,
+        leadingThrottleMs: SIGNAL_FEEDBACK_THROTTLE_MS,
+      }),
+
+    SavedSearchDeleted: (event) =>
+      pub.publish(
+        "monitors",
+        "onSourceDeleted",
+        {
+          organizationId: event.payload.organizationId,
+          projectId: event.payload.projectId,
+          sourceType: "savedSearch",
+          sourceId: event.payload.searchId,
+        },
+        {
+          dedupeKey: `monitors:on-source-deleted:savedSearch:${event.payload.searchId}`,
+        },
+      ),
+
+    IncidentCreated: (event) =>
+      Effect.all(
+        [
+          pub.publish(
+            "notifications",
+            "request-incident-notifications",
+            {
+              organizationId: event.payload.organizationId,
+              alertIncidentId: event.payload.alertIncidentId,
+              transition: "created",
+            },
+            {
+              dedupeKey: `notifications:request-incident-created:${event.payload.alertIncidentId}`,
+            },
+          ),
+          pub.publish(
+            "agent-dispatch",
+            "request",
+            {
+              organizationId: event.payload.organizationId,
+              alertIncidentId: event.payload.alertIncidentId,
+              source: "incident",
+            },
+            {
+              dedupeKey: `agent-dispatch:request-incident:${event.payload.alertIncidentId}`,
+            },
+          ),
+        ],
+        { concurrency: "unbounded" },
+      ).pipe(Effect.asVoid),
+
+    SignalAssigneeChanged: (event) =>
+      // Cleared assignments and self-assignments never notify; the producer
+      // use case re-checks both (the rule's testable home). `assignedAt`
+      // discriminates assignment events so a later re-assignment republishes
+      // while outbox redelivery of the same event coalesces.
+      event.payload.assigneeId === null || event.payload.assigneeId === event.payload.actorUserId
+        ? Effect.void
+        : pub.publish(
+            "notifications",
+            "request-signal-assigned-notifications",
+            {
+              organizationId: event.payload.organizationId,
+              signalId: event.payload.signalId,
+              assigneeId: event.payload.assigneeId,
+              actorUserId: event.payload.actorUserId,
+              assignedAt: event.payload.assignedAt,
+            },
+            {
+              dedupeKey: `notifications:request-signal-assigned:${event.payload.signalId}:${event.payload.assignedAt}`,
+            },
+          ),
+
+    SignalReprioritized: (event) =>
+      pub.publish("notifications", "request-signal-reprioritized-notifications", event.payload, {
+        dedupeKey: `notifications:request-signal-reprioritized:${event.payload.signalId}:${event.payload.reprioritizedAt}`,
+      }),
+
+    IncidentClosed: (event) =>
+      // Manual lifecycle closes (the user resolved or ignored the issue) close
+      // the escalation silently — the recovery notification is meant for
+      // organic recovery, not a deliberate user action. Organic exits
+      // (threshold/absolute-rate-drop/timeout) still notify.
+      event.payload.reason === "resolved" || event.payload.reason === "ignored"
+        ? Effect.void
+        : pub.publish(
+            "notifications",
+            "request-incident-notifications",
+            {
+              organizationId: event.payload.organizationId,
+              alertIncidentId: event.payload.alertIncidentId,
+              transition: "closed",
+            },
+            {
+              dedupeKey: `notifications:request-incident-closed:${event.payload.alertIncidentId}`,
+            },
+          ),
+
+    AnnotationDeleted: (event) => {
+      const { organizationId, projectId, scoreId, signalId, draftedAt, feedback, source, createdAt } = event.payload
+
+      return Effect.all(
+        [
+          pub.publish(
+            "scores",
+            "delete-analytics",
+            { organizationId, scoreId },
+            { dedupeKey: `scores:delete-analytics:${scoreId}` },
+          ),
+          pub.publish(
+            "issues",
+            "removeScore",
+            {
+              organizationId,
+              projectId,
+              scoreId,
+              signalId,
+              draftedAt,
+              feedback,
+              source,
+              createdAt,
+            },
+            { dedupeKey: `issues:remove-score:${scoreId}` },
+          ),
+        ],
+        { concurrency: "unbounded" },
+      ).pipe(Effect.asVoid)
+    },
+
+    AnnotationUpdated: (event) => {
+      const { organizationId, projectId, scoreId, previousSignalId, previousFeedback, source, createdAt, revision } =
+        event.payload
+
+      const scorePayload: EventPayloads["ScoreCreated"] = {
+        organizationId,
+        projectId,
+        scoreId,
+        signalId: null,
+        status: "published",
+      }
+
+      return Effect.all(
+        [
+          pub.publish(
+            "issues",
+            "removeScore",
+            {
+              organizationId,
+              projectId,
+              scoreId,
+              signalId: previousSignalId,
+              draftedAt: null,
+              feedback: previousFeedback,
+              source,
+              createdAt,
+            },
+            { dedupeKey: `issues:remove-score:${scoreId}:${revision}` },
+          ),
+          pub.publish("issues", "discovery", scorePayload, {
+            dedupeKey: `issues:discovery:${scoreId}:published:${revision}`,
+          }),
+          pub.publish("annotation-scores", "publishHumanAnnotation", scorePayload, {
+            dedupeKey: `annotation-scores:publish-human:${scoreId}:${revision}`,
+            debounceMs: SCORE_PUBLICATION_DEBOUNCE,
+          }),
+        ],
+        { concurrency: "unbounded" },
+      ).pipe(Effect.asVoid)
+    },
+
+    // OrganizationCreated and MemberJoined have no marketing-contacts side
+    // effect — the only thing that mattered was syncing organizationId onto
+    // each Loops contact, which we no longer do (members get telemetryEnabled
+    // fanned out individually on FirstTraceReceived). PostHog fan-out is
+    // applied automatically below because both events are on the whitelist.
+    OrganizationCreated: () => Effect.void,
+
+    // No longer seeds a per-org demo on claim (C1 cutover); the demo is the shared
+    // showcase, which `claimOrganizationUseCase` opts the org into via `wantsShowcase`.
+    OrganizationClaimed: () => Effect.void,
+
+    ClaimEmailRequested: (event) =>
+      hash(event.payload.claimUrl).pipe(
+        Effect.flatMap((claimHash) =>
+          pub.publish("organization-claim-email", "send", event.payload, {
+            dedupeKey: `emails:organization-claim:${claimHash}`,
+          }),
+        ),
+      ),
+
+    ProjectCreated: (event) =>
+      pub.publish("projects", "provision", event.payload, {
+        dedupeKey: `projects:provision:${event.payload.projectId}`,
+      }),
+
+    UserSignedUp: (event) =>
+      pub.publish(
+        "marketing-contacts",
+        "register-user",
+        { userId: event.payload.userId },
+        {
+          dedupeKey: `marketing-contacts:register-user:${event.payload.userId}`,
+        },
+      ),
+
+    UserOnboardingCompleted: (event) =>
+      pub.publish(
+        "marketing-contacts",
+        "update-onboarding",
+        {
+          userId: event.payload.userId,
+          stackChoice: event.payload.stackChoice,
+        },
+        {
+          dedupeKey: `marketing-contacts:update-onboarding:${event.payload.userId}`,
+        },
+      ),
+
+    BillingUsagePeriodUpdated: (event) => {
+      const effects: Effect.Effect<void, unknown>[] = []
+
+      for (const limitKind of event.payload.limitsCrossed ?? []) {
+        effects.push(
+          pub.publish(
+            "notifications",
+            "request-billing-limit-notifications",
+            {
+              organizationId: event.payload.organizationId,
+              periodStart: event.payload.periodStart,
+              periodEnd: event.payload.periodEnd,
+              limitKind,
+              includedCredits: event.payload.includedCredits,
+              consumedCredits: event.payload.consumedCredits,
+              overageCredits: event.payload.overageCredits,
+            },
+            {
+              dedupeKey: `notifications:request-billing-limit:${event.payload.organizationId}:${event.payload.periodStart}:${limitKind}`,
+            },
+          ),
+        )
+      }
+
+      if (
+        event.payload.planSource === "subscription" &&
+        event.payload.overageAllowed &&
+        event.payload.overageCredits > event.payload.reportedOverageCredits
+      ) {
+        const periodStart = new Date(event.payload.periodStart)
+        const periodEnd = new Date(event.payload.periodEnd)
+
+        effects.push(
+          pub.publish(
+            "billing-overage",
+            "reportOverage",
+            {
+              organizationId: event.payload.organizationId,
+              periodStart: event.payload.periodStart,
+              periodEnd: event.payload.periodEnd,
+              snapshotOverageCredits: event.payload.overageCredits,
+            },
+            {
+              dedupeKey: buildBillingOverageDedupeKey({
+                organizationId: event.payload.organizationId,
+                periodStart,
+                periodEnd,
+              }),
+              latestThrottleMs: BILLING_OVERAGE_SYNC_THROTTLE_MS,
+              attempts: 10,
+              backoff: { type: "exponential", delayMs: 1_000 },
+            },
+          ),
+        )
+      }
+
+      if (effects.length === 0) return Effect.void
+      return Effect.all(effects, { concurrency: "unbounded" }).pipe(Effect.asVoid)
+    },
+
+    MemberJoined: () => Effect.void,
+
+    FirstTraceReceived: (event) =>
+      pub.publish(
+        "marketing-contacts",
+        "mark-telemetry-enabled",
+        { organizationId: event.payload.organizationId },
+        {
+          dedupeKey: `marketing-contacts:mark-telemetry-enabled:${event.payload.organizationId}`,
+        },
+      ),
+
+    MemberInvited: () => Effect.void,
+    ApiKeyCreated: () => Effect.void,
+    OAuthKeyCreated: () => Effect.void,
+    DatasetCreated: () => Effect.void,
+    EvaluationCreated: () => Effect.void,
+    EvaluationAligned: () => Effect.void,
+    EvaluationDetectorDegraded: () => Effect.void,
+    ProjectDeleted: (event) =>
+      Effect.all(
+        [
+          pub.publish(
+            "notifications",
+            "delete-by-project",
+            {
+              organizationId: event.payload.organizationId,
+              projectId: event.payload.projectId,
+            },
+            {
+              dedupeKey: `notifications:delete-by-project:${event.payload.projectId}`,
+            },
+          ),
+          pub.publish(
+            "destinations",
+            "delete-by-project",
+            {
+              organizationId: event.payload.organizationId,
+              projectId: event.payload.projectId,
+            },
+            {
+              dedupeKey: `destinations:delete-by-project:${event.payload.projectId}`,
+            },
+          ),
+          pub.publish(
+            "imports",
+            "delete-by-project",
+            {
+              organizationId: event.payload.organizationId,
+              projectId: event.payload.projectId,
+            },
+            {
+              dedupeKey: `imports:delete-by-project:${event.payload.projectId}`,
+            },
+          ),
+          pub.publish(
+            "github-events",
+            "delete-by-project",
+            {
+              organizationId: event.payload.organizationId,
+              projectId: event.payload.projectId,
+            },
+            {
+              dedupeKey: `github-events:delete-by-project:${event.payload.projectId}`,
+            },
+          ),
+        ],
+        { concurrency: "unbounded" },
+      ).pipe(Effect.asVoid),
+    FlaggerToggled: () => Effect.void,
+    SavedSearchCreated: () => Effect.void,
+    ImportStarted: () => Effect.void,
+    ImportRetried: () => Effect.void,
+    ImportFinished: () => Effect.void,
+    AdminImpersonationStarted: () => Effect.void,
+    AdminImpersonationStopped: () => Effect.void,
+    AdminUserRoleChanged: () => Effect.void,
+    AdminUserEmailChanged: () => Effect.void,
+    AdminUserSessionsRevoked: () => Effect.void,
+    AdminUserSessionRevoked: () => Effect.void,
+    AdminPartnerCreated: () => Effect.void,
+    AdminPartnerUpdated: () => Effect.void,
+    AdminPartnerDeleted: () => Effect.void,
+    // Audit-only, like the OAuth-consent event it mirrors.
+    PartnerAccountProvisioned: () => Effect.void,
+    // Redaction policy changes are audit-only for the same reason.
+    ProjectRedactionPolicyChanged: () => Effect.void,
+    OrganizationRedactionPolicyChanged: () => Effect.void,
+  }
+
+  consumer.subscribe("domain-events", {
+    dispatch: (payload) => {
+      const parsed = EventEnvelopeSchema.safeParse(payload)
+      if (!parsed.success) {
+        logger.error(`Failed to parse domain event envelope: ${parsed.error}`)
+        return Effect.void
+      }
+
+      const envelope = parsed.data as EventEnvelope<DomainEvent>
+      const { event } = envelope
+      const name = (EVENT_NAME_ALIASES[event.name] ?? event.name) as keyof EventPayloads
+
+      const maybeHandler = handlers[name]
+
+      if (!maybeHandler) {
+        const err = new UnhandledEventError({
+          name: event.name,
+          eventId: envelope.id,
+        })
+        return Effect.fail(err)
+      }
+
+      const handler = maybeHandler as EventHandlerFn
+      const primary = handler(event)
+
+      if (!isPostHogTracked(event.name)) {
+        return primary
+      }
+
+      // PostHog fan-out is fire-and-forget: its failure must never propagate
+      // through Effect.all and cause the primary handler to be retried (which
+      // would double-run effects like api-key creation or project provisioning).
+      const analytics = pub
+        .publish(
+          "posthog-analytics",
+          "track",
+          {
+            eventName: event.name,
+            organizationId: event.organizationId,
+            payload: event.payload,
+            occurredAt: envelope.occurredAt.toISOString(),
+          },
+          { dedupeKey: `posthog:${envelope.id}` },
+        )
+        .pipe(
+          Effect.catch((e: unknown) =>
+            Effect.sync(() => logger.warn(`posthog fan-out publish failed for ${event.name}`, e)),
+          ),
+        )
+
+      return Effect.all([primary, analytics], {
+        concurrency: "unbounded",
+      }).pipe(Effect.asVoid, withTracing)
+    },
+  })
+}

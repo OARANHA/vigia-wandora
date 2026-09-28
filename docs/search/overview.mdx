@@ -1,0 +1,105 @@
+---
+title: Search Overview
+description: Find traces by meaning or exact text, combine search with filters, and save the searches your team uses repeatedly
+---
+
+# Search
+
+Search lives on the **Traces** page. Use the search bar to find behaviors across production traces by meaning, exact text, or both, then narrow results with filters.
+
+Every trace is searchable: 100% of ingested traces are available for semantic and text search within your project's retention window.
+
+<Frame>
+  <img
+    src="/images/search/search-overview.png"
+    alt="The Traces page with a search query active: the search bar, summary metrics, and matching results"
+  />
+</Frame>
+
+## Types of search
+
+Latitude supports two complementary search modes.
+
+### Semantic search
+
+Semantic search is the default. Type a plain-language description, and Latitude returns traces whose conversations are closest in meaning.
+
+Examples:
+
+- _users complaining about billing_
+- _agent gets stuck calling tools_
+- _refund requests that were not resolved_
+- _assistant gave a vague answer_
+
+Semantic search works even when a trace does not contain those exact words. For example, _user is frustrated_ can find traces where the user says _"this is the third time I've explained this"_ or _"you're not helping"_.
+
+### Exact text search
+
+Use quotes around words or phrases that must appear exactly in the trace.
+
+```text
+"checkout" users abandoning cart
+```
+
+This requires _checkout_ to appear, then ranks matches by semantic relevance to _users abandoning cart_. Use exact text search when a product name, tool name, error message, or policy phrase matters.
+
+## Combine search with filters
+
+Search finds relevant conversation content; filters narrow it by trace metadata such as status, model, provider, service, tags, user, session, cost, latency, token usage, or custom fields.
+
+For example, search for _agent loops between tools_ and filter to production traces from a specific model, service, or customer segment. A trace must match both the query and filters to appear.
+
+## Running a search
+
+<Frame>
+  <img
+    src="/images/search/search-results.png"
+    alt="Search results on the Traces page with the filters panel open alongside the query"
+  />
+</Frame>
+
+1. Type a query in the search bar and press Enter.
+2. Add filters to narrow the cohort.
+3. Pick a time range if you only care about a recent window.
+4. Open any matching trace to inspect the conversation, spans, scores, and annotations.
+
+When you search by meaning, results are ordered by relevance. When you only use exact quoted text, results use the normal trace ordering and table controls.
+
+## Saving a search
+
+When a query, filters, or both become useful enough to revisit, click **Save search** and give it a clear name, such as _Failed payments_ or _Tool loops in production_.
+
+Saved searches then appear in the **Saved searches** dropdown next to the search bar. See [Saved Searches](./saved-searches) for the full lifecycle.
+
+## Empty results
+
+If a search returns nothing:
+
+- Reword the query. Semantic search works best with natural descriptions.
+- Remove quotes unless an exact phrase is required.
+- Widen the time range.
+- Loosen filters that may be excluding relevant traces.
+
+## Search and the rest of Latitude
+
+Search is the discovery layer for behaviors Latitude should track. A typical workflow is:
+
+1. Search for a user or agent behavior you care about.
+2. Open representative traces.
+3. Annotate traces that show a real failure mode.
+4. Latitude turns failed annotations and related scores into [signals](../signals/overview).
+5. Generate evaluations from important signals to monitor them automatically on incoming traces.
+
+| Feature | Relationship |
+| --- | --- |
+| **[Saved searches](./saved-searches)** | Revisit useful behavioral cohorts |
+| **[Inline annotations](../annotations/inline-annotations)** | Label traces from search as good or bad behavior |
+| **[Signals](../signals/overview)** | Turn failed annotations and scores into trackable production signals |
+| **[Flaggers](../annotations/flaggers)** | Automatically detect common categories; use search for product-specific patterns |
+
+## Next steps
+
+- [Saved Searches](./saved-searches): Save behavioral cohorts for repeated review
+- [Inline Annotations](../annotations/inline-annotations): Label traces you find through search
+- [Signals](../signals/overview): Track recurring failure modes
+- [Filters](../observability/filters): Narrow searches with trace metadata

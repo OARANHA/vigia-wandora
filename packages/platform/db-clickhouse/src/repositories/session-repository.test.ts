@@ -1,0 +1,2671 @@
+import { AI, AIError, type AIShape, EMBEDDING_DIMENSIONS } from "@domain/ai"
+import { type ChSqlClient, isNotFoundError, OrganizationId, ProjectId, SessionId } from "@domain/shared"
+import { type SessionListPage, SessionRepository, type SessionRepositoryShape } from "@domain/spans"
+import { setupTestClickHouse } from "@platform/testkit"
+import { Effect, Layer } from "effect"
+import { beforeAll, describe, expect, it } from "vitest"
+import { ChSqlClientLive } from "../ch-sql-client.ts"
+import type { SpanRow } from "../seeds/spans/span-builders.ts"
+import { insertJsonEachRow } from "../sql.ts"
+import { withClickHouse } from "../with-clickhouse.ts"
+import { SessionRepositoryLive } from "./session-repository.ts"
+
+/**
+ * Mock AI layer used by the search tests. The session-repo search path consults
+ * `Effect.serviceOption(AI)` for query-side embeddings; providing this mock
+ * exercises the semantic branch with a deterministic [0.1, 0.1, ...] vector so
+ * cosine similarity against aligned vs anti-parallel embeddings is predictable.
+ */
+const mockAILayer = Layer.succeed(AI, {
+  generate: () => Effect.fail(new AIError({ message: "Generate not implemented in mock" })),
+  embed: () => Effect.succeed({ embedding: new Array(EMBEDDING_DIMENSIONS).fill(0.1) }),
+  rerank: () => Effect.fail(new AIError({ message: "Rerank not implemented in mock" })),
+} as AIShape)
+
+const ORG_ID = OrganizationId("oooooooooooooooooooooooo")
+const PROJECT_ID = ProjectId("pppppppppppppppppppppppp")
+
+const toClickHouseDateTime = (value: Date) => value.toISOString().replace("T", " ").replace("Z", "")
+
+interface SpanOverrides {
+  readonly traceId: string
+  readonly spanId: string
+  readonly parentSpanId?: string
+  readonly sessionId?: string
+  readonly startTime: Date
+  readonly durationMs?: number
+  readonly name?: string
+  readonly model?: string
+  readonly provider?: string
+  readonly timeToFirstTokenNs?: number
+  readonly tokensInput?: number
+  readonly tokensOutput?: number
+  readonly costTotalMicrocents?: number
+  readonly metadata?: Record<string, string>
+  readonly inputMessages?: string
+  readonly outputMessages?: string
+  readonly systemInstructions?: string
+  readonly operation?: string
+}
+
+const makeSpanRow = (overrides: SpanOverrides): SpanRow => {
+  const durationMs = overrides.durationMs ?? 1_000
+  const startTime = overrides.startTime
+  const endTime = new Date(startTime.getTime() + durationMs)
+
+  return {
+    organization_id: ORG_ID as string,
+    project_id: PROJECT_ID as string,
+    session_id: overrides.sessionId ?? "",
+    user_id: "",
+    trace_id: overrides.traceId,
+    span_id: overrides.spanId,
+    parent_span_id: overrides.parentSpanId ?? "",
+    api_key_id: "test-api-key",
+    simulation_id: "",
+    start_time: toClickHouseDateTime(startTime),
+    end_time: toClickHouseDateTime(endTime),
+    name: overrides.name ?? "test-span",
+    service_name: "test-service",
+    kind: 0,
+    status_code: 0,
+    status_message: "",
+    error_type: "",
+    tags: [],
+    metadata: overrides.metadata ?? {},
+    operation: overrides.operation ?? "chat",
+    provider: overrides.provider ?? "",
+    model: overrides.model ?? "",
+    agent_name: "",
+    response_model: "",
+    tokens_input: overrides.tokensInput ?? 0,
+    tokens_output: overrides.tokensOutput ?? 0,
+    tokens_cache_read: 0,
+    tokens_cache_create: 0,
+    tokens_reasoning: 0,
+    cost_input_microcents: 0,
+    cost_output_microcents: overrides.costTotalMicrocents ?? 0,
+    cost_total_microcents: overrides.costTotalMicrocents ?? 0,
+    cost_is_estimated: 0,
+    time_to_first_token_ns: overrides.timeToFirstTokenNs ?? 0,
+    is_streaming: 0,
+    response_id: "",
+    finish_reasons: [],
+    input_messages: overrides.inputMessages ?? "",
+    output_messages: overrides.outputMessages ?? "",
+    system_instructions: overrides.systemInstructions ?? "",
+    tool_definitions: "",
+    tool_call_id: "",
+    tool_name: "",
+    tool_input: "",
+    tool_output: "",
+    attr_string: {},
+    attr_int: {},
+    attr_float: {},
+    attr_bool: {},
+    resource_string: {},
+    scope_name: "",
+    scope_version: "",
+  }
+}
+
+const ch = setupTestClickHouse()
+
+// chdb materialized views run synchronously per insert; one batched insert per
+// scenario is enough to populate sessions for these tests.
+const insertSpans = (rows: SpanRow[]) => ch.client.insert({ table: "spans", values: rows, format: "JSONEachRow" })
+
+/**
+ * Throw-on-null helper. Tests are full of "I just inserted this fixture,
+ * the array index has to exist" reasoning that the type system can't see;
+ * `nonNull(x)` keeps the assertion explicit (and biome-friendly) without
+ * peppering `!` everywhere.
+ */
+function nonNull<T>(value: T | null | undefined, message = "Expected value to be defined"): T {
+  if (value == null) throw new Error(message)
+  return value
+}
+
+const runCh = <A, E>(effect: Effect.Effect<A, E, ChSqlClient | AI>) =>
+  Effect.runPromise(effect.pipe(Effect.provide(Layer.mergeAll(mockAILayer, ChSqlClientLive(ch.client, ORG_ID)))))
+
+describe("SessionRepository", () => {
+  let repo: SessionRepositoryShape
+
+  beforeAll(async () => {
+    repo = await Effect.runPromise(
+      Effect.gen(function* () {
+        return yield* SessionRepository
+      }).pipe(withClickHouse(SessionRepositoryLive, ch.client, ORG_ID)),
+    )
+  })
+
+  it("lists a cutoff-bounded session snapshot after later activity", async () => {
+    const sessionId = SessionId("bulk-session")
+    const firstTraceId = "f".repeat(32)
+    const laterTraceId = "e".repeat(32)
+    const startTime = new Date("2026-01-01T10:00:00.000Z")
+    await insertSpans([
+      makeSpanRow({
+        traceId: firstTraceId,
+        spanId: "f".repeat(16),
+        sessionId,
+        startTime,
+        outputMessages: JSON.stringify([{ role: "assistant", parts: [{ type: "text", content: "Done" }] }]),
+      }),
+    ])
+
+    const beforeStart = await runCh(
+      repo.listDetailsBySessionIds({
+        organizationId: ORG_ID,
+        projectId: PROJECT_ID,
+        sessionIds: [sessionId],
+        cutoff: new Date("2026-01-01T09:59:59.999Z"),
+      }),
+    )
+
+    const cutoff = new Date("2026-01-01T10:00:00.500Z")
+    await insertSpans([
+      makeSpanRow({
+        traceId: laterTraceId,
+        spanId: "e".repeat(16),
+        sessionId,
+        startTime: new Date("2026-01-01T10:01:00.000Z"),
+        outputMessages: JSON.stringify([{ role: "assistant", parts: [{ type: "text", content: "Later" }] }]),
+      }),
+    ])
+
+    const snapshot = await runCh(
+      repo.listDetailsBySessionIds({
+        organizationId: ORG_ID,
+        projectId: PROJECT_ID,
+        sessionIds: [sessionId],
+        cutoff,
+      }),
+    )
+
+    expect(beforeStart).toEqual([])
+    expect(snapshot).toHaveLength(1)
+    expect(snapshot[0]).toMatchObject({
+      sessionId,
+      traceCount: 1,
+      traceIds: [firstTraceId],
+      spanCount: 1,
+      outputMessages: [{ role: "assistant", parts: [{ type: "text", content: "Done" }] }],
+    })
+  })
+
+  describe("orphan-trace-as-session", () => {
+    it("synthesizes a 1-trace session for spans without gen_ai.conversation.id", async () => {
+      const traceId = "a".repeat(32)
+      const startTime = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+      await insertSpans([
+        makeSpanRow({
+          traceId,
+          spanId: "1".repeat(16),
+          startTime,
+          name: "orphan-root",
+        }),
+        makeSpanRow({
+          traceId,
+          spanId: "2".repeat(16),
+          parentSpanId: "1".repeat(16),
+          startTime: new Date(startTime.getTime() + 100),
+          name: "child",
+        }),
+      ])
+
+      const page = await runCh(
+        repo.listByProjectId({ organizationId: ORG_ID, projectId: PROJECT_ID, options: { limit: 10 } }),
+      )
+
+      expect(page.items).toHaveLength(1)
+      const session = nonNull(page.items[0])
+      expect(session.sessionId).toBe(traceId)
+      expect(session.traceCount).toBe(1)
+      expect(session.traceIds).toEqual([traceId])
+      expect(session.spanCount).toBe(2)
+      expect(session.rootSpanName).toBe("orphan-root")
+    })
+
+    it("aggregates multi-trace conversational sessions with non-empty models", async () => {
+      const sessionId = "conv-xyz"
+      const traceA = "b".repeat(32)
+      const traceB = "c".repeat(32)
+      const startA = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+      const startB = new Date(Date.UTC(2026, 0, 1, 10, 5, 0))
+
+      await insertSpans([
+        makeSpanRow({
+          traceId: traceA,
+          spanId: "a".repeat(16),
+          sessionId,
+          startTime: startA,
+          model: "gpt-4",
+          provider: "openai",
+          name: "turn-1-root",
+        }),
+        makeSpanRow({
+          traceId: traceB,
+          spanId: "b".repeat(16),
+          sessionId,
+          startTime: startB,
+          model: "gpt-4",
+          provider: "openai",
+          name: "turn-2-root",
+        }),
+      ])
+
+      const page = await runCh(
+        repo.listByProjectId({ organizationId: ORG_ID, projectId: PROJECT_ID, options: { limit: 10 } }),
+      )
+
+      expect(page.items).toHaveLength(1)
+      const session = nonNull(page.items[0])
+      expect(session.sessionId).toBe(sessionId)
+      expect(session.traceCount).toBe(2)
+      expect([...session.traceIds].sort()).toEqual([traceA, traceB].sort())
+      expect(session.models).toEqual(["gpt-4"])
+      expect(session.providers).toEqual(["openai"])
+      // Root span name is the earliest root across the session's traces (turn-1).
+      expect(session.rootSpanName).toBe("turn-1-root")
+    })
+  })
+
+  describe("active-execution duration_ns", () => {
+    it("sums root-span durations across concurrent traces independently of wall-clock", async () => {
+      const sessionId = "concurrent-session"
+      const start = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+      // Two traces running in parallel: each root is 5s long, but they overlap.
+      // Wall-clock window = 5s. Active execution = 10s (sum of both roots).
+      await insertSpans([
+        makeSpanRow({
+          traceId: "1".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId,
+          startTime: start,
+          durationMs: 5_000,
+          name: "trace-1-root",
+        }),
+        makeSpanRow({
+          traceId: "2".repeat(32),
+          spanId: "2".repeat(16),
+          sessionId,
+          startTime: start,
+          durationMs: 5_000,
+          name: "trace-2-root",
+        }),
+      ])
+
+      const page = await runCh(
+        repo.listByProjectId({ organizationId: ORG_ID, projectId: PROJECT_ID, options: { limit: 10 } }),
+      )
+
+      expect(page.items).toHaveLength(1)
+      const session = nonNull(page.items[0])
+      const wallClockNs = session.endTime.getTime() * 1_000_000 - session.startTime.getTime() * 1_000_000
+      // Active execution sums both roots: 10s in nanoseconds (10_000_000_000).
+      expect(session.durationNs).toBe(10_000_000_000)
+      // Wall-clock window is only 5s — diverges from active execution.
+      expect(session.durationNs).toBeGreaterThan(wallClockNs)
+    })
+
+    it("sums multiple root spans within a single trace", async () => {
+      const sessionId = "multi-root-session"
+      const start = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+      // Same trace, two root (parent_span_id = '') spans — both count toward duration_ns.
+      await insertSpans([
+        makeSpanRow({
+          traceId: "3".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId,
+          startTime: start,
+          durationMs: 3_000,
+          name: "root-a",
+        }),
+        makeSpanRow({
+          traceId: "3".repeat(32),
+          spanId: "2".repeat(16),
+          sessionId,
+          startTime: new Date(start.getTime() + 1_000),
+          durationMs: 3_000,
+          name: "root-b",
+        }),
+      ])
+
+      const session = nonNull(
+        (await runCh(repo.listByProjectId({ organizationId: ORG_ID, projectId: PROJECT_ID, options: { limit: 10 } })))
+          .items[0],
+      )
+
+      // Two roots × 3s each = 6_000_000_000 ns. Children are absent so no double counting.
+      expect(session.durationNs).toBe(6_000_000_000)
+    })
+
+    it("falls back to the wall-clock window when no span has an empty parent", async () => {
+      const sessionId = "orphan-root-session"
+      const start = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+      // The local root is nested under a span that is never exported (e.g.
+      // Vercel AI SDK under the app's own HTTP span). Its child is ingested,
+      // so no span has an empty parent and sessions_mv materializes
+      // duration_ns = 0 for the whole session.
+      await insertSpans([
+        makeSpanRow({
+          traceId: "6".repeat(32),
+          spanId: "1".repeat(16),
+          parentSpanId: "f".repeat(16),
+          sessionId,
+          startTime: start,
+          durationMs: 4_000,
+          name: "local-root",
+        }),
+        makeSpanRow({
+          traceId: "6".repeat(32),
+          spanId: "2".repeat(16),
+          parentSpanId: "1".repeat(16),
+          sessionId,
+          startTime: new Date(start.getTime() + 500),
+          durationMs: 1_000,
+          name: "child",
+        }),
+      ])
+
+      const session = nonNull(
+        (
+          await runCh(repo.listByProjectId({ organizationId: ORG_ID, projectId: PROJECT_ID, options: { limit: 10 } }))
+        ).items.find((s) => s.sessionId === sessionId),
+      )
+
+      // Wall-clock window: earliest start → latest end = 4s.
+      expect(session.durationNs).toBe(4_000_000_000)
+    })
+  })
+
+  describe("time_to_first_token_ns sentinel", () => {
+    it("reads 0 when no span produced a first token", async () => {
+      const sessionId = "no-ttft"
+      await insertSpans([
+        makeSpanRow({
+          traceId: "4".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId,
+          startTime: new Date(Date.UTC(2026, 0, 1, 10, 0, 0)),
+        }),
+      ])
+
+      const session = nonNull(
+        (await runCh(repo.listByProjectId({ organizationId: ORG_ID, projectId: PROJECT_ID, options: { limit: 10 } })))
+          .items[0],
+      )
+
+      expect(session.timeToFirstTokenNs).toBe(0)
+    })
+
+    it("reads positive when at least one span has a first-token offset", async () => {
+      const sessionId = "with-ttft"
+      const start = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+      await insertSpans([
+        makeSpanRow({
+          traceId: "5".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId,
+          startTime: start,
+          // Span starts 100ms after session start, first token 50ms after span start.
+          timeToFirstTokenNs: 50_000_000,
+        }),
+      ])
+
+      const session = nonNull(
+        (await runCh(repo.listByProjectId({ organizationId: ORG_ID, projectId: PROJECT_ID, options: { limit: 10 } })))
+          .items[0],
+      )
+
+      // Session start == span start (only one span), so session-TTFT == span-TTFT.
+      expect(session.timeToFirstTokenNs).toBe(50_000_000)
+    })
+
+    it("reads 0 for a session whose time_of_first_token is the epoch sentinel (pre-PR1 row)", async () => {
+      // Simulate the forward-only migration artifact: a session row whose
+      // time_of_first_token was never written (defaults to 1970-01-01 for
+      // SimpleAggregateFunction(min, DateTime64) with no DEFAULT). Insert a
+      // partial directly into `sessions` to reproduce the shape.
+      const sessionId = "stale-pre-pr1"
+      const startTime = "2026-01-01 10:00:00.000000000"
+      await ch.client.insert({
+        table: "sessions",
+        values: [
+          {
+            organization_id: ORG_ID as string,
+            project_id: PROJECT_ID as string,
+            session_id: sessionId,
+            min_start_time: startTime,
+            max_end_time: startTime,
+            duration_ns: 0,
+            // Omitted columns (including time_of_first_token) default to their
+            // SimpleAggregateFunction zero. For DateTime64 that is 1970-01-01.
+          },
+        ],
+        format: "JSONEachRow",
+      })
+
+      const session = nonNull(
+        (await runCh(repo.listByProjectId({ organizationId: ORG_ID, projectId: PROJECT_ID, options: { limit: 10 } })))
+          .items[0],
+      )
+
+      expect(session.timeToFirstTokenNs).toBe(0)
+    })
+  })
+
+  describe("last_activity_time", () => {
+    it("equals the latest span start_time within the session", async () => {
+      const sessionId = "active-session"
+      const t0 = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+      const t1 = new Date(t0.getTime() + 30_000)
+      const t2 = new Date(t0.getTime() + 60_000)
+
+      await insertSpans([
+        makeSpanRow({ traceId: "a1".repeat(16), spanId: "1".repeat(16), sessionId, startTime: t0 }),
+        makeSpanRow({ traceId: "a1".repeat(16), spanId: "2".repeat(16), sessionId, startTime: t1 }),
+        makeSpanRow({ traceId: "a1".repeat(16), spanId: "3".repeat(16), sessionId, startTime: t2 }),
+      ])
+
+      const session = nonNull(
+        (await runCh(repo.listByProjectId({ organizationId: ORG_ID, projectId: PROJECT_ID, options: { limit: 10 } })))
+          .items[0],
+      )
+
+      expect(session.lastActivityTime.getTime()).toBe(t2.getTime())
+      expect(session.startTime.getTime()).toBe(t0.getTime())
+    })
+
+    it("falls back to max_end_time when max_start_time is the migration epoch sentinel", async () => {
+      // Pre-migration session row: `max_start_time` was added by 00016 with no
+      // DEFAULT, so legacy parts read back as 1970-01-01. Without a fallback
+      // the sessions list would show "January 1, 1970" for those rows. Insert
+      // a partial directly into `sessions` to reproduce the shape.
+      const sessionId = "stale-pre-migration"
+      const minStartTime = "2026-01-01 10:00:00.000000000"
+      const maxEndTime = "2026-01-01 10:00:05.000000000"
+      await ch.client.insert({
+        table: "sessions",
+        values: [
+          {
+            organization_id: ORG_ID as string,
+            project_id: PROJECT_ID as string,
+            session_id: sessionId,
+            min_start_time: minStartTime,
+            max_end_time: maxEndTime,
+            duration_ns: 5_000_000_000,
+            // max_start_time omitted on purpose — falls back to the
+            // SimpleAggregateFunction(max, DateTime64) zero (1970-01-01).
+          },
+        ],
+        format: "JSONEachRow",
+      })
+
+      const session = nonNull(
+        (await runCh(repo.listByProjectId({ organizationId: ORG_ID, projectId: PROJECT_ID, options: { limit: 10 } })))
+          .items[0],
+      )
+
+      expect(session.lastActivityTime.toISOString()).toBe("2026-01-01T10:00:05.000Z")
+    })
+  })
+
+  describe("mixed binding: real session + orphan fragment", () => {
+    it("emits two session rows from one trace_id with tokens_total=0 on the orphan fragment", async () => {
+      const traceId = "f".repeat(32)
+      const sessionId = "real-conv"
+      const start = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+      await insertSpans([
+        // LLM span: tagged with session_id, has tokens + model.
+        makeSpanRow({
+          traceId,
+          spanId: "1".repeat(16),
+          sessionId,
+          startTime: start,
+          name: "llm-call",
+          model: "gpt-4",
+          tokensInput: 100,
+          tokensOutput: 50,
+          costTotalMicrocents: 200,
+        }),
+        // Framework span: same trace_id, no session_id, no tokens.
+        makeSpanRow({
+          traceId,
+          spanId: "2".repeat(16),
+          sessionId: "",
+          startTime: start,
+          name: "http-handler",
+          operation: "unspecified",
+        }),
+      ])
+
+      const page = await runCh(
+        repo.listByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          options: { limit: 10, sortBy: "startTime" },
+        }),
+      )
+
+      expect(page.items).toHaveLength(2)
+      const realSession = nonNull(page.items.find((s) => s.sessionId === sessionId))
+      const orphan = nonNull(page.items.find((s) => s.sessionId === traceId))
+
+      expect(realSession.models).toEqual(["gpt-4"])
+      expect(realSession.tokensTotal).toBeGreaterThan(0)
+
+      // Orphan fragment carries the framework span only.
+      expect(orphan.traceCount).toBe(1)
+      expect(orphan.traceIds).toEqual([traceId])
+      expect(orphan.tokensTotal).toBe(0)
+      expect(orphan.costTotalMicrocents).toBe(0)
+      expect(orphan.models).toEqual([])
+    })
+  })
+
+  describe("findBySessionId", () => {
+    it("returns SessionDetail with message payloads for an existing session", async () => {
+      const sessionId = "detail-session"
+      const start = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+      await insertSpans([
+        makeSpanRow({
+          traceId: "9".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId,
+          startTime: start,
+          name: "opener",
+          inputMessages: JSON.stringify([{ role: "user", parts: [{ type: "text", text: "hello" }] }]),
+          outputMessages: JSON.stringify([{ role: "assistant", parts: [{ type: "text", text: "hi" }] }]),
+          systemInstructions: JSON.stringify([{ type: "text", text: "be helpful" }]),
+        }),
+      ])
+
+      const detail = await runCh(
+        repo.findBySessionId({ organizationId: ORG_ID, projectId: PROJECT_ID, sessionId: SessionId(sessionId) }),
+      )
+
+      expect(detail.sessionId).toBe(sessionId)
+      expect(detail.inputMessages.length).toBeGreaterThan(0)
+      expect(detail.outputMessages.length).toBeGreaterThan(0)
+      expect(detail.systemInstructions.length).toBeGreaterThan(0)
+    })
+
+    it("fails with NotFoundError when the session does not exist", async () => {
+      const error = await Effect.runPromise(
+        repo
+          .findBySessionId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            sessionId: SessionId("missing-session"),
+          })
+          .pipe(Effect.flip, Effect.provide(ChSqlClientLive(ch.client, ORG_ID))),
+      )
+
+      expect(isNotFoundError(error)).toBe(true)
+    })
+  })
+
+  describe("getDistribution", () => {
+    it("returns the empty distribution shape when the project has no sessions", async () => {
+      const dist = await runCh(
+        repo.getDistribution({
+          organizationId: ORG_ID,
+          projectId: ProjectId("ppppppppppppppppppppppp9"),
+          field: "cost",
+        }),
+      )
+      expect(dist.count).toBe(0)
+      expect(dist.percentileValues).toHaveLength(101)
+      expect(dist.percentileValues.every((v) => v === 0)).toBe(true)
+    })
+
+    it("samples 101 percentile levels with p100 hitting the max for sum-aggregated fields", async () => {
+      const start = new Date(Date.UTC(2026, 0, 2, 10, 0, 0))
+      const costs = [100, 500, 5_000, 50_000]
+      await insertSpans(
+        costs.map((cost, i) =>
+          makeSpanRow({
+            traceId: `c${i}`.padEnd(32, "0"),
+            spanId: `c${i}`.padEnd(16, "0"),
+            sessionId: `cost-session-${i}`,
+            startTime: new Date(start.getTime() + i * 1_000),
+            costTotalMicrocents: cost,
+          }),
+        ),
+      )
+
+      const dist = await runCh(repo.getDistribution({ organizationId: ORG_ID, projectId: PROJECT_ID, field: "cost" }))
+      expect(dist.count).toBe(costs.length)
+      expect(dist.percentileValues).toHaveLength(101)
+      expect(dist.percentileValues[0]).toBe(100)
+      expect(dist.percentileValues[100]).toBe(50_000)
+    })
+
+    it("ignores zero-valued rows for ttft so the distribution reflects only sessions that streamed", async () => {
+      const start = new Date(Date.UTC(2026, 0, 3, 10, 0, 0))
+      await insertSpans([
+        makeSpanRow({
+          traceId: "ttft-a".padEnd(32, "0"),
+          spanId: "ttft-a".padEnd(16, "0"),
+          sessionId: "ttft-a",
+          startTime: start,
+          timeToFirstTokenNs: 10_000_000,
+        }),
+        makeSpanRow({
+          traceId: "ttft-b".padEnd(32, "0"),
+          spanId: "ttft-b".padEnd(16, "0"),
+          sessionId: "ttft-b",
+          startTime: new Date(start.getTime() + 1_000),
+          timeToFirstTokenNs: 50_000_000,
+        }),
+        makeSpanRow({
+          traceId: "ttft-z".padEnd(32, "0"),
+          spanId: "ttft-z".padEnd(16, "0"),
+          sessionId: "ttft-zero",
+          startTime: new Date(start.getTime() + 2_000),
+          // sentinel 0 — must not contribute to the distribution
+        }),
+      ])
+
+      const dist = await runCh(repo.getDistribution({ organizationId: ORG_ID, projectId: PROJECT_ID, field: "ttft" }))
+      expect(dist.count).toBe(2)
+      expect(dist.percentileValues[0]).toBe(10_000_000)
+      expect(dist.percentileValues[100]).toBe(50_000_000)
+    })
+  })
+
+  describe("aggregateMetricsByProjectId", () => {
+    it("rolls up time_to_first_token_ns across sessions, ignoring sentinel zeros", async () => {
+      const start = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+      await insertSpans([
+        makeSpanRow({
+          traceId: "7".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId: "session-with-ttft",
+          startTime: start,
+          timeToFirstTokenNs: 30_000_000,
+        }),
+        makeSpanRow({
+          traceId: "8".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId: "session-without-ttft",
+          startTime: start,
+          // No first token — session reads sentinel 0.
+        }),
+      ])
+
+      const metrics = await runCh(repo.aggregateMetricsByProjectId({ organizationId: ORG_ID, projectId: PROJECT_ID }))
+
+      // ttft rollup ignores 0-sentinel rows, so min/max/sum only see the 30ms row.
+      expect(metrics.timeToFirstTokenNs.min).toBe(30_000_000)
+      expect(metrics.timeToFirstTokenNs.max).toBe(30_000_000)
+      expect(metrics.timeToFirstTokenNs.sum).toBe(30_000_000)
+    })
+  })
+
+  describe("getCohortBaseline", () => {
+    const taggedSpan = (overrides: SpanOverrides & { readonly tags?: readonly string[] }): SpanRow => ({
+      ...makeSpanRow({ model: "test-model", ...overrides }),
+      ...(overrides.tags ? { tags: [...overrides.tags] } : {}),
+    })
+
+    it("aggregates every session in the project regardless of tags", async () => {
+      const start = new Date(Date.UTC(2026, 5, 1, 10, 0, 0))
+      const rows = [
+        taggedSpan({
+          traceId: `01${"a".repeat(30)}`,
+          spanId: `01${"b".repeat(14)}`,
+          sessionId: "cheap-1",
+          startTime: new Date(start.getTime()),
+          costTotalMicrocents: 100,
+          tags: ["cheap"],
+        }),
+        taggedSpan({
+          traceId: `02${"a".repeat(30)}`,
+          spanId: `02${"b".repeat(14)}`,
+          sessionId: "expensive-1",
+          startTime: new Date(start.getTime() + 1_000),
+          costTotalMicrocents: 200,
+          tags: ["expensive"],
+        }),
+        taggedSpan({
+          traceId: `03${"a".repeat(30)}`,
+          spanId: `03${"b".repeat(14)}`,
+          sessionId: "untagged-1",
+          startTime: new Date(start.getTime() + 2_000),
+          costTotalMicrocents: 300,
+        }),
+      ]
+
+      await insertSpans(rows)
+
+      const baseline = await runCh(repo.getCohortBaseline({ organizationId: ORG_ID, projectId: PROJECT_ID }))
+
+      expect(baseline.count).toBe(3)
+      expect(baseline.metrics.costTotalMicrocents.sampleCount).toBe(3)
+      expect(baseline.metrics.costTotalMicrocents.p50).toBe(200)
+    })
+
+    it("excludes non-LLM sessions from the cohort and percentile sample gates", async () => {
+      const start = new Date(Date.UTC(2026, 5, 1, 11, 0, 0))
+      const nonLlmRows = Array.from({ length: 1_001 }, (_value, index) =>
+        makeSpanRow({
+          traceId: (index + 16).toString(16).padStart(32, "0"),
+          spanId: (index + 16).toString(16).padStart(16, "0"),
+          startTime: new Date(start.getTime() + index * 1_000),
+          durationMs: 100,
+          operation: "unspecified",
+        }),
+      )
+      await insertSpans([
+        ...nonLlmRows,
+        taggedSpan({
+          traceId: `04${"a".repeat(30)}`,
+          spanId: `04${"b".repeat(14)}`,
+          sessionId: "model-session",
+          startTime: new Date(start.getTime() + 2_000_000),
+          durationMs: 5_000,
+        }),
+        makeSpanRow({
+          traceId: `05${"a".repeat(30)}`,
+          spanId: `05${"b".repeat(14)}`,
+          sessionId: "token-session",
+          startTime: new Date(start.getTime() + 2_001_000),
+          durationMs: 5_000,
+          tokensOutput: 10,
+        }),
+      ])
+
+      const baseline = await runCh(repo.getCohortBaseline({ organizationId: ORG_ID, projectId: PROJECT_ID }))
+
+      expect(baseline.count).toBe(2)
+      expect(baseline.metrics.durationNs.sampleCount).toBe(2)
+      expect(baseline.metrics.durationNs.p50).toBe(5_000_000_000)
+      expect(baseline.metrics.durationNs.p99).toBeNull()
+    })
+
+    it("ignores zero-filled cost and token values in percentile baselines", async () => {
+      const start = new Date(Date.UTC(2026, 5, 2, 10, 0, 0))
+      const rows = Array.from({ length: 10 }, (_v, i) =>
+        taggedSpan({
+          traceId: `${(10 + i).toString(16).padStart(2, "0")}${"a".repeat(30)}`,
+          spanId: `${(10 + i).toString(16).padStart(2, "0")}${"b".repeat(14)}`,
+          sessionId: `cohort-zero-${i}`,
+          startTime: new Date(start.getTime() + i * 1_000),
+          costTotalMicrocents: i === 9 ? 500 : 0,
+          tokensOutput: i === 9 ? 100 : 0,
+        }),
+      )
+
+      await insertSpans(rows)
+
+      const baseline = await runCh(repo.getCohortBaseline({ organizationId: ORG_ID, projectId: PROJECT_ID }))
+
+      expect(baseline.count).toBe(10)
+      expect(baseline.metrics.costTotalMicrocents.sampleCount).toBe(1)
+      expect(baseline.metrics.costTotalMicrocents.p50).toBe(500)
+      expect(baseline.metrics.costTotalMicrocents.p90).toBe(500)
+      expect(baseline.metrics.tokensTotal.sampleCount).toBe(1)
+      expect(baseline.metrics.tokensTotal.p50).toBe(100)
+      expect(baseline.metrics.durationNs.sampleCount).toBe(10)
+    })
+
+    it("gates p95 (<100 samples) and p99 (<1000 samples) to null", async () => {
+      const start = new Date(Date.UTC(2026, 5, 4, 10, 0, 0))
+      const rows = Array.from({ length: 10 }, (_v, i) =>
+        taggedSpan({
+          traceId: `${(70 + i).toString(16).padStart(2, "0")}${"a".repeat(30)}`,
+          spanId: `${(70 + i).toString(16).padStart(2, "0")}${"b".repeat(14)}`,
+          sessionId: `gated-${i}`,
+          startTime: new Date(start.getTime() + i * 1_000),
+          costTotalMicrocents: (i + 1) * 10,
+        }),
+      )
+
+      await insertSpans(rows)
+
+      const baseline = await runCh(repo.getCohortBaseline({ organizationId: ORG_ID, projectId: PROJECT_ID }))
+
+      expect(baseline.metrics.costTotalMicrocents.p95).toBeNull()
+      expect(baseline.metrics.costTotalMicrocents.p99).toBeNull()
+    })
+
+    it("honors excludeSessionId", async () => {
+      const start = new Date(Date.UTC(2026, 5, 5, 10, 0, 0))
+      const keptRows = Array.from({ length: 3 }, (_v, i) =>
+        taggedSpan({
+          traceId: `${(80 + i).toString(16).padStart(2, "0")}${"a".repeat(30)}`,
+          spanId: `${(80 + i).toString(16).padStart(2, "0")}${"b".repeat(14)}`,
+          sessionId: `kept-${i}`,
+          startTime: new Date(start.getTime() + i * 1_000),
+          costTotalMicrocents: 100,
+        }),
+      )
+      const excludedSessionId = "excluded-session"
+      const excludedRow = taggedSpan({
+        traceId: `90${"a".repeat(30)}`,
+        spanId: `90${"b".repeat(14)}`,
+        sessionId: excludedSessionId,
+        startTime: new Date(start.getTime() + 10_000),
+        costTotalMicrocents: 999_999,
+      })
+
+      await insertSpans([...keptRows, excludedRow])
+
+      const baseline = await runCh(
+        repo.getCohortBaseline({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          excludeSessionId: SessionId(excludedSessionId),
+        }),
+      )
+
+      expect(baseline.count).toBe(3)
+      expect(baseline.metrics.costTotalMicrocents.p50).toBe(100)
+    })
+  })
+
+  describe("histogramByProjectId", () => {
+    it("buckets sessions by their start_time", async () => {
+      const bucketA = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+      const bucketB = new Date(Date.UTC(2026, 0, 1, 11, 0, 0))
+      await insertSpans([
+        makeSpanRow({
+          traceId: "a".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId: "session-bucket-a",
+          startTime: bucketA,
+          model: "gpt-4",
+          tokensOutput: 10,
+        }),
+        makeSpanRow({
+          traceId: "b".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId: "session-bucket-b",
+          startTime: bucketB,
+          model: "gpt-4",
+          tokensOutput: 20,
+        }),
+      ])
+
+      const buckets = await runCh(
+        repo.histogramByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          bucketSeconds: 3600,
+        }),
+      )
+
+      expect(buckets).toHaveLength(2)
+      const [first, second] = buckets
+      expect(nonNull(first).bucketStart).toBe(bucketA.toISOString())
+      expect(nonNull(first).sessionCount).toBe(1)
+      expect(nonNull(second).bucketStart).toBe(bucketB.toISOString())
+      expect(nonNull(second).sessionCount).toBe(1)
+    })
+
+    it("aggregates sessions sharing a bucket: counts, sums, medians", async () => {
+      const start = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+      // Two sessions in the same hour, each with one trace.
+      // Session 1: 100 tokens, 200 microcents, 5s duration, ttft 10ms.
+      // Session 2: 50 tokens, 100 microcents, 1s duration, ttft 30ms.
+      // Both must have non-empty model so they aren't excluded by the default
+      // `hasLlmActivity` filter applied by the panel (this test doesn't apply
+      // it, but it keeps fixtures realistic).
+      await insertSpans([
+        makeSpanRow({
+          traceId: "1".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId: "session-1",
+          startTime: start,
+          durationMs: 5_000,
+          model: "gpt-4",
+          tokensOutput: 100,
+          costTotalMicrocents: 200,
+          timeToFirstTokenNs: 10_000_000,
+        }),
+        makeSpanRow({
+          traceId: "2".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId: "session-2",
+          startTime: start,
+          durationMs: 1_000,
+          model: "gpt-4",
+          tokensOutput: 50,
+          costTotalMicrocents: 100,
+          timeToFirstTokenNs: 30_000_000,
+        }),
+      ])
+
+      const buckets = await runCh(
+        repo.histogramByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          bucketSeconds: 3600,
+        }),
+      )
+
+      expect(buckets).toHaveLength(1)
+      const bucket = nonNull(buckets[0])
+      expect(bucket.sessionCount).toBe(2)
+      expect(bucket.traceCount).toBe(2)
+      expect(bucket.tokensTotalSum).toBe(150)
+      expect(bucket.costTotalMicrocentsSum).toBe(300)
+      expect(bucket.spanCountSum).toBe(2)
+      // quantileTDigest on two values is one of them (no interpolation guarantee).
+      expect([1_000_000_000, 5_000_000_000]).toContain(bucket.durationNsMedian)
+      expect([10_000_000, 30_000_000]).toContain(bucket.timeToFirstTokenNsMedian)
+    })
+
+    it("applies session-level filter semantics (hasLlmActivity excludes orphans)", async () => {
+      const start = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+      await insertSpans([
+        makeSpanRow({
+          traceId: "3".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId: "active-session",
+          startTime: start,
+          model: "gpt-4",
+          tokensOutput: 100,
+        }),
+        // Orphan: no session id, no model, no tokens — synthesizes a 1-trace
+        // session that fails `hasLlmActivity`.
+        makeSpanRow({
+          traceId: "4".repeat(32),
+          spanId: "1".repeat(16),
+          startTime: start,
+        }),
+      ])
+
+      const filtered = await runCh(
+        repo.histogramByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          bucketSeconds: 3600,
+          filters: { hasLlmActivity: [{ op: "eq", value: true }] },
+        }),
+      )
+      const unfiltered = await runCh(
+        repo.histogramByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          bucketSeconds: 3600,
+        }),
+      )
+
+      const filteredCount = filtered.reduce((sum, b) => sum + b.sessionCount, 0)
+      const unfilteredCount = unfiltered.reduce((sum, b) => sum + b.sessionCount, 0)
+      expect(unfilteredCount).toBe(2)
+      expect(filteredCount).toBe(1)
+    })
+
+    it("agrees with aggregateMetricsByProjectId on the same filter set", async () => {
+      const start = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+      await insertSpans([
+        makeSpanRow({
+          traceId: "5".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId: "agree-1",
+          startTime: start,
+          model: "gpt-4",
+          tokensOutput: 100,
+          costTotalMicrocents: 200,
+        }),
+        makeSpanRow({
+          traceId: "6".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId: "agree-2",
+          startTime: new Date(start.getTime() + 30 * 60 * 1000),
+          model: "gpt-4",
+          tokensOutput: 50,
+          costTotalMicrocents: 100,
+        }),
+      ])
+
+      const [histogram, metrics] = await Promise.all([
+        runCh(
+          repo.histogramByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            bucketSeconds: 3600,
+          }),
+        ),
+        runCh(repo.aggregateMetricsByProjectId({ organizationId: ORG_ID, projectId: PROJECT_ID })),
+      ])
+
+      const histogramSessionCount = histogram.reduce((sum, b) => sum + b.sessionCount, 0)
+      const histogramTraceCount = histogram.reduce((sum, b) => sum + b.traceCount, 0)
+      const histogramTokenSum = histogram.reduce((sum, b) => sum + b.tokensTotalSum, 0)
+      const histogramCostSum = histogram.reduce((sum, b) => sum + b.costTotalMicrocentsSum, 0)
+      const histogramSpanSum = histogram.reduce((sum, b) => sum + b.spanCountSum, 0)
+
+      expect(histogramSessionCount).toBe(2)
+      expect(histogramTraceCount).toBe(metrics.traceCount)
+      expect(histogramTokenSum).toBe(metrics.tokensTotal.sum)
+      expect(histogramCostSum).toBe(metrics.costTotalMicrocents.sum)
+      expect(histogramSpanSum).toBe(metrics.spanCount.sum)
+    })
+
+    it("applies percentile filters through resolvePercentileFilters (same cohort as aggregateMetricsByProjectId)", async () => {
+      // Three sessions with stepped costs so a `gtePercentile` resolves to a
+      // deterministic threshold and excludes a known subset. Same fixtures hit
+      // both queries — they must agree.
+      const start = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+      await insertSpans([
+        makeSpanRow({
+          traceId: "a".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId: "pct-low",
+          startTime: start,
+          model: "gpt-4",
+          tokensOutput: 10,
+          costTotalMicrocents: 100,
+        }),
+        makeSpanRow({
+          traceId: "b".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId: "pct-mid",
+          startTime: new Date(start.getTime() + 10 * 60 * 1000),
+          model: "gpt-4",
+          tokensOutput: 10,
+          costTotalMicrocents: 500,
+        }),
+        makeSpanRow({
+          traceId: "c".repeat(32),
+          spanId: "1".repeat(16),
+          sessionId: "pct-high",
+          startTime: new Date(start.getTime() + 20 * 60 * 1000),
+          model: "gpt-4",
+          tokensOutput: 10,
+          costTotalMicrocents: 900,
+        }),
+      ])
+
+      const filters = { cost: [{ op: "gtePercentile" as const, value: 50 }] }
+      const [histogram, metrics] = await Promise.all([
+        runCh(
+          repo.histogramByProjectId({ organizationId: ORG_ID, projectId: PROJECT_ID, bucketSeconds: 3600, filters }),
+        ),
+        runCh(repo.aggregateMetricsByProjectId({ organizationId: ORG_ID, projectId: PROJECT_ID, filters })),
+      ])
+
+      const histogramSessionCount = histogram.reduce((sum, b) => sum + b.sessionCount, 0)
+      const histogramCostSum = histogram.reduce((sum, b) => sum + b.costTotalMicrocentsSum, 0)
+
+      // Whichever exact threshold p50 resolves to, the two queries must agree
+      // on the cohort — that's the property we're proving.
+      expect(histogramSessionCount).toBeGreaterThan(0)
+      expect(histogramSessionCount).toBeLessThan(3)
+      expect(histogramCostSum).toBe(metrics.costTotalMicrocents.sum)
+    })
+  })
+
+  describe("search", () => {
+    const DIMS = EMBEDDING_DIMENSIONS
+    const alignedEmbedding = new Array(DIMS).fill(0.1) as readonly number[]
+    // A partially-aligned vector: [0.1, 0, 0, ...] gives cosine ~ 1/sqrt(DIMS)
+    // relative to the all-0.1 query — small but >= the 0.30 floor only
+    // matters in semantic-only mode. We use scaled aligned vectors instead
+    // (constants below) so cosine values are predictable across DIMS sizes.
+    const buildAlignedAt = (factor: number): readonly number[] => new Array(DIMS).fill(0.1 * factor)
+
+    const padTrace = (prefix: string) => prefix.padEnd(32, "f").slice(0, 32)
+    const padSpan = (prefix: string) => prefix.padEnd(16, "f").slice(0, 16)
+
+    interface SearchDoc {
+      readonly traceId: string
+      readonly text: string
+      readonly startTime: Date
+      readonly contentHashSuffix: string
+    }
+
+    interface SearchEmbedding {
+      readonly traceId: string
+      readonly chunkIndex: number
+      readonly embedding: readonly number[]
+      readonly startTime: Date
+      readonly contentHashSuffix: string
+    }
+
+    const insertSearchDocs = (docs: readonly SearchDoc[]) =>
+      Effect.runPromise(
+        insertJsonEachRow(
+          ch.client,
+          "trace_search_documents",
+          docs.map((d) => ({
+            organization_id: ORG_ID as string,
+            project_id: PROJECT_ID as string,
+            trace_id: d.traceId,
+            start_time: toClickHouseDateTime(d.startTime),
+            root_span_name: "root",
+            search_text: d.text,
+            content_hash: `${"a".repeat(64 - d.contentHashSuffix.length)}${d.contentHashSuffix}`,
+            indexed_at: toClickHouseDateTime(d.startTime),
+          })),
+        ),
+      )
+
+    // Shared semantic path (the production default): vectors live in
+    // `message_embeddings`, reachable per trace via `trace_message_occurrences`.
+    // Each former chunk maps to one occurrence message (chunk_index ->
+    // message_index); the embedding vectors and content hashes are unchanged,
+    // so cosine scores and the per-trace max-pool match the legacy path.
+    const insertSearchEmbeddings = (rows: readonly SearchEmbedding[]) =>
+      Effect.runPromise(
+        Effect.gen(function* () {
+          const seedRows = rows.map((r) => ({
+            ...r,
+            contentHash: `${"b".repeat(64 - r.contentHashSuffix.length)}${r.contentHashSuffix}`,
+          }))
+          yield* insertJsonEachRow(
+            ch.client,
+            "message_embeddings",
+            [...new Map(seedRows.map((r) => [r.contentHash, r] as const)).values()].map((r) => ({
+              organization_id: ORG_ID as string,
+              project_id: PROJECT_ID as string,
+              content_hash: r.contentHash,
+              embedding: [...r.embedding],
+              embedding_model: "voyage-4-large",
+              inserted_at: toClickHouseDateTime(r.startTime),
+            })),
+          )
+          yield* insertJsonEachRow(
+            ch.client,
+            "trace_message_occurrences",
+            seedRows.map((r) => ({
+              organization_id: ORG_ID as string,
+              project_id: PROJECT_ID as string,
+              trace_id: r.traceId,
+              message_index: r.chunkIndex,
+              content_hash: r.contentHash,
+              session_id: "",
+              start_time: toClickHouseDateTime(r.startTime),
+              role: "user",
+              is_output: 0,
+              indexed_at: toClickHouseDateTime(r.startTime),
+            })),
+          )
+        }),
+      )
+
+    // 1) Lexical-only: phrase match across two sessions with two traces each,
+    //    no embeddings — every trace scores 0.0. They must still appear,
+    //    each session reporting matching_trace_count = 2 (spec §6.4).
+    it("lexical-only: sessions with all-zero per-trace scores still surface and count", async () => {
+      const start = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+      const sessionA = "lex-session-a"
+      const sessionB = "lex-session-b"
+      const traceA1 = padTrace("a1")
+      const traceA2 = padTrace("a2")
+      const traceB1 = padTrace("b1")
+      const traceB2 = padTrace("b2")
+
+      await insertSpans([
+        makeSpanRow({ traceId: traceA1, spanId: padSpan("a1"), sessionId: sessionA, startTime: start }),
+        makeSpanRow({
+          traceId: traceA2,
+          spanId: padSpan("a2"),
+          sessionId: sessionA,
+          startTime: new Date(start.getTime() + 1_000),
+        }),
+        makeSpanRow({
+          traceId: traceB1,
+          spanId: padSpan("b1"),
+          sessionId: sessionB,
+          startTime: new Date(start.getTime() + 2_000),
+        }),
+        makeSpanRow({
+          traceId: traceB2,
+          spanId: padSpan("b2"),
+          sessionId: sessionB,
+          startTime: new Date(start.getTime() + 3_000),
+        }),
+      ])
+
+      await insertSearchDocs([
+        { traceId: traceA1, text: "user asked about a refund for order 12", startTime: start, contentHashSuffix: "1" },
+        { traceId: traceA2, text: "refund denied; escalate to manager", startTime: start, contentHashSuffix: "2" },
+        { traceId: traceB1, text: "refund request for shipping", startTime: start, contentHashSuffix: "3" },
+        { traceId: traceB2, text: "approved the refund and notified", startTime: start, contentHashSuffix: "4" },
+      ])
+
+      const page = await runCh(
+        repo.listByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          options: { searchQuery: '"refund"', limit: 10 },
+        }),
+      )
+
+      const sessionIds = page.items.map((s) => s.sessionId).sort()
+      expect(sessionIds).toEqual([sessionA, sessionB].sort())
+
+      const matches = nonNull(page.searchMatches)
+      expect(matches[sessionA]).toBeDefined()
+      expect(matches[sessionB]).toBeDefined()
+      expect(matches[sessionA]?.bestScore).toBe(0)
+      expect(matches[sessionB]?.bestScore).toBe(0)
+      expect(matches[sessionA]?.matchingTraceCount).toBe(2)
+      expect(matches[sessionB]?.matchingTraceCount).toBe(2)
+      expect(matches[sessionA]?.matchingTraceIds).toHaveLength(2)
+      expect(matches[sessionA]?.matchingTraceScores).toHaveLength(2)
+      expect([...nonNull(matches[sessionA]).matchingTraceIds].sort()).toEqual([traceA1, traceA2].sort())
+      expect([...nonNull(matches[sessionB]).matchingTraceIds].sort()).toEqual([traceB1, traceB2].sort())
+      // All zero-score lexical matches: scores parallel-aligned and all 0.
+      expect(matches[sessionA]?.matchingTraceScores.every((s) => s === 0)).toBe(true)
+      expect(matches[sessionB]?.matchingTraceScores.every((s) => s === 0)).toBe(true)
+    })
+
+    // 2) Hybrid: a session with three matching traces; two have embeddings
+    //    with distinct cosine scores, one has no embedding (relevance_score
+    //    falls to 0 via the LEFT JOIN). best_score = max of semantic scores,
+    //    matching_trace_count = 3, ids ordered by score DESC.
+    it("hybrid: bestScore picks max semantic score; embedding-less matches still count via LEFT JOIN", async () => {
+      const start = new Date(Date.UTC(2026, 0, 2, 10, 0, 0))
+      const sessionId = "hybrid-session"
+      const traceStrong = padTrace("c1") // aligned (cosine ~ 1.0)
+      const traceWeak = padTrace("c2") // partially aligned (cosine < 1.0)
+      const traceNoEmb = padTrace("c3") // no embedding row
+
+      await insertSpans([
+        makeSpanRow({ traceId: traceStrong, spanId: padSpan("c1"), sessionId, startTime: start }),
+        makeSpanRow({
+          traceId: traceWeak,
+          spanId: padSpan("c2"),
+          sessionId,
+          startTime: new Date(start.getTime() + 1_000),
+        }),
+        makeSpanRow({
+          traceId: traceNoEmb,
+          spanId: padSpan("c3"),
+          sessionId,
+          startTime: new Date(start.getTime() + 2_000),
+        }),
+      ])
+
+      await insertSearchDocs([
+        {
+          traceId: traceStrong,
+          text: "the payment refund pipeline is broken",
+          startTime: start,
+          contentHashSuffix: "h1",
+        },
+        { traceId: traceWeak, text: "payment retried successfully", startTime: start, contentHashSuffix: "h2" },
+        { traceId: traceNoEmb, text: "payment receipt issued", startTime: start, contentHashSuffix: "h3" },
+      ])
+
+      // Strong: fully aligned — cosine 1.0. Weak: a single non-zero coord —
+      // cosine with the [0.1, 0.1, ...] mock query is 1/sqrt(DIMS), well below
+      // strong but non-zero. No embedding row for traceNoEmb.
+      const weakVec = (() => {
+        const v = new Array(DIMS).fill(0) as number[]
+        v[0] = 0.1
+        return v as readonly number[]
+      })()
+      await insertSearchEmbeddings([
+        { traceId: traceStrong, chunkIndex: 0, embedding: alignedEmbedding, startTime: start, contentHashSuffix: "e1" },
+        { traceId: traceWeak, chunkIndex: 0, embedding: weakVec, startTime: start, contentHashSuffix: "e2" },
+      ])
+
+      const page = await runCh(
+        repo.listByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          options: { searchQuery: '"payment" customer issue', limit: 10 },
+        }),
+      )
+
+      expect(page.items).toHaveLength(1)
+      const match = nonNull(page.searchMatches?.[sessionId])
+      expect(match).toBeDefined()
+      expect(match.matchingTraceCount).toBe(3)
+      // best_score is max(relevance_score). Strong is fully aligned, cosine = 1.0.
+      expect(match.bestScore).toBeCloseTo(1.0, 5)
+      expect(match.bestTraceId).toBe(traceStrong)
+      // ids parallel-aligned with scores DESC. Strong first, weak second, no-emb (0) last.
+      expect(match.matchingTraceIds[0]).toBe(traceStrong)
+      expect(match.matchingTraceIds[2]).toBe(traceNoEmb)
+      expect(match.matchingTraceScores[0]).toBeCloseTo(1.0, 5)
+      expect(match.matchingTraceScores[1]).toBeGreaterThan(0)
+      expect(match.matchingTraceScores[1]).toBeLessThan(1.0)
+      expect(match.matchingTraceScores[2]).toBe(0)
+    })
+
+    // 3) Score-filter / telemetry HAVING applied per-trace (spec §6.6).
+    //    One session, five matching traces. One has cost > threshold; four
+    //    don't. The session must surface with matching_trace_count = 1 (only
+    //    the cost-passing trace), not absent and not 5.
+    it("telemetry HAVING is applied per-trace inside trace_rollup, not post-rollup", async () => {
+      const start = new Date(Date.UTC(2026, 0, 3, 10, 0, 0))
+      const sessionId = "having-session"
+      const traces = ["d1", "d2", "d3", "d4", "d5"].map(padTrace)
+
+      // Build five traces; only d3 has a cost above the threshold.
+      const COSTS = [10, 20, 5_000_000, 30, 40] // microcents per trace
+      await insertSpans(
+        traces.map((t, i) =>
+          makeSpanRow({
+            traceId: t,
+            spanId: padSpan(`d${i + 1}`),
+            sessionId,
+            startTime: new Date(start.getTime() + i * 1_000),
+            costTotalMicrocents: nonNull(COSTS[i]),
+          }),
+        ),
+      )
+      await insertSearchDocs(
+        traces.map((t, i) => ({
+          traceId: t,
+          text: `cost-bearing trace ${i} discussion`,
+          startTime: start,
+          contentHashSuffix: `h${i}`,
+        })),
+      )
+
+      const page = await runCh(
+        repo.listByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          options: {
+            searchQuery: '"cost-bearing"',
+            limit: 10,
+            // Telemetry filter: cost > 1000. Only d3 passes per-trace.
+            filters: { cost: [{ op: "gt", value: 1000 }] },
+          },
+        }),
+      )
+
+      expect(page.items).toHaveLength(1)
+      const match = nonNull(page.searchMatches?.[sessionId])
+      expect(match.matchingTraceCount).toBe(1)
+      expect(match.matchingTraceIds).toEqual([traces[2]])
+      expect(match.bestTraceId).toBe(traces[2])
+    })
+
+    it("metadata filters are applied per-trace inside trace_rollup", async () => {
+      const start = new Date(Date.UTC(2026, 0, 3, 11, 0, 0))
+      const sessionId = "metadata-having-session"
+      const traces = ["m1", "m2", "m3"].map(padTrace)
+      const filters = { "metadata.environment": [{ op: "eq" as const, value: "production" }] }
+
+      await insertSpans(
+        traces.map((t, i) =>
+          makeSpanRow({
+            traceId: t,
+            spanId: padSpan(`m${i + 1}`),
+            sessionId,
+            startTime: new Date(start.getTime() + i * 1_000),
+            metadata: { environment: i === 1 ? "production" : "staging" },
+          }),
+        ),
+      )
+      await insertSearchDocs(
+        traces.map((t, i) => ({
+          traceId: t,
+          text: `metadata needle trace ${i}`,
+          startTime: start,
+          contentHashSuffix: `m${i}`,
+        })),
+      )
+
+      const page = await runCh(
+        repo.listByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          options: { searchQuery: '"metadata needle"', limit: 10, filters },
+        }),
+      )
+
+      expect(page.items).toHaveLength(1)
+      const match = nonNull(page.searchMatches?.[sessionId])
+      expect(match.matchingTraceCount).toBe(1)
+      expect(match.matchingTraceIds).toEqual([traces[1]])
+      expect(match.bestTraceId).toBe(traces[1])
+
+      const count = await runCh(
+        repo.countByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          searchQuery: '"metadata needle"',
+          filters,
+        }),
+      )
+      expect(count.totalCount).toBe(1)
+      expect(count.matchingTraceCount).toBe(1)
+    })
+
+    // 4) Cursor stability: paginate ten matching sessions across one project.
+    //    All scores tie at 0.0 (lexical-only), so the secondary order is
+    //    session_id DESC — cursors must walk that monotonically without
+    //    duplicates and hasMore must flip false on the last page.
+    it("cursor pagination is monotonic with no duplicates across pages", async () => {
+      const start = new Date(Date.UTC(2026, 0, 4, 10, 0, 0))
+      // Build ten sessions, each with one trace. Use deterministic ids so the
+      // DESC sort over session_id is easy to reason about.
+      const sessions = Array.from({ length: 10 }, (_v, i) => `cur-session-${i.toString().padStart(2, "0")}`)
+      const traces = sessions.map((_s, i) => padTrace(`c${i.toString().padStart(2, "0")}`))
+
+      await insertSpans(
+        sessions.map((s, i) =>
+          makeSpanRow({
+            traceId: nonNull(traces[i]),
+            spanId: padSpan(`p${i.toString().padStart(2, "0")}`),
+            sessionId: s,
+            startTime: new Date(start.getTime() + i * 1_000),
+          }),
+        ),
+      )
+      await insertSearchDocs(
+        traces.map((t, i) => ({
+          traceId: t,
+          text: `pagination needle ${i}`,
+          startTime: start,
+          contentHashSuffix: `n${i}`,
+        })),
+      )
+
+      const baseOptions = { searchQuery: '"pagination"', limit: 3 } as const
+      const page1 = await runCh(
+        repo.listByProjectId({ organizationId: ORG_ID, projectId: PROJECT_ID, options: baseOptions }),
+      )
+      expect(page1.hasMore).toBe(true)
+      expect(page1.nextCursor).toBeDefined()
+      expect(page1.items).toHaveLength(3)
+
+      const page2 = await runCh(
+        repo.listByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          options: { ...baseOptions, cursor: nonNull(page1.nextCursor) },
+        }),
+      )
+      expect(page2.hasMore).toBe(true)
+      expect(page2.nextCursor).toBeDefined()
+
+      const page3 = await runCh(
+        repo.listByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          options: { ...baseOptions, cursor: nonNull(page2.nextCursor) },
+        }),
+      )
+      const page4 = await runCh(
+        repo.listByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          options: { ...baseOptions, cursor: page3.nextCursor ?? nonNull(page2.nextCursor) },
+        }),
+      )
+
+      const seen = [...page1.items, ...page2.items, ...page3.items, ...page4.items].map((s) => s.sessionId)
+      // No duplicates across pages.
+      expect(new Set(seen).size).toBe(seen.length)
+      // All ten sessions paginated through.
+      expect(seen.sort()).toEqual([...sessions].sort())
+      // Final page has no further cursor.
+      expect(page4.hasMore).toBe(false)
+
+      // Secondary ordering: session_id DESC across the concatenated stream
+      // (best_score ties at 0.0 throughout).
+      const sessionIdsInOrder = [...page1.items, ...page2.items, ...page3.items, ...page4.items].map((s) => s.sessionId)
+      const sortedDesc = [...sessions].sort().reverse()
+      expect(sessionIdsInOrder).toEqual(sortedDesc)
+    })
+
+    // 5) Orphan-trace-as-session (spec §6.7). A matching trace whose spans
+    //    carry no session id surfaces as a 1-trace session keyed by
+    //    toString(trace_id). The synthesized Session has empty models /
+    //    providers / tags and tokens_total = 0.
+    it("orphan trace surfaces as a synthesized 1-trace session keyed by toString(trace_id)", async () => {
+      const start = new Date(Date.UTC(2026, 0, 5, 10, 0, 0))
+      const orphanTrace = padTrace("e0")
+      const realTrace = padTrace("e1")
+      const realSession = "real-session-for-orphan-test"
+
+      await insertSpans([
+        // Orphan: no session_id on any span.
+        makeSpanRow({ traceId: orphanTrace, spanId: padSpan("o1"), startTime: start, name: "orphan-root" }),
+        // Real: tagged with a session id.
+        makeSpanRow({
+          traceId: realTrace,
+          spanId: padSpan("r1"),
+          sessionId: realSession,
+          startTime: new Date(start.getTime() + 1_000),
+          name: "real-root",
+        }),
+      ])
+      await insertSearchDocs([
+        { traceId: orphanTrace, text: "lonely orphan signal", startTime: start, contentHashSuffix: "o1" },
+        { traceId: realTrace, text: "lonely real signal", startTime: start, contentHashSuffix: "r1" },
+      ])
+
+      const page = await runCh(
+        repo.listByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          options: { searchQuery: '"lonely"', limit: 10 },
+        }),
+      )
+
+      expect(page.items).toHaveLength(2)
+      const orphanItem = page.items.find((s) => s.sessionId === orphanTrace)
+      expect(orphanItem).toBeDefined()
+      // Orphan synthesis: traceIds is the matching set, models/providers/tags empty,
+      // tokens_total = 0 from the spans seeded.
+      expect(orphanItem?.traceCount).toBe(1)
+      expect(orphanItem?.traceIds).toEqual([orphanTrace])
+      expect(orphanItem?.models).toEqual([])
+      expect(orphanItem?.providers).toEqual([])
+      expect(orphanItem?.tags).toEqual([])
+      expect(orphanItem?.tokensTotal).toBe(0)
+
+      const match = nonNull(page.searchMatches?.[orphanTrace])
+      expect(match).toBeDefined()
+      expect(match.matchingTraceCount).toBe(1)
+      expect(match.matchingTraceIds).toEqual([orphanTrace])
+      expect(match.bestTraceId).toBe(orphanTrace)
+    })
+
+    it("preserves the rollup duration when session hydration misses (toOrphanSession)", async () => {
+      const start = new Date(Date.UTC(2026, 0, 5, 12, 0, 0))
+      const traceId = padTrace("e2")
+      const sessionId = "hydration-miss-session"
+
+      await insertSpans([
+        makeSpanRow({
+          traceId,
+          spanId: padSpan("h1"),
+          sessionId,
+          startTime: start,
+          durationMs: 7_000,
+          name: "root",
+        }),
+      ])
+      await insertSearchDocs([{ traceId, text: "hydration miss needle", startTime: start, contentHashSuffix: "h1" }])
+      // Simulate a session row missing from `sessions` (legacy pre-00016 data
+      // or an MV race): the search rollup still matches via `traces`, so the
+      // synthesized fallback session must carry the rollup's duration.
+      await ch.client.command({ query: "TRUNCATE TABLE sessions" })
+
+      const page = await runCh(
+        repo.listByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          options: { searchQuery: '"hydration miss"', limit: 10 },
+        }),
+      )
+
+      const session = nonNull(page.items.find((s) => s.sessionId === sessionId))
+      expect(session.durationNs).toBe(7_000_000_000)
+    })
+
+    // 6) Multi-trace session: matching_trace_ids and matching_trace_scores
+    //    parallel-aligned and sorted by score DESC across five distinct
+    //    embedding magnitudes.
+    it("matching_trace_ids and matching_trace_scores are parallel-aligned and sorted by score DESC", async () => {
+      const start = new Date(Date.UTC(2026, 0, 6, 10, 0, 0))
+      const sessionId = "ordering-session"
+      // Five distinct cosine magnitudes by scaling the aligned [0.1, ...]
+      // vector. cosine(q, k*q) = 1.0 for k>0 (parallel), regardless of
+      // magnitude — so to get distinct cosines we need to mix directions.
+      // Build vectors with one negative coord, varying counts, to control
+      // cosine deterministically.
+      //
+      // q = [0.1, 0.1, ..., 0.1] (DIMS). Pick a base aligned vector and
+      // flip the first N coords negative — the cosine becomes
+      //   (DIMS - 2N) / DIMS
+      // (each flipped coord contributes -1 instead of +1 to the dot product
+      // numerator; magnitudes stay equal). With DIMS = 2048:
+      //   flips=0    → 1.0
+      //   flips=313  → ~0.694 (close to 0.71)
+      //   flips=460  → ~0.551 (close to 0.55)
+      //   flips=676  → ~0.34
+      //   flips=839  → ~0.18
+      const buildFlipped = (flipped: number): readonly number[] => {
+        const v = new Array(DIMS).fill(0.1) as number[]
+        for (let i = 0; i < flipped; i++) v[i] = -0.1
+        return v as readonly number[]
+      }
+      const vec92 = buildFlipped(82) // ~ (2048-164)/2048 = 0.92
+      const vec71 = buildFlipped(297) // ~ (2048-594)/2048 = 0.71
+      const vec55 = buildFlipped(461) // ~ (2048-922)/2048 = 0.55
+      const vec34 = buildFlipped(676) // ~ (2048-1352)/2048 = 0.34
+      const vec18 = buildFlipped(840) // ~ (2048-1680)/2048 = 0.18
+
+      const traces = ["t1", "t2", "t3", "t4", "t5"].map(padTrace)
+      const vectors = [vec92, vec34, vec71, vec18, vec55] // by trace index (input order)
+
+      await insertSpans(
+        traces.map((t, i) =>
+          makeSpanRow({
+            traceId: t,
+            spanId: padSpan(`o${i + 1}`),
+            sessionId,
+            startTime: new Date(start.getTime() + i * 1_000),
+          }),
+        ),
+      )
+      await insertSearchDocs(
+        traces.map((t, i) => ({
+          traceId: t,
+          text: `ordering test trace ${i}`,
+          startTime: start,
+          contentHashSuffix: `t${i}`,
+        })),
+      )
+      await insertSearchEmbeddings(
+        traces.map((t, i) => ({
+          traceId: t,
+          chunkIndex: 0,
+          embedding: nonNull(vectors[i]),
+          startTime: start,
+          contentHashSuffix: `v${i}`,
+        })),
+      )
+
+      const page = await runCh(
+        repo.listByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          options: { searchQuery: '"ordering" relevance prompt', limit: 10 },
+        }),
+      )
+
+      expect(page.items).toHaveLength(1)
+      const match = nonNull(page.searchMatches?.[sessionId])
+      // Ids must be in score-DESC order: t1 (0.92), t3 (0.71), t5 (0.55), t2 (0.34), t4 (0.18).
+      expect(match.matchingTraceIds).toEqual([traces[0], traces[2], traces[4], traces[1], traces[3]])
+      // Scores parallel-aligned: monotonically non-increasing.
+      const scores = match.matchingTraceScores
+      for (let i = 1; i < scores.length; i++) {
+        expect(scores[i - 1]).toBeGreaterThanOrEqual(nonNull(scores[i]))
+      }
+      // Spot-check the extremes against the analytic cosine values.
+      expect(scores[0]).toBeCloseTo(0.92, 1)
+      expect(scores[scores.length - 1]).toBeCloseTo(0.18, 1)
+      expect(match.matchingTraceCount).toBe(5)
+      expect(match.bestTraceId).toBe(traces[0])
+    })
+
+    // 7) List + count consistency. A search returns the same candidate set
+    //    via both paths: matchingTraceCount on each item, summed across all
+    //    pages, equals matchingTraceCount from countByProjectId; totalCount
+    //    equals the number of sessions reachable by full pagination.
+    it("list and count share the same candidate set", async () => {
+      const start = new Date(Date.UTC(2026, 0, 7, 10, 0, 0))
+      // Build N matching sessions and a few non-matching sessions so the
+      // total/matching counts are not trivially equal.
+      const matching = Array.from({ length: 4 }, (_v, i) => `lc-match-${i}`)
+      const nonMatching = ["lc-skip-1", "lc-skip-2"]
+      const matchingTracesPerSession = [3, 1, 2, 4] // varying fan-out
+
+      let spanIdx = 0
+      const allSpans: SpanRow[] = []
+      const docs: SearchDoc[] = []
+      matching.forEach((sid, si) => {
+        for (let ti = 0; ti < nonNull(matchingTracesPerSession[si]); ti++) {
+          const traceId = padTrace(`l${si}${ti}`)
+          allSpans.push(
+            makeSpanRow({
+              traceId,
+              spanId: padSpan(`lc${spanIdx++}`),
+              sessionId: sid,
+              startTime: new Date(start.getTime() + spanIdx * 1_000),
+            }),
+          )
+          docs.push({
+            traceId,
+            text: `harvest signal ${sid} turn ${ti}`,
+            startTime: start,
+            contentHashSuffix: `${si}${ti}`,
+          })
+        }
+      })
+      nonMatching.forEach((sid, si) => {
+        const traceId = padTrace(`n${si}`)
+        allSpans.push(
+          makeSpanRow({
+            traceId,
+            spanId: padSpan(`nm${spanIdx++}`),
+            sessionId: sid,
+            startTime: new Date(start.getTime() + spanIdx * 1_000),
+          }),
+        )
+        docs.push({
+          traceId,
+          text: `unrelated chatter ${sid}`,
+          startTime: start,
+          contentHashSuffix: `nm${si}`,
+        })
+      })
+      await insertSpans(allSpans)
+      await insertSearchDocs(docs)
+
+      const searchQuery = '"harvest"'
+      const count = await runCh(repo.countByProjectId({ organizationId: ORG_ID, projectId: PROJECT_ID, searchQuery }))
+
+      // Page through all matching sessions with a small limit.
+      const collected: { sessionId: string; matchingTraceCount: number }[] = []
+      let cursor: SessionListPage["nextCursor"]
+      for (let i = 0; i < 10; i++) {
+        const page = await runCh(
+          repo.listByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            options: { searchQuery, limit: 2, ...(cursor ? { cursor } : {}) },
+          }),
+        )
+        for (const item of page.items) {
+          const m = nonNull(page.searchMatches?.[item.sessionId])
+          collected.push({ sessionId: item.sessionId, matchingTraceCount: m.matchingTraceCount })
+        }
+        if (!page.hasMore || !page.nextCursor) break
+        cursor = page.nextCursor
+      }
+
+      expect(count.totalCount).toBe(matching.length)
+      expect(collected).toHaveLength(matching.length)
+      const summed = collected.reduce((acc, c) => acc + c.matchingTraceCount, 0)
+      expect(summed).toBe(matchingTracesPerSession.reduce((a, b) => a + b, 0))
+      expect(count.matchingTraceCount).toBe(summed)
+    })
+
+    // 8) Default ordering: with searchQuery active and no explicit sortBy,
+    //    items are ordered by bestScore DESC, sessionId DESC. The "relevance"
+    //    sentinel sortBy value used by the UI as the default in search mode
+    //    falls through to the same path (no entry in `SEARCH_SORT_AXES`).
+    it("defaults to best_score / session_id DESC ordering when searchQuery is active", async () => {
+      const start = new Date(Date.UTC(2026, 0, 8, 10, 0, 0))
+      const sessionLow = "ord-low-score-high-cost"
+      const sessionHigh = "ord-high-score-low-cost"
+      const traceLow = padTrace("ol")
+      const traceHigh = padTrace("oh")
+
+      await insertSpans([
+        // Low-score session pays a huge cost — would come first under sortBy=cost DESC.
+        makeSpanRow({
+          traceId: traceLow,
+          spanId: padSpan("ol"),
+          sessionId: sessionLow,
+          startTime: start,
+          costTotalMicrocents: 9_999_999,
+        }),
+        // High-score session is cheap.
+        makeSpanRow({
+          traceId: traceHigh,
+          spanId: padSpan("oh"),
+          sessionId: sessionHigh,
+          startTime: new Date(start.getTime() + 1_000),
+          costTotalMicrocents: 10,
+        }),
+      ])
+      await insertSearchDocs([
+        { traceId: traceLow, text: "ordering check low score", startTime: start, contentHashSuffix: "ol" },
+        { traceId: traceHigh, text: "ordering check high score", startTime: start, contentHashSuffix: "oh" },
+      ])
+      // Only the high-score session gets an aligned embedding.
+      await insertSearchEmbeddings([
+        { traceId: traceHigh, chunkIndex: 0, embedding: alignedEmbedding, startTime: start, contentHashSuffix: "oh" },
+      ])
+
+      const page = await runCh(
+        repo.listByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          options: {
+            searchQuery: '"ordering" semantic boost',
+            // No `sortBy`: default to relevance. The web layer also sends
+            // `sortBy: "relevance"` in this case; both fall through to the
+            // same default branch since `relevance` isn't a real axis.
+            limit: 10,
+          },
+        }),
+      )
+
+      // The high-score session must come first under the relevance default.
+      const ids = page.items.map((s) => s.sessionId)
+      expect(ids[0]).toBe(sessionHigh)
+      expect(ids[1]).toBe(sessionLow)
+      expect(nonNull(page.searchMatches?.[sessionHigh]).bestScore).toBeGreaterThan(
+        nonNull(page.searchMatches?.[sessionLow]).bestScore,
+      )
+    })
+
+    // The web layer sends `sortBy: "relevance"` as its in-search default. The
+    // repository has no entry for that key in SEARCH_SORT_AXES, so it falls
+    // through to the same relevance-ordered branch as `sortBy: undefined`.
+    it('treats sortBy="relevance" the same as undefined (default relevance order)', async () => {
+      const start = new Date(Date.UTC(2026, 0, 9, 10, 0, 0))
+      const sessionHigh = "rel-high"
+      const sessionLow = "rel-low"
+      const traceHigh = padTrace("rh")
+      const traceLow = padTrace("rl")
+
+      await insertSpans([
+        makeSpanRow({ traceId: traceHigh, spanId: padSpan("rh"), sessionId: sessionHigh, startTime: start }),
+        makeSpanRow({
+          traceId: traceLow,
+          spanId: padSpan("rl"),
+          sessionId: sessionLow,
+          startTime: new Date(start.getTime() + 1_000),
+        }),
+      ])
+      await insertSearchDocs([
+        { traceId: traceHigh, text: "relevance sentinel high", startTime: start, contentHashSuffix: "rh" },
+        { traceId: traceLow, text: "relevance sentinel low", startTime: start, contentHashSuffix: "rl" },
+      ])
+      await insertSearchEmbeddings([
+        { traceId: traceHigh, chunkIndex: 0, embedding: alignedEmbedding, startTime: start, contentHashSuffix: "rh" },
+      ])
+
+      const page = await runCh(
+        repo.listByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          options: { searchQuery: '"relevance" sentinel boost', sortBy: "relevance", limit: 10 },
+        }),
+      )
+
+      expect(page.items.map((s) => s.sessionId)).toEqual([sessionHigh, sessionLow])
+    })
+
+    // sortBy axis dispatch: with searchQuery active, picking a real column
+    // (lastActivity/startTime/cost/...) swaps the primary axis to that axis
+    // DESC while the candidate set still respects the relevance floor
+    // applied inside `search-plan.ts`.
+    describe("sortBy axis dispatch in search mode", () => {
+      const insertScenario = async () => {
+        // Three sessions, all matching the lexical phrase. We give one a low
+        // relevance and the others a high relevance via embeddings — so an
+        // axis swap is what reorders them inside the result set. Timestamps
+        // and costs are picked to make each axis produce a distinct order.
+        const start = new Date(Date.UTC(2026, 1, 1, 10, 0, 0))
+        const sessions = [
+          { id: "ax-A", offsetMs: 0, cost: 100, embed: alignedEmbedding },
+          { id: "ax-B", offsetMs: 60_000, cost: 50, embed: alignedEmbedding },
+          { id: "ax-C", offsetMs: 30_000, cost: 200, embed: alignedEmbedding },
+        ] as const
+        await insertSpans(
+          sessions.map((s, i) =>
+            makeSpanRow({
+              traceId: padTrace(`ax${i}`),
+              spanId: padSpan(`ax${i}`),
+              sessionId: s.id,
+              startTime: new Date(start.getTime() + s.offsetMs),
+              costTotalMicrocents: s.cost,
+            }),
+          ),
+        )
+        await insertSearchDocs(
+          sessions.map((s, i) => ({
+            traceId: padTrace(`ax${i}`),
+            text: `axis-fixture conversation ${s.id}`,
+            startTime: new Date(start.getTime() + s.offsetMs),
+            contentHashSuffix: `ax${i}`,
+          })),
+        )
+        await insertSearchEmbeddings(
+          sessions.map((s, i) => ({
+            traceId: padTrace(`ax${i}`),
+            chunkIndex: 0,
+            embedding: s.embed,
+            startTime: new Date(start.getTime() + s.offsetMs),
+            contentHashSuffix: `ax${i}`,
+          })),
+        )
+        return { sessions, start }
+      }
+
+      // The semantic prompt (`boost`) lifts `relevance_score` above 0 for the
+      // embedded fixtures; without it phrase-only mode collapses every match
+      // to `relevance_score = 0` (see `search-plan.ts`).
+      const SEARCH_QUERY = '"axis-fixture" boost'
+
+      it('sortBy="lastActivity" orders by session_end_time DESC', async () => {
+        await insertScenario()
+        const page = await runCh(
+          repo.listByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            options: { searchQuery: SEARCH_QUERY, sortBy: "lastActivity", limit: 10 },
+          }),
+        )
+        // B is newest (offset 60s), then C (30s), then A (0s).
+        expect(page.items.map((s) => s.sessionId)).toEqual(["ax-B", "ax-C", "ax-A"])
+      })
+
+      it('sortBy="startTime" orders by session_start_time DESC', async () => {
+        await insertScenario()
+        const page = await runCh(
+          repo.listByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            options: { searchQuery: SEARCH_QUERY, sortBy: "startTime", limit: 10 },
+          }),
+        )
+        // Same order as lastActivity for this fixture (each session has one trace).
+        expect(page.items.map((s) => s.sessionId)).toEqual(["ax-B", "ax-C", "ax-A"])
+      })
+
+      it('sortBy="cost" orders by cost_total_microcents DESC', async () => {
+        await insertScenario()
+        const page = await runCh(
+          repo.listByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            options: { searchQuery: SEARCH_QUERY, sortBy: "cost", limit: 10 },
+          }),
+        )
+        // C: 200, A: 100, B: 50.
+        expect(page.items.map((s) => s.sessionId)).toEqual(["ax-C", "ax-A", "ax-B"])
+      })
+
+      // ASC click on a column header flips the full sort tuple — primary
+      // axis, timestamp tiebreaker, AND session_id all reverse together.
+      // Regression guard for a bug where ORDER BY / HAVING were hardcoded
+      // to DESC and ASC clicks rendered the same order as DESC.
+      it('sortBy="cost" with sortDirection="asc" reverses the cost ordering', async () => {
+        await insertScenario()
+        const page = await runCh(
+          repo.listByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            options: { searchQuery: SEARCH_QUERY, sortBy: "cost", sortDirection: "asc", limit: 10 },
+          }),
+        )
+        // Mirror image of the DESC test: B (50), A (100), C (200).
+        expect(page.items.map((s) => s.sessionId)).toEqual(["ax-B", "ax-A", "ax-C"])
+      })
+
+      // ASC pagination has to flip both the ORDER BY and the keyset
+      // comparison (`<` → `>`) for the second page to pick up where the
+      // first left off. A half-flipped predicate would either drop rows
+      // or repeat the entire first page.
+      it("paginates ASC search results without losing or duplicating rows", async () => {
+        const { sessions } = await insertScenario()
+        const firstPage = await runCh(
+          repo.listByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            options: { searchQuery: SEARCH_QUERY, sortBy: "lastActivity", sortDirection: "asc", limit: 2 },
+          }),
+        )
+        expect(firstPage.hasMore).toBe(true)
+        const cursor = nonNull(firstPage.nextCursor)
+        const secondPage = await runCh(
+          repo.listByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            options: { searchQuery: SEARCH_QUERY, sortBy: "lastActivity", sortDirection: "asc", limit: 2, cursor },
+          }),
+        )
+        const collected = [...firstPage.items.map((s) => s.sessionId), ...secondPage.items.map((s) => s.sessionId)]
+        // ASC by lastActivity: oldest end_time first.
+        // ax-A (offset 0s) → ax-C (offset 30s) → ax-B (offset 60s).
+        expect(collected).toEqual(["ax-A", "ax-C", "ax-B"])
+        expect(new Set(collected).size).toBe(sessions.length)
+      })
+
+      // The relevance floor (>=0.3 in search-plan.ts) still gates the
+      // candidate set even when the user has picked a non-relevance sort
+      // axis — a sub-floor session must NOT appear regardless of how its
+      // lastActivity compares to the surviving rows.
+      it("preserves the relevance floor when sorting by a non-relevance axis", async () => {
+        const start = new Date(Date.UTC(2026, 1, 5, 10, 0, 0))
+        const sessionAbove = "flr-above"
+        const sessionBelow = "flr-below"
+        const traceAbove = padTrace("fa")
+        const traceBelow = padTrace("fb")
+
+        // The "below" session is the freshest one — it would top the
+        // lastActivity sort if the floor were not enforced.
+        await insertSpans([
+          makeSpanRow({ traceId: traceAbove, spanId: padSpan("fa"), sessionId: sessionAbove, startTime: start }),
+          makeSpanRow({
+            traceId: traceBelow,
+            spanId: padSpan("fb"),
+            sessionId: sessionBelow,
+            startTime: new Date(start.getTime() + 600_000),
+          }),
+        ])
+        await insertSearchDocs([
+          { traceId: traceAbove, text: "floor-check above", startTime: start, contentHashSuffix: "fa" },
+          {
+            traceId: traceBelow,
+            text: "floor-check below",
+            startTime: new Date(start.getTime() + 600_000),
+            contentHashSuffix: "fb",
+          },
+        ])
+        // `sessionAbove` has cosine ~ 1.0 against the all-0.1 mock query;
+        // `sessionBelow` has cosine 0 (orthogonal vector → below the 0.3
+        // floor inside search-plan.ts and dropped from the candidate set).
+        const orthogonalVec = (() => {
+          const v = new Array(DIMS).fill(0) as number[]
+          v[0] = 0.1
+          return v as readonly number[]
+        })()
+        await insertSearchEmbeddings([
+          {
+            traceId: traceAbove,
+            chunkIndex: 0,
+            embedding: alignedEmbedding,
+            startTime: start,
+            contentHashSuffix: "fa",
+          },
+          {
+            traceId: traceBelow,
+            chunkIndex: 0,
+            embedding: orthogonalVec,
+            startTime: new Date(start.getTime() + 600_000),
+            contentHashSuffix: "fb",
+          },
+        ])
+
+        // Pure-semantic query path: the only one that exercises the 0.3
+        // floor for both the default and the axis-swapped sort.
+        const page = await runCh(
+          repo.listByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            options: { searchQuery: "floor-check boost", sortBy: "lastActivity", limit: 10 },
+          }),
+        )
+
+        const ids = page.items.map((s) => s.sessionId)
+        expect(ids).toContain(sessionAbove)
+        expect(ids).not.toContain(sessionBelow)
+      })
+
+      // The wire cursor carries `(sortValue, secondaryValue, sessionId)` —
+      // `secondaryValue` is the timestamp tiebreaker (`session_end_time`)
+      // appended to every search-mode ORDER BY so within-tier rows stay in
+      // recency order. Round-trip the cursor through a second page to
+      // confirm the keyset comparison preserves the sort.
+      it("nextCursor carries the timestamp tiebreaker and round-trips for axis paging", async () => {
+        const { sessions } = await insertScenario()
+        const firstPage = await runCh(
+          repo.listByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            options: { searchQuery: SEARCH_QUERY, sortBy: "lastActivity", limit: 2 },
+          }),
+        )
+        expect(firstPage.hasMore).toBe(true)
+        const cursor = nonNull(firstPage.nextCursor)
+        expect("sortValue" in cursor).toBe(true)
+        expect("secondaryValue" in cursor).toBe(true)
+        expect("sessionId" in cursor).toBe(true)
+        expect(typeof cursor.secondaryValue).toBe("string")
+        const secondPage = await runCh(
+          repo.listByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            options: { searchQuery: SEARCH_QUERY, sortBy: "lastActivity", limit: 2, cursor },
+          }),
+        )
+        const collected = [...firstPage.items.map((s) => s.sessionId), ...secondPage.items.map((s) => s.sessionId)]
+        expect(collected).toEqual(["ax-B", "ax-C", "ax-A"])
+        expect(new Set(collected).size).toBe(sessions.length)
+      })
+
+      // Phrase-only queries collapse every match to `best_score = 0.0`, so
+      // the relevance axis ties on every row — the timestamp tiebreaker is
+      // the only signal that keeps the page in a meaningful order.
+      it("orders phrase-only matches by recency within the all-zero relevance bucket", async () => {
+        const start = new Date(Date.UTC(2026, 1, 10, 10, 0, 0))
+        // Three sessions with distinct timestamps but identical (zero)
+        // relevance scores — phrase-only matches against the same literal.
+        const sessions = [
+          { id: "lex-old", offsetSec: 0 },
+          { id: "lex-newest", offsetSec: 200 },
+          { id: "lex-middle", offsetSec: 100 },
+        ] as const
+        await insertSpans(
+          sessions.map((s, i) =>
+            makeSpanRow({
+              traceId: padTrace(`lt${i}`),
+              spanId: padSpan(`lt${i}`),
+              sessionId: s.id,
+              startTime: new Date(start.getTime() + s.offsetSec * 1_000),
+            }),
+          ),
+        )
+        await insertSearchDocs(
+          sessions.map((s, i) => ({
+            traceId: padTrace(`lt${i}`),
+            text: `tiebreak fixture ${s.id}`,
+            startTime: new Date(start.getTime() + s.offsetSec * 1_000),
+            contentHashSuffix: `lt${i}`,
+          })),
+        )
+
+        const page = await runCh(
+          repo.listByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            options: { searchQuery: '"tiebreak"', limit: 10 },
+          }),
+        )
+
+        // All three are phrase-only → best_score = 0 → timestamp tiebreaker
+        // drives the order. Newest first, oldest last.
+        expect(page.items.map((s) => s.sessionId)).toEqual(["lex-newest", "lex-middle", "lex-old"])
+        for (const item of page.items) {
+          expect(nonNull(page.searchMatches?.[item.sessionId]).bestScore).toBe(0)
+        }
+      })
+
+      // Default-relevance path: same fixture mix as the cursor round-trip
+      // above, but no `sortBy` — exercises pagination through the
+      // (best_score, session_end_time, session_id) keyset on the path that
+      // ~95% of search traffic takes.
+      it("paginates default relevance results using the timestamp tiebreaker in the cursor", async () => {
+        const { sessions } = await insertScenario()
+        const firstPage = await runCh(
+          repo.listByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            options: { searchQuery: SEARCH_QUERY, limit: 2 },
+          }),
+        )
+        expect(firstPage.hasMore).toBe(true)
+        const cursor = nonNull(firstPage.nextCursor)
+        expect(typeof cursor.secondaryValue).toBe("string")
+        // All three sessions tie on best_score (aligned embeddings → cosine
+        // 1.0). The default ORDER BY's timestamp tiebreaker means the page
+        // walks them newest-first regardless of session_id ordering.
+        const secondPage = await runCh(
+          repo.listByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            options: { searchQuery: SEARCH_QUERY, limit: 2, cursor },
+          }),
+        )
+        const collected = [...firstPage.items.map((s) => s.sessionId), ...secondPage.items.map((s) => s.sessionId)]
+        expect(collected).toEqual(["ax-B", "ax-C", "ax-A"])
+        expect(new Set(collected).size).toBe(sessions.length)
+      })
+
+      // The most thorough pagination check: fixtures span multiple relevance
+      // levels AND have ties within each level, so the full
+      // `(best_score, session_end_time, session_id)` keyset matters at every
+      // page boundary. A bug in any one of the three cursor fields would
+      // either drop a row or repeat one.
+      it("walks mixed-relevance fixtures across multiple pages without losing or duplicating rows", async () => {
+        // Cosine vectors chosen to land on distinct best_score values. The
+        // mock query embedding is all-0.1; flipping N coords negates their
+        // contribution so cosine = (DIMS - 2N) / DIMS.
+        const flippedVec = (flipped: number): readonly number[] => {
+          const v = new Array(DIMS).fill(0.1) as number[]
+          for (let i = 0; i < flipped; i++) v[i] = -0.1
+          return v as readonly number[]
+        }
+        const COSINE_HIGH = flippedVec(133) // ≈ 0.87
+        const COSINE_MID = flippedVec(461) // ≈ 0.55
+        const start = new Date(Date.UTC(2026, 1, 15, 10, 0, 0))
+        // Three relevance tiers × two timestamps per tier = 6 sessions.
+        // Within each tier the *-fresh fixture ends later, so the timestamp
+        // tiebreaker should put it ahead of *-stale at the same tier.
+        const fixtures = [
+          { id: "mp-hi-fresh", offsetSec: 60, embed: COSINE_HIGH },
+          { id: "mp-hi-stale", offsetSec: 0, embed: COSINE_HIGH },
+          { id: "mp-mid-fresh", offsetSec: 70, embed: COSINE_MID },
+          { id: "mp-mid-stale", offsetSec: 10, embed: COSINE_MID },
+          { id: "mp-lex-fresh", offsetSec: 80, embed: undefined },
+          { id: "mp-lex-stale", offsetSec: 20, embed: undefined },
+        ] as const
+        await insertSpans(
+          fixtures.map((f, i) =>
+            makeSpanRow({
+              traceId: padTrace(`mp${i}`),
+              spanId: padSpan(`mp${i}`),
+              sessionId: f.id,
+              startTime: new Date(start.getTime() + f.offsetSec * 1_000),
+            }),
+          ),
+        )
+        await insertSearchDocs(
+          fixtures.map((f, i) => ({
+            traceId: padTrace(`mp${i}`),
+            text: `mixpage fixture ${f.id}`,
+            startTime: new Date(start.getTime() + f.offsetSec * 1_000),
+            contentHashSuffix: `mp${i}`,
+          })),
+        )
+        await insertSearchEmbeddings(
+          fixtures
+            .map((f, i) =>
+              f.embed
+                ? {
+                    traceId: padTrace(`mp${i}`),
+                    chunkIndex: 0,
+                    embedding: f.embed,
+                    startTime: new Date(start.getTime() + f.offsetSec * 1_000),
+                    contentHashSuffix: `mp${i}`,
+                  }
+                : null,
+            )
+            .filter((e): e is NonNullable<typeof e> => e !== null),
+        )
+
+        // Hybrid query (`"mixpage" relevance`) so semantic scoring runs and
+        // produces the distinct best_score tiers. Phrase-only mode would
+        // collapse everything to 0.0 (covered separately above).
+        const collected: string[] = []
+        let cursor: SessionListPage["nextCursor"]
+        for (let i = 0; i < 5; i++) {
+          const page = await runCh(
+            repo.listByProjectId({
+              organizationId: ORG_ID,
+              projectId: PROJECT_ID,
+              options: { searchQuery: '"mixpage" relevance', limit: 2, ...(cursor ? { cursor } : {}) },
+            }),
+          )
+          for (const item of page.items) collected.push(item.sessionId)
+          if (!page.hasMore || !page.nextCursor) break
+          cursor = page.nextCursor
+        }
+
+        // Expected: by best_score DESC (HI > MID > LEX), and within each
+        // tier by session_end_time DESC (fresh before stale).
+        expect(collected).toEqual([
+          "mp-hi-fresh",
+          "mp-hi-stale",
+          "mp-mid-fresh",
+          "mp-mid-stale",
+          "mp-lex-fresh",
+          "mp-lex-stale",
+        ])
+        expect(new Set(collected).size).toBe(collected.length)
+      })
+
+      // An unknown / typo'd `sortBy` value isn't an error — the repository
+      // falls through to the default relevance axis. Guards against a
+      // future regression where unknown values throw or silently produce a
+      // broken ORDER BY.
+      it("treats an unknown sortBy as the default relevance axis", async () => {
+        await insertScenario()
+        const defaultPage = await runCh(
+          repo.listByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            options: { searchQuery: SEARCH_QUERY, limit: 10 },
+          }),
+        )
+        const unknownPage = await runCh(
+          repo.listByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            options: { searchQuery: SEARCH_QUERY, sortBy: "not-a-real-axis", limit: 10 },
+          }),
+        )
+        expect(unknownPage.items.map((s) => s.sessionId)).toEqual(defaultPage.items.map((s) => s.sessionId))
+      })
+
+      // `sortBy="duration"` exercises a less-trafficked branch of
+      // SEARCH_SORT_AXES that requires the rollup to project
+      // `sum(duration_ns)` — confirms the SELECT-list extension wasn't
+      // dropped during refactors. Same fixture set as the cost test but
+      // sorted by duration instead.
+      it('sortBy="duration" orders by aggregated duration_ns DESC', async () => {
+        const start = new Date(Date.UTC(2026, 1, 20, 10, 0, 0))
+        const sessions = [
+          { id: "dur-short", durationMs: 1_000 },
+          { id: "dur-long", durationMs: 9_000 },
+          { id: "dur-medium", durationMs: 4_000 },
+        ] as const
+        await insertSpans(
+          sessions.map((s, i) =>
+            makeSpanRow({
+              traceId: padTrace(`du${i}`),
+              spanId: padSpan(`du${i}`),
+              sessionId: s.id,
+              startTime: new Date(start.getTime() + i * 1_000),
+              durationMs: s.durationMs,
+            }),
+          ),
+        )
+        await insertSearchDocs(
+          sessions.map((s, i) => ({
+            traceId: padTrace(`du${i}`),
+            text: `duration-fixture ${s.id}`,
+            startTime: new Date(start.getTime() + i * 1_000),
+            contentHashSuffix: `du${i}`,
+          })),
+        )
+
+        const page = await runCh(
+          repo.listByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            options: { searchQuery: '"duration-fixture"', sortBy: "duration", limit: 10 },
+          }),
+        )
+        expect(page.items.map((s) => s.sessionId)).toEqual(["dur-long", "dur-medium", "dur-short"])
+      })
+    })
+
+    // `buildAlignedAt` is currently unused but kept for fixtures that may
+    // want to inject specific cosine magnitudes; tagging via void keeps the
+    // import noise minimal without producing an unused-warning.
+    void buildAlignedAt
+  })
+
+  describe("conversation-intelligence filters (moments/topics)", () => {
+    const HASH_CURRENT = "a".repeat(64)
+    const HASH_STALE = "b".repeat(64)
+    const CLUSTER_ID = "c".repeat(24)
+    const startTime = new Date("2026-05-24T10:00:00.000Z")
+
+    const analysisRow = (sessionId: string, hash: string, indexedAt: string) => ({
+      organization_id: ORG_ID as string,
+      project_id: PROJECT_ID as string,
+      session_id: sessionId,
+      start_time: "2026-05-24 10:00:00.000000000",
+      end_time: "2026-05-24 10:05:00.000000000",
+      trace_ids: [],
+      analysis_hash: hash,
+      analysis_status: "analyzed",
+      indexed_at: indexedAt,
+    })
+
+    const labelRow = (sessionId: string, hash: string, kind: string) => ({
+      organization_id: ORG_ID as string,
+      project_id: PROJECT_ID as string,
+      session_id: sessionId,
+      analysis_hash: hash,
+      label_id: `${sessionId}-${kind}`,
+      moment_id: `${sessionId}-moment`,
+      kind,
+      actor: "user",
+      first_message_index: 0,
+      last_message_index: 1,
+      evidence: "quote",
+      indexed_at: "2026-05-24 10:06:00.000",
+    })
+
+    const observationRow = (sessionId: string, hash: string, clusterId: string) => ({
+      organization_id: ORG_ID as string,
+      project_id: PROJECT_ID as string,
+      observation_id: `${sessionId.slice(0, 12)}`.padEnd(24, "x"),
+      session_id: sessionId,
+      analysis_hash: hash,
+      moment_id: `${sessionId}-moment`,
+      projection_method: "moment_text_embedding",
+      projection_hash: "d".repeat(64),
+      projection_metadata: "{}",
+      embedding: [1, 0, 0],
+      start_time: "2026-05-24 10:00:30.000000000",
+      end_time: "2026-05-24 10:01:00.000000000",
+      assigned_cluster_id: clusterId,
+      assignment_confidence: 0.9,
+      assignment_method: "centroid_online",
+      reassignment_run_id: "",
+      indexed_at: "2026-05-24 10:06:00.000000000",
+    })
+
+    // The testkit truncates every table in beforeEach, so fixtures seed
+    // inside each test via this helper (same pattern as the span tests).
+    const seedCiFixtures = async () => {
+      // Two sessions: ci-escalated has an escalation label and a topic
+      // observation under its CURRENT analysis; ci-plain has a label only
+      // under a STALE generation (its current analysis has none).
+      await insertSpans([
+        makeSpanRow({ traceId: "a1".repeat(16), spanId: "a".repeat(16), sessionId: "ci-escalated", startTime }),
+        makeSpanRow({ traceId: "b1".repeat(16), spanId: "b".repeat(16), sessionId: "ci-plain", startTime }),
+      ])
+      await ch.client.insert({
+        table: "session_analyses",
+        values: [
+          analysisRow("ci-escalated", HASH_CURRENT, "2026-05-24 10:06:00.000"),
+          analysisRow("ci-plain", HASH_STALE, "2026-05-24 10:06:00.000"),
+          analysisRow("ci-plain", HASH_CURRENT, "2026-05-24 10:07:00.000"),
+        ],
+        format: "JSONEachRow",
+      })
+      await ch.client.insert({
+        table: "session_moment_labels",
+        values: [
+          labelRow("ci-escalated", HASH_CURRENT, "escalation"),
+          // Stale-generation label: must NOT match after pinning.
+          labelRow("ci-plain", HASH_STALE, "escalation"),
+        ],
+        format: "JSONEachRow",
+      })
+      await ch.client.insert({
+        table: "taxonomy_observations",
+        values: [observationRow("ci-escalated", HASH_CURRENT, CLUSTER_ID)],
+        format: "JSONEachRow",
+      })
+    }
+
+    const listWith = (filters: Record<string, unknown>) =>
+      repo.listByProjectId({
+        organizationId: ORG_ID,
+        projectId: PROJECT_ID,
+        options: { limit: 50, filters: filters as never },
+      })
+
+    it("moments filter matches only sessions whose CURRENT analysis carries the kind", async () => {
+      await seedCiFixtures()
+      const page = await Effect.runPromise(
+        listWith({ moments: [{ op: "in", value: ["escalation"] }] }).pipe(
+          Effect.provide(Layer.mergeAll(mockAILayer, ChSqlClientLive(ch.client, ORG_ID))),
+        ),
+      )
+      const ids = page.items.map((session) => session.sessionId as string)
+      expect(ids).toContain("ci-escalated")
+      // ci-plain's escalation label belongs to a superseded generation.
+      expect(ids).not.toContain("ci-plain")
+    })
+
+    it("topics filter matches sessions with observations in the selected clusters", async () => {
+      await seedCiFixtures()
+      const page = await Effect.runPromise(
+        listWith({ topics: [{ op: "in", value: [CLUSTER_ID] }] }).pipe(
+          Effect.provide(Layer.mergeAll(mockAILayer, ChSqlClientLive(ch.client, ORG_ID))),
+        ),
+      )
+      const ids = page.items.map((session) => session.sessionId as string)
+      expect(ids).toContain("ci-escalated")
+      expect(ids).not.toContain("ci-plain")
+    })
+
+    it("a no-match sentinel topic id matches zero sessions instead of dropping the filter", async () => {
+      await seedCiFixtures()
+      const page = await Effect.runPromise(
+        listWith({ topics: [{ op: "in", value: ["__no_matching_topic__"] }] }).pipe(
+          Effect.provide(Layer.mergeAll(mockAILayer, ChSqlClientLive(ch.client, ORG_ID))),
+        ),
+      )
+      const ids = page.items.map((session) => session.sessionId as string)
+      expect(ids).not.toContain("ci-escalated")
+      expect(ids).not.toContain("ci-plain")
+    })
+
+    it("count agrees with the filtered list", async () => {
+      await seedCiFixtures()
+      const count = await Effect.runPromise(
+        repo
+          .countByProjectId({
+            organizationId: ORG_ID,
+            projectId: PROJECT_ID,
+            filters: { moments: [{ op: "in", value: ["escalation"] }] } as never,
+          })
+          .pipe(Effect.provide(Layer.mergeAll(mockAILayer, ChSqlClientLive(ch.client, ORG_ID)))),
+      )
+      expect(count.totalCount).toBe(1)
+    })
+  })
+
+  describe("distinctFilterValues: tools", () => {
+    it("lists called tools from the rollup, including calls whose spans carry no session id", async () => {
+      const startTime = new Date(Date.UTC(2026, 0, 10, 10, 0, 0))
+      // No session id: rolls up as a trace-keyed pseudo-session, so the
+      // called tool still surfaces as a filter option.
+      const calledNoSession: SpanRow = {
+        ...makeSpanRow({ traceId: "d".repeat(32), spanId: "d1".padEnd(16, "0"), startTime }),
+        operation: "execute_tool",
+        tool_name: "sessionless_tool",
+        tool_call_id: "call_1",
+      }
+      const calledWithSession: SpanRow = {
+        ...makeSpanRow({ traceId: "e".repeat(32), spanId: "e1".padEnd(16, "0"), startTime, sessionId: "sess-1" }),
+        operation: "execute_tool",
+        tool_name: "sessioned_tool",
+        tool_call_id: "call_2",
+      }
+      // Defined but never called: not session activity, so it is not a
+      // sessions filter option (the filter means "at least one call").
+      const definedNoSession: SpanRow = {
+        ...makeSpanRow({ traceId: "f".repeat(32), spanId: "f1".padEnd(16, "0"), startTime }),
+        operation: "chat",
+        tool_definitions: '[{"name":"defined_only_tool","description":"d","parameters":{}}]',
+      }
+      await insertSpans([calledNoSession, calledWithSession, definedNoSession])
+
+      const values = await runCh(
+        repo.distinctFilterValues({ organizationId: ORG_ID, projectId: PROJECT_ID, column: "tools" }),
+      )
+      expect(values).toEqual(["sessioned_tool", "sessionless_tool"])
+    })
+
+    it("lists defined tools for the definedTools multiselect, including sessionless chat spans", async () => {
+      const startTime = new Date(Date.UTC(2026, 0, 10, 10, 0, 0))
+      const definedNoSession: SpanRow = {
+        ...makeSpanRow({ traceId: "f".repeat(32), spanId: "f1".padEnd(16, "0"), startTime }),
+        operation: "chat",
+        tool_definitions: '[{"name":"defined_only_tool","description":"d","parameters":{}}]',
+      }
+      const calledWithSession: SpanRow = {
+        ...makeSpanRow({ traceId: "e".repeat(32), spanId: "e1".padEnd(16, "0"), startTime, sessionId: "sess-1" }),
+        operation: "execute_tool",
+        tool_name: "called_only_tool",
+        tool_call_id: "call_2",
+      }
+      await insertSpans([definedNoSession, calledWithSession])
+
+      const values = await runCh(
+        repo.distinctFilterValues({ organizationId: ORG_ID, projectId: PROJECT_ID, column: "definedTools" }),
+      )
+      expect(values).toEqual(["defined_only_tool"])
+    })
+  })
+
+  describe("annotation author filtering (score.annotatorId)", () => {
+    const ALICE = "annotator-alice-0001"
+    const BOB = "annotator-bob-0001"
+    const start = new Date(Date.UTC(2026, 0, 1, 10, 0, 0))
+
+    const insertScores = (rows: Array<Record<string, unknown>>) =>
+      Effect.runPromise(insertJsonEachRow(ch.client, "scores", rows))
+
+    const scoreRow = (overrides: Record<string, unknown>) => ({
+      id: overrides.id,
+      organization_id: ORG_ID as string,
+      project_id: PROJECT_ID as string,
+      session_id: overrides.session_id ?? "",
+      trace_id: overrides.trace_id ?? "",
+      span_id: "",
+      source: overrides.source ?? "annotation",
+      source_id: overrides.source_id ?? "UI",
+      annotator_id: overrides.annotator_id ?? "",
+      simulation_id: "",
+      signal_id: "",
+      value: overrides.value ?? 1,
+      passed: overrides.passed ?? true,
+      errored: false,
+      duration: 0,
+      tokens: 0,
+      cost: 0,
+      created_at: toClickHouseDateTime(start),
+    })
+
+    const sessionIdsFor = async (filters: Record<string, unknown>) => {
+      const page = await runCh(
+        repo.listByProjectId({
+          organizationId: ORG_ID,
+          projectId: PROJECT_ID,
+          options: { limit: 50, filters: filters as never },
+        }),
+      )
+      return page.items.map((s) => s.sessionId).sort()
+    }
+
+    const seed = async () => {
+      // Three LLM sessions; alice annotated one, bob another, the third is unannotated
+      // and carries only an evaluation score (annotator_id = '').
+      await insertSpans([
+        makeSpanRow({
+          traceId: "a".repeat(32),
+          spanId: "a".repeat(16),
+          sessionId: "sess-alice",
+          startTime: start,
+          model: "gpt-4",
+        }),
+        makeSpanRow({
+          traceId: "b".repeat(32),
+          spanId: "b".repeat(16),
+          sessionId: "sess-bob",
+          startTime: start,
+          model: "gpt-4",
+        }),
+        makeSpanRow({
+          traceId: "c".repeat(32),
+          spanId: "c".repeat(16),
+          sessionId: "sess-none",
+          startTime: start,
+          model: "gpt-4",
+        }),
+      ])
+      await insertScores([
+        scoreRow({
+          id: "score-alice-000000000001",
+          session_id: "sess-alice",
+          trace_id: "a".repeat(32),
+          annotator_id: ALICE,
+        }),
+        scoreRow({
+          id: "score-bob-00000000000002",
+          session_id: "sess-bob",
+          trace_id: "b".repeat(32),
+          annotator_id: BOB,
+        }),
+        scoreRow({
+          id: "score-eval-0000000000003",
+          session_id: "sess-none",
+          trace_id: "c".repeat(32),
+          source: "evaluation",
+          source_id: "eval",
+          passed: false,
+          value: 0,
+        }),
+      ])
+    }
+
+    it("returns only sessions annotated by the selected member", async () => {
+      await seed()
+      expect(await sessionIdsFor({ "score.annotatorId": [{ op: "in", value: [ALICE] }] })).toEqual(["sess-alice"])
+    })
+
+    it("returns the union when multiple members are selected", async () => {
+      await seed()
+      expect(await sessionIdsFor({ "score.annotatorId": [{ op: "in", value: [ALICE, BOB] }] })).toEqual([
+        "sess-alice",
+        "sess-bob",
+      ])
+    })
+
+    it("has-annotations (annotator_id != '') excludes evaluation-only sessions", async () => {
+      await seed()
+      expect(await sessionIdsFor({ "score.annotatorId": [{ op: "neq", value: "" }] })).toEqual([
+        "sess-alice",
+        "sess-bob",
+      ])
+    })
+  })
+})

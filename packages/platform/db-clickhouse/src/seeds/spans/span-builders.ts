@@ -1,0 +1,613 @@
+import type { ModelConfig, SeedUser, ToolConfig } from "@domain/shared/seeding"
+import type { CostSource, ModelRegistryPricing } from "@domain/spans"
+import { modelRegistryPricing } from "@domain/spans"
+
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
+
+export type SpanRow = {
+  organization_id: string
+  project_id: string
+  session_id: string
+  user_id: string
+  /** Optional so hand-built test rows can omit it; ClickHouse defaults it to ''. */
+  user_email?: string
+  trace_id: string
+  span_id: string
+  parent_span_id: string
+  api_key_id: string
+  simulation_id: string
+  start_time: string
+  end_time: string
+  name: string
+  service_name: string
+  kind: number
+  status_code: number
+  status_message: string
+  error_type: string
+  tags: string[]
+  metadata: Record<string, string>
+  operation: string
+  provider: string
+  model: string
+  agent_name: string
+  response_model: string
+  tokens_input: number
+  tokens_output: number
+  tokens_cache_read: number
+  tokens_cache_create: number
+  tokens_reasoning: number
+  cost_input_microcents: number
+  cost_output_microcents: number
+  cost_total_microcents: number
+  cost_is_estimated: number
+  /**
+   * Optional so hand-built test rows can omit it; ClickHouse defaults it to ''.
+   * Set it wherever a row carries cost — the `unpriced_span_count` rollups read
+   * this column raw, with none of `parseCostSource`'s fallback for empty values.
+   * `""` is what a row written before the column existed reads back as, which is
+   * the only way to seed the `unknown` bucket.
+   */
+  cost_source?: CostSource | ""
+  time_to_first_token_ns: number
+  is_streaming: number
+  response_id: string
+  finish_reasons: string[]
+  input_messages: string
+  output_messages: string
+  system_instructions: string
+  tool_definitions: string
+  tool_call_id: string
+  tool_name: string
+  tool_input: string
+  tool_output: string
+  attr_string: Record<string, string>
+  attr_int: Record<string, number>
+  attr_float: Record<string, number>
+  attr_bool: Record<string, number>
+  resource_string: Record<string, string>
+  scope_name: string
+  scope_version: string
+}
+
+type SpanBase = {
+  traceId: string
+  parentSpanId: string
+  startTime: Date
+  durationMs: number
+  serviceName: string
+  sessionId: string
+  userId: string
+  userEmail: string
+  organizationId: string
+  projectId: string
+  apiKeyId: string
+  simulationId: string
+  tags: string[]
+  metadata: Record<string, string>
+}
+
+export type TraceConfig = {
+  readonly traceCount: number
+  readonly timeWindow: { readonly from: Date; readonly to: Date }
+  readonly organizationId: string
+  readonly projectId: string
+  readonly apiKeyId: string
+  readonly simulationId?: string
+}
+
+// ---------------------------------------------------------------------------
+// Random helpers
+// ---------------------------------------------------------------------------
+
+export function randInt(min: number, max: number): number {
+  return Math.floor(Math.random() * (max - min + 1)) + min
+}
+
+export function randFloat(min: number, max: number): number {
+  return Math.random() * (max - min) + min
+}
+
+export function pick<T>(arr: readonly T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)] as T
+}
+
+export function pickN<T>(arr: readonly T[], n: number): T[] {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5)
+  return shuffled.slice(0, Math.min(n, arr.length))
+}
+
+export function randomHex(length: number): string {
+  const chars = "0123456789abcdef"
+  let result = ""
+  for (let i = 0; i < length; i++) {
+    result += chars[Math.floor(Math.random() * 16)]
+  }
+  return result
+}
+
+function randomResponseId(provider: string): string {
+  switch (provider) {
+    case "anthropic":
+      return `msg_${randomHex(24)}`
+    case "openai":
+      return `chatcmpl-${randomHex(24)}`
+    default:
+      return `resp-${randomHex(16)}`
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Time helpers
+// ---------------------------------------------------------------------------
+
+export function formatClickhouseTime(date: Date): string {
+  const iso = date.toISOString()
+  return iso.replace("T", " ").replace("Z", "000")
+}
+
+export function parseClickhouseTime(value: string): Date {
+  return new Date(`${value.replace(" ", "T")}Z`)
+}
+
+export function addMs(date: Date, ms: number): Date {
+  return new Date(date.getTime() + ms)
+}
+
+export function clampSpansToWindowEnd(spans: readonly SpanRow[], windowEnd: Date): SpanRow[] {
+  const windowEndMs = windowEnd.getTime()
+
+  return spans.map((span) => {
+    const start = parseClickhouseTime(span.start_time)
+    const end = parseClickhouseTime(span.end_time)
+
+    if (start.getTime() <= windowEndMs && end.getTime() <= windowEndMs) {
+      return span
+    }
+
+    const clampedStart = start.getTime() > windowEndMs ? new Date(windowEndMs) : start
+    const clampedEnd = end.getTime() > windowEndMs ? new Date(windowEndMs) : end
+    const normalizedEnd = clampedEnd.getTime() < clampedStart.getTime() ? clampedStart : clampedEnd
+
+    return {
+      ...span,
+      start_time: formatClickhouseTime(clampedStart),
+      end_time: formatClickhouseTime(normalizedEnd),
+    }
+  })
+}
+
+export function randomTimeInWindow(from: Date, to: Date): Date {
+  const range = to.getTime() - from.getTime()
+  const candidate = new Date(from.getTime() + Math.random() * range)
+  const hour = candidate.getUTCHours()
+  const day = candidate.getUTCDay()
+  const isBusinessHours = hour >= 8 && hour <= 18 && day >= 1 && day <= 5
+  if (isBusinessHours || Math.random() < 0.3) return candidate
+  const retry = new Date(from.getTime() + Math.random() * range)
+  return retry
+}
+
+// ---------------------------------------------------------------------------
+// Token & cost estimation
+// ---------------------------------------------------------------------------
+
+function estimateTokens(text: string): number {
+  return Math.max(10, Math.ceil(text.length / 4))
+}
+
+const MICROCENTS_PER_USD = 100_000_000
+
+/** `usdPerMToken` is a registry rate, so the unit is fixed at the one place it is read. */
+function computeCost(tokens: number, usdPerMToken: number): number {
+  return Math.round((tokens / 1_000_000) * usdPerMToken * MICROCENTS_PER_USD)
+}
+
+/**
+ * Seeded spans are costed from the same registry the ingest path prices real traffic
+ * from, so a fixture can never state a price the dashboard disagrees with — and an
+ * unpriced pair produces the `unpriced` rows it produces in production rather than
+ * needing a fixture to assert them.
+ */
+const seedModelPricing = (modelConfig: ModelConfig): ModelRegistryPricing | null =>
+  modelRegistryPricing({ provider: modelConfig.provider, model: modelConfig.model })
+
+/**
+ * The same registry pricing for a fixture that assembles its own span rather than going
+ * through `makeLlmSpan`.
+ *
+ * Worth reaching for rather than writing a rate inline: a fixture priced under the
+ * registry reads back as savings larger than the spend it would come out of, because the
+ * cost panel models counterfactuals from registry prices and compares them with what was
+ * recorded.
+ */
+export function seedLlmCostMicrocents({
+  provider,
+  model,
+  inputTokens,
+  outputTokens,
+}: {
+  readonly provider: string
+  readonly model: string
+  readonly inputTokens: number
+  readonly outputTokens: number
+}): { readonly input: number; readonly output: number } {
+  const pricing = modelRegistryPricing({ provider, model })
+  if (!pricing) return { input: 0, output: 0 }
+  return { input: computeCost(inputTokens, pricing.input), output: computeCost(outputTokens, pricing.output) }
+}
+
+// ---------------------------------------------------------------------------
+// Prompt cache
+// ---------------------------------------------------------------------------
+
+/** What share of a call's prompt the provider served from cache, and wrote to it. */
+export type CacheProfile = {
+  readonly hitRate: number
+  readonly writeShare: number
+}
+
+type CacheTokenSplit = {
+  readonly input: number
+  readonly cacheRead: number
+  readonly cacheCreate: number
+}
+
+export const CACHE_OFF: CacheProfile = { hitRate: 0, writeShare: 0 }
+
+/**
+ * Carves reads and writes *out* of the prompt rather than adding them alongside
+ * it: `spans.tokens_total` is materialized as the sum of all five token columns,
+ * so a prompt counted in both `tokens_input` and `tokens_cache_read` is billed
+ * twice and reads back as half the cache hit rate it actually had.
+ */
+export function splitCacheTokens(promptTokens: number, profile: CacheProfile): CacheTokenSplit {
+  const cacheRead = Math.floor(promptTokens * profile.hitRate)
+  const cacheCreate = Math.floor(promptTokens * profile.writeShare)
+  return { input: Math.max(0, promptTokens - cacheRead - cacheCreate), cacheRead, cacheCreate }
+}
+
+/**
+ * Input-side dollars with cache reads and writes folded in — the shape
+ * provider-reported cost arrives in, where the cache portion cannot be recovered
+ * by subtraction. A model with no cache rate is charged at its input rate, and an
+ * unpriced pair costs nothing at all.
+ */
+export function inputSideCostMicrocents(split: CacheTokenSplit, pricing: ModelRegistryPricing | null): number {
+  if (!pricing) return 0
+  return (
+    computeCost(split.input, pricing.input) +
+    computeCost(split.cacheRead, pricing.cacheRead ?? pricing.input) +
+    computeCost(split.cacheCreate, pricing.cacheWrite ?? pricing.input)
+  )
+}
+
+const randomCacheProfile = (): CacheProfile => ({
+  hitRate: Math.random() > 0.6 ? randFloat(0.2, 0.6) : 0,
+  writeShare: 0,
+})
+
+// ---------------------------------------------------------------------------
+// Message builders (OTEL GenAI format)
+// ---------------------------------------------------------------------------
+
+type Part = { type: string; [key: string]: unknown }
+export type Message = { role: string; parts: Part[] }
+
+export function userMessage(content: string): Message {
+  return { role: "user", parts: [{ type: "text", content }] }
+}
+
+export function systemMessage(content: string): Message {
+  return { role: "system", parts: [{ type: "text", content }] }
+}
+
+export function assistantTextMessage(content: string): Message {
+  return { role: "assistant", parts: [{ type: "text", content }] }
+}
+
+export function assistantToolCallMessage(
+  toolCalls: { id: string; name: string; args: Record<string, unknown> }[],
+): Message {
+  return {
+    role: "assistant",
+    parts: toolCalls.map((tc) => ({
+      type: "tool_call",
+      id: tc.id,
+      name: tc.name,
+      arguments: tc.args,
+    })),
+  }
+}
+
+export function toolResultMessage(callId: string, result: unknown): Message {
+  return {
+    role: "tool",
+    parts: [{ type: "tool_call_response", id: callId, response: JSON.stringify(result) }],
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Span builders
+// ---------------------------------------------------------------------------
+
+function makeBaseSpan(base: SpanBase): SpanRow {
+  return {
+    organization_id: base.organizationId,
+    project_id: base.projectId,
+    session_id: base.sessionId,
+    user_id: base.userId,
+    user_email: base.userEmail,
+    trace_id: base.traceId,
+    span_id: randomHex(16),
+    parent_span_id: base.parentSpanId,
+    api_key_id: base.apiKeyId,
+    simulation_id: base.simulationId,
+    start_time: formatClickhouseTime(base.startTime),
+    end_time: formatClickhouseTime(addMs(base.startTime, base.durationMs)),
+    name: "",
+    service_name: base.serviceName,
+    kind: 1,
+    status_code: 1,
+    status_message: "",
+    error_type: "",
+    tags: base.tags,
+    metadata: base.metadata,
+    operation: "unspecified",
+    provider: "",
+    model: "",
+    agent_name: "",
+    response_model: "",
+    tokens_input: 0,
+    tokens_output: 0,
+    tokens_cache_read: 0,
+    tokens_cache_create: 0,
+    tokens_reasoning: 0,
+    cost_input_microcents: 0,
+    cost_output_microcents: 0,
+    cost_total_microcents: 0,
+    cost_is_estimated: 0,
+    cost_source: "no_tokens",
+    time_to_first_token_ns: 0,
+    is_streaming: 0,
+    response_id: "",
+    finish_reasons: [],
+    input_messages: "",
+    output_messages: "",
+    system_instructions: "",
+    tool_definitions: "",
+    tool_call_id: "",
+    tool_name: "",
+    tool_input: "",
+    tool_output: "",
+    attr_string: {},
+    attr_int: {},
+    attr_float: {},
+    attr_bool: {},
+    resource_string: { "service.name": base.serviceName },
+    scope_name: "",
+    scope_version: "",
+  }
+}
+
+function toolToDefinition(tool: ToolConfig) {
+  return { name: tool.name, description: tool.description, parameters: tool.parameters }
+}
+
+export function makeLlmSpan({
+  base,
+  modelConfig,
+  inputMessages,
+  outputMessages,
+  systemInstructions,
+  toolDefinitions,
+  finishReason,
+  temperature,
+  promptTokens,
+  completionTokens,
+  cacheProfile,
+}: {
+  base: SpanBase
+  modelConfig: ModelConfig
+  inputMessages: Message[]
+  outputMessages: Message[]
+  systemInstructions?: string
+  toolDefinitions?: ToolConfig[]
+  finishReason: string
+  temperature?: number
+  /** Overrides the estimate from the message text, for fixtures that need a specific prompt size. */
+  promptTokens?: number
+  /** The output-side counterpart of `promptTokens`, so a fixture can pin its input/output cost split. */
+  completionTokens?: number
+  cacheProfile?: CacheProfile
+}): SpanRow {
+  const span = makeBaseSpan(base)
+  const inputTokens = promptTokens ?? estimateTokens(JSON.stringify(inputMessages))
+  const outputTokens = completionTokens ?? estimateTokens(JSON.stringify(outputMessages))
+  const cache = splitCacheTokens(inputTokens, cacheProfile ?? randomCacheProfile())
+  const reasoningTokens = modelConfig.isReasoning ? Math.floor(outputTokens * randFloat(1.5, 4)) : 0
+  const pricing = seedModelPricing(modelConfig)
+  const costIn = inputSideCostMicrocents(cache, pricing)
+  // Reasoning tokens bill at their own rate, falling back to output — same split
+  // `estimateCostFromTokens` applies to real traffic.
+  const costOut = pricing
+    ? computeCost(outputTokens, pricing.output) + computeCost(reasoningTokens, pricing.reasoning ?? pricing.output)
+    : 0
+
+  span.name = `chat ${modelConfig.model}`
+  span.operation = "chat"
+  span.provider = modelConfig.provider
+  span.model = modelConfig.model
+  span.response_model = modelConfig.responseModel
+  span.tokens_input = cache.input
+  span.tokens_output = outputTokens
+  span.tokens_cache_read = cache.cacheRead
+  span.tokens_cache_create = cache.cacheCreate
+  span.tokens_reasoning = reasoningTokens
+  span.cost_input_microcents = costIn
+  span.cost_output_microcents = costOut
+  span.cost_total_microcents = costIn + costOut
+  span.cost_is_estimated = pricing ? 1 : 0
+  span.cost_source = pricing ? "estimated" : "unpriced"
+  span.response_id = randomResponseId(modelConfig.provider)
+  span.finish_reasons = [finishReason]
+  // Empty lists serialize to "" (not "[]") to match the real span writer: the
+  // trace/session rollups select messages with `input_messages != ''`.
+  span.input_messages = inputMessages.length > 0 ? JSON.stringify(inputMessages) : ""
+  span.output_messages = outputMessages.length > 0 ? JSON.stringify(outputMessages) : ""
+  span.system_instructions = systemInstructions ? JSON.stringify([{ type: "text", content: systemInstructions }]) : ""
+  span.tool_definitions = toolDefinitions ? JSON.stringify(toolDefinitions.map(toolToDefinition)) : ""
+  span.scope_name = modelConfig.scopeName
+  span.scope_version = "1.0.0"
+  if (temperature !== undefined) {
+    span.attr_float = { "gen_ai.request.temperature": temperature }
+  }
+
+  const isStreaming = Math.random() > 0.4
+  if (isStreaming && outputTokens > 0) {
+    span.is_streaming = 1
+    const durationNs = base.durationMs * 1_000_000
+    span.time_to_first_token_ns = Math.floor(durationNs * randFloat(0.05, 0.3))
+  }
+
+  return span
+}
+
+export function makeToolSpan({
+  base,
+  tool,
+  callId,
+  error,
+}: {
+  base: SpanBase
+  tool: ToolConfig
+  callId: string
+  error?: { type: string; message: string }
+}): SpanRow {
+  const span = makeBaseSpan(base)
+  span.name = `execute_tool ${tool.name}`
+  span.operation = "execute_tool"
+  span.kind = 2
+  span.tool_call_id = callId
+  span.tool_name = tool.name
+  span.tool_input = JSON.stringify(tool.sampleArgs)
+  span.tool_output = JSON.stringify(tool.sampleResult)
+  span.attr_string = {
+    "gen_ai.tool.name": tool.name,
+    "gen_ai.tool.call.id": callId,
+    "gen_ai.tool.type": "function",
+  }
+  if (error) {
+    span.status_code = 2
+    span.status_message = error.message
+    span.error_type = error.type
+    span.tool_output = ""
+  }
+  return span
+}
+
+export function makeEmbeddingSpan({
+  base,
+  modelConfig,
+  inputTokens,
+}: {
+  base: SpanBase
+  modelConfig: ModelConfig
+  inputTokens: number
+}): SpanRow {
+  const span = makeBaseSpan(base)
+  const pricing = seedModelPricing(modelConfig)
+  const costIn = pricing ? computeCost(inputTokens, pricing.input) : 0
+
+  span.name = `embeddings ${modelConfig.model}`
+  span.operation = "embeddings"
+  span.provider = modelConfig.provider
+  span.model = modelConfig.model
+  span.response_model = modelConfig.responseModel
+  span.tokens_input = inputTokens
+  span.cost_input_microcents = costIn
+  span.cost_total_microcents = costIn
+  span.cost_is_estimated = pricing ? 1 : 0
+  span.cost_source = pricing ? "estimated" : "unpriced"
+  span.scope_name = modelConfig.scopeName
+  span.scope_version = "1.0.0"
+  return span
+}
+
+export function makeRetrievalSpan({ base }: { base: SpanBase }): SpanRow {
+  const span = makeBaseSpan(base)
+  span.name = "retrieval vector-store"
+  span.operation = "retrieval"
+  span.attr_int = { "gen_ai.retrieval.documents.count": randInt(2, 10) }
+  return span
+}
+
+export function makeWrapperSpan({ base, name }: { base: SpanBase; name: string }): SpanRow {
+  const span = makeBaseSpan(base)
+  span.name = name
+  span.kind = 2
+  return span
+}
+
+// ---------------------------------------------------------------------------
+// Trace context
+// ---------------------------------------------------------------------------
+
+export type TraceContext = {
+  organizationId: string
+  projectId: string
+  apiKeyId: string
+  simulationId: string
+  startTime: Date
+  sessionId: string
+  userId: string
+  userEmail: string
+  serviceName: string
+  tags: string[]
+  metadata: Record<string, string>
+}
+
+export function toBase(
+  ctx: TraceContext,
+  traceId: string,
+  parentSpanId: string,
+  startTime: Date,
+  durationMs: number,
+): SpanBase {
+  return {
+    traceId,
+    parentSpanId,
+    startTime,
+    durationMs,
+    serviceName: ctx.serviceName,
+    sessionId: ctx.sessionId,
+    userId: ctx.userId,
+    userEmail: ctx.userEmail,
+    organizationId: ctx.organizationId,
+    projectId: ctx.projectId,
+    apiKeyId: ctx.apiKeyId,
+    simulationId: ctx.simulationId,
+    tags: ctx.tags,
+    metadata: ctx.metadata,
+  }
+}
+
+/**
+ * Picks a weighted random item from a distribution.
+ * Each entry has a `weight` field; the probability is weight / totalWeight.
+ */
+export function pickByWeight<T extends { weight: number }>(items: readonly T[]): T {
+  const totalWeight = items.reduce((sum, it) => sum + it.weight, 0)
+  let r = Math.random() * totalWeight
+  for (const item of items) {
+    r -= item.weight
+    if (r <= 0) return item
+  }
+  return items[items.length - 1] as T
+}
+
+/** Rolls whether a trace/session gets an end-user, then weighted-picks one from the pool. */
+export function pickSeedUser(pool: readonly SeedUser[], probability: number): SeedUser | undefined {
+  return Math.random() < probability && pool.length > 0 ? pickByWeight(pool) : undefined
+}

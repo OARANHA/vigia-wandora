@@ -1,0 +1,73 @@
+/**
+ * Type-specific surface for Claude Code Wrapped — schema, queries,
+ * personality, build pipeline. Future Wrapped types (Openclaw, Codex, …)
+ * live in sibling folders under `../`.
+ */
+
+export {
+  CURRENT_REPORT_VERSION,
+  type FileLine,
+  type LastReport,
+  type LocStats,
+  lastReportSchema,
+  PERSONALITY_KINDS,
+  type Personality,
+  type PersonalityKind,
+  REPORT_VERSIONS,
+  type Report,
+  type ReportV1,
+  type ReportV2,
+  type ReportV3,
+  type ReportVersion,
+  reportV2Schema,
+  reportV3Schema,
+  SCHEMA_BY_VERSION,
+  type SkillCount,
+  type Skills,
+  TOOL_BUCKETS,
+  type ToolBucket,
+  type ToolMix,
+  type TopBashCommand,
+  type WorkspaceDeepDive,
+  type WorkspaceDeepDiveV3,
+} from "./entities/report.ts"
+export { pickReadAnchor, pickWrittenAnchor } from "./helpers/anchors.ts"
+export {
+  type BashPatternRow,
+  type BiggestWriteRow,
+  type BranchRow,
+  type BusiestDayRow,
+  ClaudeCodeSpanReader,
+  type ClaudeCodeSpanReaderShape,
+  type FileTouchesRow,
+  type HeatmapCellRow,
+  type LocStatsRow,
+  type OrgProjectPair,
+  type ProjectWindowInput,
+  type SessionDurationStatsRow,
+  type SkillCountRow,
+  type SkillUsageRow,
+  type ToolMixRow,
+  type WindowInput,
+  type WorkspaceDeepDiveRow,
+  type WorkspaceRow,
+  type WrappedTotalsRow,
+} from "./ports/claude-code-span-reader.ts"
+export {
+  type AssignPersonalityInput,
+  assignPersonality,
+  BASELINE_SHARE,
+  consultantGatePasses,
+  scholarGatePasses,
+  shipperGatePasses,
+  strategistGatePasses,
+  testerGatePasses,
+} from "./use-cases/assign-personality.ts"
+export {
+  type AssembleReportInput,
+  assembleReport,
+  type BuildReportInput,
+  buildReportUseCase,
+  toolBucketFor,
+} from "./use-cases/build-report.ts"
+export { listProjectsWithClaudeCodeSpansUseCase } from "./use-cases/list-projects-with-claude-code-spans.ts"

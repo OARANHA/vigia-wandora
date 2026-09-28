@@ -1,0 +1,40 @@
+import { createLogger } from "@repo/observability"
+import { createRouter as createTanStackRouter } from "@tanstack/react-router"
+import { routeTree } from "./routeTree.gen.ts"
+
+const routerLogger = createLogger("web")
+
+export function getRouter() {
+  const router = createTanStackRouter({
+    routeTree,
+    defaultStructuralSharing: true,
+    defaultNotFoundComponent: () => {
+      const currentPath = typeof window !== "undefined" ? window.location.pathname : ""
+      if (currentPath) routerLogger.error(`[Router 404] Path not found: ${currentPath}`)
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4">
+          <h1 className="text-2xl font-bold">404 - Page Not Found</h1>
+          <p className="text-muted-foreground">Path: {currentPath}</p>
+          <a href="/" className="text-primary underline">
+            Go home
+          </a>
+        </div>
+      )
+    },
+  })
+
+  return router
+}
+
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: ReturnType<typeof getRouter>
+  }
+  interface StaticDataRouteOption {
+    /** Optional header breadcrumb segment for this route (see `BreadcrumbTrail`). */
+    readonly breadcrumb?: import("react").ComponentType
+    /** When true, the project sidebar auto-collapses for this route. */
+    readonly collapseSidebar?: boolean
+    readonly fillHeight?: boolean
+  }
+}

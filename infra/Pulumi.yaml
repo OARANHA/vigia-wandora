@@ -1,0 +1,13 @@
+name: latitude-infra
+description: AWS Infrastructure for Latitude LLM observability platform
+runtime:
+  name: nodejs
+  options:
+    typescript: true
+backend:
+  url: s3://latitude-pulumi-state-442420265876
+
+config:
+  pulumi:tags:
+    value:
+      project: latitude

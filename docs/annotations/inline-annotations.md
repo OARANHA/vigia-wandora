@@ -1,0 +1,61 @@
+---
+title: Inline Annotations
+description: Annotate any trace directly from the session detail view
+---
+
+# Inline Annotations
+
+Inline annotations are the main way to leave human feedback on a trace. You open the session, read the whole conversation, and annotate the trace that shows the behavior you want to call out. Any session you can open has an annotation panel, whether you reached it from the Sessions page, Signals, or a saved search, and a trace opened on its own has the same panel.
+
+## How Inline Annotations Work
+
+When viewing a session:
+
+1. Open the session detail view.
+2. Use the annotation panel on the right.
+3. Choose a scope:
+   - **Conversation-level**: assess the whole interaction.
+   - **Message-level**: annotate one message.
+   - **Text-range**: anchor feedback to selected text inside a message.
+4. Add a thumbs-up or thumbs-down verdict and feedback.
+5. Optionally link the annotation to a signal.
+
+Annotations save as drafts while you edit. Once finalized, they feed analytics, signal discovery, and evaluation alignment alongside annotations from [flaggers](./flaggers) and the [API](../scores/api).
+
+## A Typical Review Workflow
+
+For batch review, start from [search](../search/overview) or a [saved search](../search/saved-searches):
+
+1. Run or open a search for the cohort you want to review, such as _"failed payments last week"_ or _"checkout flows over 5 steps"_.
+2. Open a matching session.
+3. Read the conversation, annotate it, and move to the next session.
+4. Reopen the saved search from the **Saved searches** dropdown whenever you want to pick the cohort back up.
+
+For shared review work, saved searches are visible to everyone in the project, so a teammate can open the same cohort from the **Saved searches** dropdown.
+
+## When to Use Inline Annotations
+
+Use inline annotations for:
+
+- Systematic review of a session cohort
+- Ad-hoc spot checks while browsing sessions
+- Signal investigation
+- Team review and coaching
+- Extra context on traces that already have scores or flagger annotations
+
+If you want detection without human review for a fixed set of known failure categories, use [flaggers](./flaggers).
+
+## Inline Annotations and Signals
+
+When creating an inline annotation, you can leave signal assignment automatic or link the annotation to an existing signal. After the annotation is finalized, failed annotations enter signal discovery automatically.
+
+## Persisted Highlights
+
+Message-level and text-range annotations leave highlights in the conversation view. Click a highlight to focus the matching annotation card in the panel.
+
+## Next Steps
+
+- [Annotations Overview](./overview): How the annotation system works
+- [Flaggers](./flaggers): Automatic annotators for common failure categories
+- [Search](../search/overview): Find sessions to annotate
+- [Signals](../signals/overview): How annotations connect to signal tracking

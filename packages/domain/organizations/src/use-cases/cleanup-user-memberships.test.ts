@@ -1,0 +1,127 @@
+import { type MembershipId, OrganizationId, SqlClient, UserId } from "@domain/shared"
+import { createFakeSqlClient } from "@domain/shared/testing"
+import { Effect, Layer } from "effect"
+import { describe, expect, it } from "vitest"
+import { createMembership } from "../entities/membership.ts"
+import { createOrganization } from "../entities/organization.ts"
+import { MembershipRepository } from "../ports/membership-repository.ts"
+import { OrganizationRepository } from "../ports/organization-repository.ts"
+import { createFakeMembershipRepository } from "../testing/fake-membership-repository.ts"
+import { createFakeOrganizationRepository } from "../testing/fake-organization-repository.ts"
+import { cleanupUserMembershipsUseCase } from "./cleanup-user-memberships.ts"
+
+/** Valid CUID-shaped ids (entity factories validate via Zod). */
+const USER_ID = "ye9d77pxi50nh1gyqljkffnb"
+const OTHER_USER_ID = "uzm4d8pb5k0bd2oug9ud2xjs"
+const ORG_1 = OrganizationId("iapkf6osmlm7mbw9kulosua4")
+const ORG_2 = OrganizationId("yvl1e78evmwfs2mosyjb08rc")
+
+const createTestLayers = () => {
+  const { repository: orgRepo, organizations } = createFakeOrganizationRepository()
+  const { repository: membershipRepo, memberships } = createFakeMembershipRepository()
+  const fakeSqlClient = createFakeSqlClient()
+
+  const testLayers = Layer.mergeAll(
+    Layer.succeed(OrganizationRepository, orgRepo),
+    Layer.succeed(MembershipRepository, membershipRepo),
+    Layer.succeed(SqlClient, fakeSqlClient),
+  )
+
+  return { organizations, memberships, testLayers }
+}
+
+const seedOrganization = (
+  organizations: Map<OrganizationId, ReturnType<typeof createOrganization>>,
+  id: OrganizationId,
+) => {
+  const org = createOrganization({
+    id,
+    name: `Org ${id}`,
+    slug: `org-${id}`,
+  })
+  organizations.set(id, org)
+  return org
+}
+
+const seedMembership = (
+  memberships: Map<MembershipId, ReturnType<typeof createMembership>>,
+  orgId: OrganizationId,
+  userId: string,
+) => {
+  const m = createMembership({
+    organizationId: orgId,
+    userId: UserId(userId),
+    role: "owner",
+  })
+  memberships.set(m.id, m)
+  return m
+}
+
+describe("cleanupUserMembershipsUseCase", () => {
+  it("deletes organization when user is the sole member", async () => {
+    const { organizations, memberships, testLayers } = createTestLayers()
+    seedOrganization(organizations, ORG_1)
+    seedMembership(memberships, ORG_1, USER_ID)
+
+    const deleted = await Effect.runPromise(
+      cleanupUserMembershipsUseCase({ userId: USER_ID }).pipe(Effect.provide(testLayers)),
+    )
+
+    expect(organizations.size).toBe(0)
+    expect(deleted).toEqual([ORG_1])
+  })
+
+  it("removes only the membership when other members exist", async () => {
+    const { organizations, memberships, testLayers } = createTestLayers()
+    seedOrganization(organizations, ORG_1)
+    seedMembership(memberships, ORG_1, USER_ID)
+    seedMembership(memberships, ORG_1, OTHER_USER_ID)
+
+    const deleted = await Effect.runPromise(
+      cleanupUserMembershipsUseCase({ userId: USER_ID }).pipe(Effect.provide(testLayers)),
+    )
+
+    expect(organizations.size).toBe(1)
+    expect(deleted).toEqual([])
+    const remainingMembers = [...memberships.values()]
+    expect(remainingMembers).toHaveLength(1)
+    expect(remainingMembers[0]?.userId).toBe(OTHER_USER_ID)
+  })
+
+  it("handles multiple organizations", async () => {
+    const { organizations, memberships, testLayers } = createTestLayers()
+
+    // ORG_1: user is sole member → should be deleted
+    seedOrganization(organizations, ORG_1)
+    seedMembership(memberships, ORG_1, USER_ID)
+
+    // ORG_2: user has co-members → only membership removed
+    seedOrganization(organizations, ORG_2)
+    seedMembership(memberships, ORG_2, USER_ID)
+    seedMembership(memberships, ORG_2, OTHER_USER_ID)
+
+    const deleted = await Effect.runPromise(
+      cleanupUserMembershipsUseCase({ userId: USER_ID }).pipe(Effect.provide(testLayers)),
+    )
+
+    expect(organizations.has(ORG_1)).toBe(false)
+    expect(organizations.has(ORG_2)).toBe(true)
+    expect(deleted).toEqual([ORG_1])
+
+    const org2Members = [...memberships.values()].filter((m) => m.organizationId === ORG_2)
+    expect(org2Members).toHaveLength(1)
+    expect(org2Members[0]?.userId).toBe(OTHER_USER_ID)
+  })
+
+  it("is a no-op when user has no memberships", async () => {
+    const { organizations, memberships, testLayers } = createTestLayers()
+
+    const deleted = await Effect.runPromise(
+      cleanupUserMembershipsUseCase({ userId: USER_ID }).pipe(Effect.provide(testLayers)),
+    )
+
+    expect(organizations.size).toBe(0)
+    expect(memberships.size).toBe(0)
+    expect(deleted).toEqual([])
+  })
+})

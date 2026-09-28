@@ -1,0 +1,59 @@
+---
+title: Overview
+description: Continuously sync your Latitude data into the systems you already use.
+---
+
+# Data destinations
+
+A **data destination** continuously syncs a Latitude project's data into a system **you own** — your analytics tool, your data warehouse, your object storage. Connect a destination once and new data keeps flowing to it within minutes, with no exports to schedule and no pipeline to maintain.
+
+The data Latitude can send grows over time. Today that's your **traces and spans**; the same engine is built to forward other entities Latitude generates — like [signals](../../signals/overview) — as they become available.
+
+Destinations are **bring-your-own**: you point Latitude at your own external system with your own credentials. Latitude never sends your data anywhere you didn't connect.
+
+<Card title="PostHog destination" icon="chart-line" href="./posthog">
+  Send Latitude spans to PostHog LLM Analytics as native `$ai_*` events.
+</Card>
+
+## Supported destinations
+
+| Destination | Sources | Status |
+| --- | --- | --- |
+| [PostHog (LLM Analytics)](./posthog) | Spans | Implemented |
+| Object storage / data warehouse (S3, BigQuery, …) | Spans | *comming soon* |
+| Mixpanel | Spans | *comming soon* |
+| Generic webhook | Spans | *comming soon* |
+
+<Note>
+The destinations below PostHog are **examples of where this is headed**, not a commitment or a timeline. The engine is built to grow into more destinations — tell us which one you need.
+</Note>
+
+## Available sources
+
+A **source** is the kind of telemetry a destination receives. Today every destination reads **spans**; the rest are directions we're exploring.
+
+| Source | What it is | Status |
+| --- | --- | --- |
+| Spans | The individual steps inside a trace — each LLM call, tool call, or retrieval | Implemented |
+| Traces | A full end-to-end request, from first step to last | *comming soon* |
+| Sessions | Multiple traces grouped into one conversation or user journey | *comming soon* |
+| Signals | Recurring failure patterns Latitude detects in your traffic | *comming soon* |
+| Scopes | Named segments of your telemetry you define and track | *comming soon* |
+
+## Connect a destination
+
+Open your project's **Settings → Data destinations** and create one. Each destination asks for the credentials and configuration Latitude needs to deliver telemetry into that external system.
+
+Before saving, use **Test connection** to confirm Latitude can reach the destination and your credentials are accepted.
+
+## Excluding payloads
+
+Turn **Exclude payloads** on when you don't want prompt and completion content leaving Latitude. It nulls every content-bearing field — inputs, outputs, tool definitions, and error messages (replaced by an error type only). Everything non-sensitive still flows: token counts, cost, latency, model and provider, identifiers, and timing. This is useful when content is subject to compliance constraints but you still want the metrics.
+
+## How delivery works
+
+- **Near real-time.** New data is delivered continuously, on a short interval, so it shows up in your destination within minutes — not on a manual export.
+- **No duplicates.** Delivery is at-least-once and idempotent: each event has a stable identity, so retries and overlapping windows never duplicate data in your destination.
+- **Pause and resume.** Pause a destination anytime; while paused nothing is sent. On resume, Latitude catches up the backlog it missed.
+- **Auto-pause when idle.** If a project sends no new data for about a week, Latitude automatically pauses its destination so it isn't checked indefinitely. Nothing is lost — just resume the destination when you start sending data again, and it catches up the backlog within your retention window like any other resume.
+- **Backfill.** When you connect a destination you can also import past traces, so your destination isn't limited to data created after you connected it. How far back you can reach is bounded by your plan's data retention.

@@ -1,0 +1,186 @@
+import type { FLAGGER_STRATEGY_SLUGS } from "@domain/flaggers"
+
+export type FlaggerPresetSlug = (typeof FLAGGER_STRATEGY_SLUGS)[number]
+
+interface FlaggerUseCasePreset {
+  readonly id: string
+  readonly label: string
+  readonly description: string
+  readonly enabledSlugs: ReadonlyArray<FlaggerPresetSlug>
+}
+
+export const FLAGGER_USE_CASE_PRESETS = [
+  {
+    id: "support-agent",
+    label: "Support agent",
+    description: "Customer-facing assistants handling questions, escalations, and account workflows.",
+    enabledSlugs: [
+      "task-failure",
+      "frustration",
+      "refusal",
+      "forgetting",
+      "incompletion",
+      "tool-call-errors",
+      "empty-response",
+      "jailbreaking",
+      "nsfw",
+      "pii-leakage",
+    ],
+  },
+  {
+    id: "coding-agent",
+    label: "Coding agent",
+    description: "Agents that edit files, call tools, and work through multi-step implementation tasks.",
+    enabledSlugs: [
+      "task-failure",
+      "laziness",
+      "trashing",
+      "bluffing",
+      "incompletion",
+      "tool-call-errors",
+      "empty-response",
+      "refusal",
+      "forgetting",
+      "output-schema-validation",
+      "frustration",
+      "low-cache-hit-rate",
+      "jailbreaking",
+      "pii-leakage",
+    ],
+  },
+  {
+    id: "sales-agent",
+    label: "Sales agent",
+    description: "Lead qualification and buyer-facing assistants where tone and follow-through matter.",
+    enabledSlugs: [
+      "task-failure",
+      "frustration",
+      "refusal",
+      "forgetting",
+      "incompletion",
+      "empty-response",
+      "jailbreaking",
+      "nsfw",
+      "pii-leakage",
+    ],
+  },
+  {
+    id: "tool-workflow-agent",
+    label: "Tool workflow agent",
+    description: "Agents that coordinate tools, APIs, and structured workflows.",
+    enabledSlugs: [
+      "task-failure",
+      "tool-call-errors",
+      "trashing",
+      "bluffing",
+      "incompletion",
+      "output-schema-validation",
+      "empty-response",
+      "laziness",
+      "low-cache-hit-rate",
+      "jailbreaking",
+      "pii-leakage",
+    ],
+  },
+  {
+    id: "knowledge-base-agent",
+    label: "Knowledge-base agent",
+    description: "RAG and documentation assistants that need to preserve context and answer directly.",
+    enabledSlugs: [
+      "task-failure",
+      "forgetting",
+      "refusal",
+      "incompletion",
+      "empty-response",
+      "frustration",
+      "laziness",
+      "low-cache-hit-rate",
+      "jailbreaking",
+      "pii-leakage",
+    ],
+  },
+  {
+    id: "structured-extraction-agent",
+    label: "Structured extraction",
+    description: "Extraction and classification agents that return machine-readable output.",
+    enabledSlugs: [
+      "task-failure",
+      "output-schema-validation",
+      "empty-response",
+      "tool-call-errors",
+      "laziness",
+      "jailbreaking",
+      "pii-leakage",
+    ],
+  },
+  {
+    id: "safety-agent",
+    label: "Safety agent",
+    description: "Moderation and policy-sensitive assistants exposed to adversarial or unsafe inputs.",
+    enabledSlugs: ["task-failure", "nsfw", "jailbreaking", "refusal", "frustration", "empty-response", "pii-leakage"],
+  },
+] as const satisfies ReadonlyArray<FlaggerUseCasePreset>
+
+interface FlaggerGroup {
+  readonly id: string
+  readonly label: string
+  readonly description: string
+  readonly slugs: ReadonlyArray<FlaggerPresetSlug>
+}
+
+export const FLAGGER_GROUPS = [
+  {
+    id: "response-validity",
+    label: "Response validity",
+    description: "Free deterministic checks; always run on every trace.",
+    slugs: ["empty-response", "tool-call-errors", "output-schema-validation"],
+  },
+  {
+    id: "cost-efficiency",
+    label: "Cost & efficiency",
+    description: "Free deterministic checks for token waste and broken caching.",
+    slugs: ["low-cache-hit-rate"],
+  },
+  {
+    id: "user-signals",
+    label: "User-side signals",
+    description: "LLM-based detection of risky or unhappy user behavior.",
+    slugs: ["frustration", "jailbreaking", "nsfw"],
+  },
+  {
+    id: "task-outcome",
+    label: "Task outcome",
+    description: "The LLM reference judge behind the Outcome score.",
+    slugs: ["task-failure"],
+  },
+  {
+    id: "agent-behavior",
+    label: "Agent behavior",
+    description: "LLM-based detection of failure modes in the agent's own output.",
+    slugs: ["refusal", "laziness", "forgetting", "incompletion", "trashing", "bluffing", "pii-leakage"],
+  },
+] as const satisfies ReadonlyArray<FlaggerGroup>
+
+// Compile-time assertion: FLAGGER_GROUPS must cover every FLAGGER_STRATEGY_SLUG. If a new slug
+// is added but missing from any group, the type below resolves to the missing slug name(s)
+// instead of `true`, and the assignment fails typecheck with the missing slug surfaced in the
+// diagnostic. Keeps settings from silently dropping rows when a strategy ships.
+type _MissingFromFlaggerGroups = Exclude<FlaggerPresetSlug, (typeof FLAGGER_GROUPS)[number]["slugs"][number]>
+const _assertFlaggerGroupsExhaustive: [_MissingFromFlaggerGroups] extends [never] ? true : _MissingFromFlaggerGroups =
+  true
+void _assertFlaggerGroupsExhaustive
+
+// Onboarding sorts the flat card grid by task outcome, then user-side, then agent-side, then
+// deterministic programmatic checks — easier-to-grasp categories lead so the user can scan and
+// pick fast.
+const ONBOARDING_GROUP_ORDER: ReadonlyArray<(typeof FLAGGER_GROUPS)[number]["id"]> = [
+  "task-outcome",
+  "user-signals",
+  "agent-behavior",
+  "response-validity",
+  "cost-efficiency",
+]
+
+export const FLAGGER_ONBOARDING_ORDER: ReadonlyArray<FlaggerPresetSlug> = ONBOARDING_GROUP_ORDER.flatMap(
+  (groupId) => FLAGGER_GROUPS.find((group) => group.id === groupId)?.slugs ?? [],
+)

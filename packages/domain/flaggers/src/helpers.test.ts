@@ -1,0 +1,520 @@
+import type { TraceDetail } from "@domain/spans"
+import { describe, expect, it } from "vitest"
+import {
+  collectToolCallErrorFindings,
+  detectEmptyResponseFlagger,
+  detectOutputSchemaValidationFlagger,
+  detectToolCallErrorsFlagger,
+} from "./helpers.ts"
+
+type TraceMessage = TraceDetail["allMessages"][number]
+
+function makeTrace(allMessages: TraceDetail["allMessages"]): Pick<TraceDetail, "allMessages" | "outputMessages"> {
+  return { allMessages, outputMessages: allMessages }
+}
+
+function assistantToolCall(id: string, name = "get_weather", argumentsValue: unknown = { city: "BCN" }): TraceMessage {
+  return {
+    role: "assistant",
+    parts: [{ type: "tool_call", id, name, arguments: argumentsValue }],
+  }
+}
+
+function toolResponse(id: string, response: unknown): TraceMessage {
+  return {
+    role: "tool",
+    parts: [{ type: "tool_call_response", id, response }],
+  }
+}
+
+function makeAssistantTrace(allMessages: TraceDetail["allMessages"]): TraceDetail {
+  return { allMessages, outputMessages: allMessages } as TraceDetail
+}
+
+function assistantText(content: string): TraceDetail["outputMessages"][number] {
+  return {
+    role: "assistant",
+    parts: [{ type: "text", content }],
+  }
+}
+
+describe("detectToolCallErrorsFlagger", () => {
+  // A broken integration the agent retried past is still broken, and its owner is
+  // the only one who can fix it. Volume is handled by bundling every occurrence
+  // onto one issue, not by never reporting it.
+  it("flags an error the agent worked through", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([
+        assistantToolCall("call-1"),
+        toolResponse("call-1", { ok: false, error: "rate limited" }),
+        assistantToolCall("call-2"),
+        toolResponse("call-2", { ok: true, temperature: 21 }),
+      ]),
+    )
+
+    expect(result.matched).toBe(true)
+    if (result.matched) expect(result.feedback).toBe('Tool "get_weather" returned error: rate limited')
+  })
+
+  it("prefers the defect the run never worked through over an earlier recovered one", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([
+        assistantToolCall("call-1"),
+        toolResponse("call-1", { ok: false, error: "rate limited" }),
+        assistantToolCall("call-2"),
+        toolResponse("call-2", { ok: true, temperature: 21 }),
+        assistantToolCall("call-3"),
+        toolResponse("call-3", { ok: false, error: "connection refused" }),
+      ]),
+    )
+
+    expect(result.matched).toBe(true)
+    if (result.matched) expect(result.feedback).toBe('Tool "get_weather" returned error: connection refused')
+  })
+
+  it("records recovery on the finding even when it is the one selected", () => {
+    const findings = collectToolCallErrorFindings(
+      makeTrace([
+        assistantToolCall("call-1"),
+        toolResponse("call-1", { ok: false, error: "rate limited" }),
+        assistantToolCall("call-2"),
+        toolResponse("call-2", { ok: true, temperature: 21 }),
+      ]),
+    )
+
+    expect(findings).toHaveLength(1)
+    expect(findings[0]).toMatchObject({ kind: "error", recovered: true, terminal: false })
+  })
+
+  it("flags an error the run never recovered from", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([
+        assistantToolCall("call-1"),
+        toolResponse("call-1", { ok: true, temperature: 21 }),
+        assistantToolCall("call-2"),
+        toolResponse("call-2", { ok: false, error: "connection refused" }),
+      ]),
+    )
+
+    expect(result.matched).toBe(true)
+    if (result.matched) {
+      expect(result.feedback).toBe('Tool "get_weather" returned error: connection refused')
+      expect(result.messageIndex).toBe(2)
+    }
+  })
+
+  // Recovery is about transient failures. A malformed call is a bug in how the
+  // agent calls tools and stays worth flagging however the run ends.
+  it("still flags a structural defect when later calls succeed", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([
+        assistantToolCall(""),
+        assistantToolCall("call-ok"),
+        toolResponse("call-ok", { ok: true, temperature: 21 }),
+      ]),
+    )
+
+    expect(result.matched).toBe(true)
+    if (result.matched) {
+      expect(result.feedback).toContain("Malformed tool call")
+    }
+  })
+
+  it("matches failed tool result payloads and anchors to the assistant message that issued the call", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([assistantToolCall("call-weather"), toolResponse("call-weather", { ok: false, error: "timeout" })]),
+    )
+
+    expect(result.matched).toBe(true)
+    if (result.matched) {
+      expect(result.feedback).toBe('Tool "get_weather" returned error: timeout')
+      expect(result.messageIndex).toBe(0)
+    }
+  })
+
+  it("anchors to the original call message when other messages sit between the call and its response", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([
+        { role: "user", parts: [{ type: "text", content: "Check the weather." }] },
+        assistantToolCall("call-weather"),
+        { role: "user", parts: [{ type: "text", content: "Tool loaded." }] },
+        toolResponse("call-weather", { ok: false, error: "timeout" }),
+      ]),
+    )
+
+    expect(result.matched).toBe(true)
+    if (result.matched) {
+      expect(result.messageIndex).toBe(1)
+    }
+  })
+
+  it("does not match shell-style multi-line outputs even when they contain error-adjacent words", () => {
+    const lsOutput = [
+      "README.md",
+      "articles",
+      "prompts",
+      "tracker.md",
+      "01-best-ai-eval-platform-multi-turn",
+      "02-best-tool-detecting-failure-modes",
+      "05-best-tool-detecting-regressions-model-updates",
+    ].join("\n")
+
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([assistantToolCall("call-bash", "Bash"), toolResponse("call-bash", lsOutput)]),
+    )
+
+    expect(result).toEqual({ matched: false })
+  })
+
+  it("matches malformed tool interactions with empty tool_call id and returns messageIndex 0", () => {
+    const result = detectToolCallErrorsFlagger(makeTrace([assistantToolCall("")]))
+
+    expect(result.matched).toBe(true)
+    if (result.matched) {
+      expect(result.feedback).toContain("Malformed tool call")
+      expect(result.feedback).toContain("get_weather")
+      expect(result.messageIndex).toBe(0)
+    }
+  })
+
+  it("does not match healthy tool interactions", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([assistantToolCall("call-weather"), toolResponse("call-weather", { temp: 22, condition: "sunny" })]),
+    )
+
+    expect(result).toEqual({ matched: false })
+  })
+
+  it("matches a call to a tool missing from the declared toolset", () => {
+    const result = detectToolCallErrorsFlagger({
+      ...makeTrace([assistantToolCall("call-web", "WebSearch")]),
+      definedTools: ["Bash", "Read"],
+    })
+
+    expect(result.matched).toBe(true)
+    if (result.matched) {
+      expect(result.feedback).toContain('"WebSearch"')
+      expect(result.feedback).toContain("not in the declared toolset")
+    }
+  })
+
+  it("does not match an undeclared tool that executed successfully", () => {
+    const result = detectToolCallErrorsFlagger({
+      ...makeTrace([assistantToolCall("call-web", "WebSearch"), toolResponse("call-web", { results: ["ok"] })]),
+      definedTools: ["Bash", "Read"],
+    })
+
+    expect(result).toEqual({ matched: false })
+  })
+
+  it("still matches when an undeclared tool returns an error", () => {
+    const result = detectToolCallErrorsFlagger({
+      ...makeTrace([
+        assistantToolCall("call-web", "WebSearch"),
+        toolResponse("call-web", { isError: true, error: "InputValidationError" }),
+      ]),
+      definedTools: ["Bash", "Read"],
+    })
+
+    expect(result.matched).toBe(true)
+    if (result.matched) {
+      expect(result.feedback).toMatch(/not in the declared toolset|returned error/)
+    }
+  })
+
+  it("matches an undeclared tool 4xx response", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([
+        assistantToolCall("call-grep", "grep"),
+        toolResponse("call-grep", { ok: false, statusCode: 404, error: "No matches found" }),
+      ]),
+    )
+
+    expect(result.matched).toBe(true)
+  })
+
+  it("exempts a 4xx only for the tool whose caller declared it", () => {
+    const conversation = makeTrace([
+      assistantToolCall("call-grep", "grep"),
+      toolResponse("call-grep", { ok: false, statusCode: 404, error: "No matches found" }),
+    ])
+
+    expect(
+      collectToolCallErrorFindings(conversation, {
+        byToolName: new Map([["grep", new Set([404])]]),
+        anyTool: new Set(),
+      }),
+    ).toEqual([])
+    expect(
+      collectToolCallErrorFindings(conversation, {
+        byToolName: new Map([["search_docs", new Set([404])]]),
+        anyTool: new Set(),
+      }).map((finding) => finding.kind),
+    ).toEqual(["error"])
+    expect(collectToolCallErrorFindings(conversation, { byToolName: new Map(), anyTool: new Set([404]) })).toEqual([])
+  })
+
+  it("still matches tool 5xx responses", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([
+        assistantToolCall("call-weather"),
+        toolResponse("call-weather", { ok: false, statusCode: 503, error: "Service unavailable" }),
+      ]),
+    )
+
+    expect(result.matched).toBe(true)
+  })
+
+  it("matches duplicated tool call ids", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([assistantToolCall("call-weather"), assistantToolCall("call-weather", "lookup_weather")]),
+    )
+
+    expect(result.matched).toBe(true)
+    if (result.matched) {
+      expect(result.feedback).toContain("Duplicate tool_call id")
+      expect(result.feedback).toContain("lookup_weather")
+    }
+  })
+
+  it("matches tool calls with blank names after trimming", () => {
+    const result = detectToolCallErrorsFlagger(makeTrace([assistantToolCall("call-weather", "   ")]))
+
+    expect(result.matched).toBe(true)
+    if (result.matched) {
+      expect(result.feedback).toContain("Malformed tool call")
+    }
+  })
+
+  it("ignores tool responses with no tool calls anywhere (truncated telemetry)", () => {
+    const result = detectToolCallErrorsFlagger(makeTrace([toolResponse("call-weather", { temp: 22 })]))
+
+    expect(result).toEqual({ matched: false })
+  })
+
+  it("matches tool responses with unknown tool call ids", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([assistantToolCall("call-weather"), toolResponse("call-hotels", { temp: 22 })]),
+    )
+
+    expect(result.matched).toBe(true)
+    if (result.matched) {
+      expect(result.feedback).toContain("unknown tool_call id")
+    }
+  })
+
+  it("does not match plain-string responses by keyword (only structured signals count)", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([
+        assistantToolCall("call-weather"),
+        toolResponse("call-weather", "BookingUnavailableError: no rooms available"),
+      ]),
+    )
+
+    expect(result).toEqual({ matched: false })
+  })
+
+  it("matches stringified JSON responses with failure status", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([assistantToolCall("call-weather"), toolResponse("call-weather", '{"status":"failed"}')]),
+    )
+
+    expect(result.matched).toBe(true)
+    if (result.matched) {
+      expect(result.feedback).toContain('Tool "get_weather" returned error')
+    }
+  })
+
+  it("matches explicit isError true responses", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([assistantToolCall("call-weather"), toolResponse("call-weather", { isError: true })]),
+    )
+
+    expect(result.matched).toBe(true)
+    if (result.matched) {
+      expect(result.feedback).toBe('Tool "get_weather" returned an error')
+    }
+  })
+
+  it("matches explicit success false responses", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([assistantToolCall("call-weather"), toolResponse("call-weather", { success: false })]),
+    )
+
+    expect(result.matched).toBe(true)
+  })
+
+  it("matches non-empty error object responses", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([
+        assistantToolCall("call-weather"),
+        toolResponse("call-weather", { error: { code: "timeout", message: "upstream timeout" } }),
+      ]),
+    )
+
+    expect(result.matched).toBe(true)
+    if (result.matched) {
+      expect(result.feedback).toContain('Tool "get_weather" returned error: upstream timeout')
+    }
+  })
+
+  it("matches non-empty errors arrays", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([
+        assistantToolCall("call-weather"),
+        toolResponse("call-weather", { errors: [{ message: "timeout" }] }),
+      ]),
+    )
+
+    expect(result.matched).toBe(true)
+  })
+
+  it("matches nested array responses containing a failure", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([assistantToolCall("call-weather"), toolResponse("call-weather", [{ ok: true }, { status: "error" }])]),
+    )
+
+    expect(result.matched).toBe(true)
+  })
+
+  it("does not match blank string responses", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([assistantToolCall("call-weather"), toolResponse("call-weather", "   ")]),
+    )
+
+    expect(result).toEqual({ matched: false })
+  })
+
+  it("does not match responses with empty error fields", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([
+        assistantToolCall("call-weather"),
+        toolResponse("call-weather", { ok: true, error: "", errors: [], status: "success" }),
+      ]),
+    )
+
+    expect(result).toEqual({ matched: false })
+  })
+
+  it("does not match multiple healthy tool call / response pairs", () => {
+    const result = detectToolCallErrorsFlagger(
+      makeTrace([
+        assistantToolCall("call-weather"),
+        toolResponse("call-weather", { temp: 22 }),
+        assistantToolCall("call-hotels", "search_hotels", { city: "BCN", nights: 2 }),
+        toolResponse("call-hotels", { hotels: ["Arts", "W"] }),
+      ]),
+    )
+
+    expect(result).toEqual({ matched: false })
+  })
+})
+
+describe("detectOutputSchemaValidationFlagger", () => {
+  it("does not match when the assistant output is valid JSON", () => {
+    const result = detectOutputSchemaValidationFlagger(makeAssistantTrace([assistantText('{"a": 1, "b": 2}')]))
+
+    expect(result).toEqual({ matched: false })
+  })
+
+  it("does not match when the assistant output is not JSON-looking", () => {
+    const result = detectOutputSchemaValidationFlagger(makeAssistantTrace([assistantText("Hello! The answer is 42.")]))
+
+    expect(result).toEqual({ matched: false })
+  })
+
+  it("does not match markdown links that start with [", () => {
+    const result = detectOutputSchemaValidationFlagger(
+      makeAssistantTrace([
+        assistantText(
+          "[Pull request #39](https://github.com/latitude-dev/latitude-llm-public/pull/39) is open against main.",
+        ),
+      ]),
+    )
+
+    expect(result).toEqual({ matched: false })
+  })
+
+  it("matches with the trailing-comma message when JSON is truncated after a comma", () => {
+    const result = detectOutputSchemaValidationFlagger(makeAssistantTrace([assistantText('{"a": 1,')]))
+
+    expect(result.matched).toBe(true)
+    if (result.matched) {
+      expect(result.feedback).toBe("Assistant output ended with a trailing comma, suggesting truncated JSON")
+      expect(result.messageIndex).toBe(0)
+    }
+  })
+
+  it("matches with the unclosed-string message when JSON is truncated mid-string", () => {
+    const result = detectOutputSchemaValidationFlagger(makeAssistantTrace([assistantText('{"msg": "hello')]))
+
+    expect(result.matched).toBe(true)
+    if (result.matched) {
+      expect(result.feedback).toBe("Assistant output contains an unclosed JSON string, suggesting truncated output")
+      expect(result.messageIndex).toBe(0)
+    }
+  })
+
+  it("ignores escaped quotes when detecting unclosed strings", () => {
+    // The outer string is properly closed — the \" inside should not flip the balance.
+    const result = detectOutputSchemaValidationFlagger(
+      makeAssistantTrace([assistantText('{"msg": "quoted \\"ok\\" value"}')]),
+    )
+
+    expect(result).toEqual({ matched: false })
+  })
+
+  it("falls back to the generic parse-failure message when JSON is malformed but not a truncation pattern", () => {
+    const result = detectOutputSchemaValidationFlagger(makeAssistantTrace([assistantText("{not valid json}")]))
+
+    expect(result.matched).toBe(true)
+    if (result.matched) {
+      expect(result.feedback).toBe("Assistant output failed JSON parse (malformed or truncated structured output)")
+      expect(result.messageIndex).toBe(0)
+    }
+  })
+})
+
+describe("malformed message parts", () => {
+  it("detectToolCallErrorsFlagger skips messages without iterable parts", () => {
+    expect(() =>
+      detectToolCallErrorsFlagger(
+        makeTrace([
+          { role: "assistant" } as unknown as TraceMessage,
+          assistantToolCall("call_1"),
+          toolResponse("call_1", { error: "boom" }),
+        ]),
+      ),
+    ).not.toThrow()
+  })
+
+  it("detectOutputSchemaValidationFlagger skips messages without iterable parts", () => {
+    expect(() =>
+      detectOutputSchemaValidationFlagger(
+        makeAssistantTrace([{ role: "assistant" } as unknown as TraceMessage, assistantText('{"ok": true}')]),
+      ),
+    ).not.toThrow()
+  })
+
+  it("detectEmptyResponseFlagger skips messages without iterable parts", () => {
+    const messages = [
+      { role: "user", parts: null } as unknown as TraceMessage,
+      { role: "assistant" } as unknown as TraceMessage,
+      assistantText("done"),
+    ]
+    expect(() =>
+      detectEmptyResponseFlagger({ ...makeAssistantTrace(messages), outputMessages: messages }),
+    ).not.toThrow()
+    expect(
+      detectEmptyResponseFlagger({
+        ...makeAssistantTrace([{ role: "assistant" } as unknown as TraceMessage]),
+        outputMessages: [{ role: "assistant" } as unknown as TraceMessage],
+      }),
+    ).toEqual({
+      matched: true,
+      findingKind: "blank",
+      feedback: "Assistant response was empty or whitespace only",
+      messageIndex: 0,
+    })
+  })
+})

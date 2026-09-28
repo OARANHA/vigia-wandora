@@ -1,0 +1,75 @@
+import { agentDispatchSeeders } from "./agent-dispatch/index.ts"
+import { alertIncidentSeeders } from "./alert-incidents/index.ts"
+import { apiKeySeeders } from "./api-keys/index.ts"
+import { customBehaviorQaSeeders } from "./custom-behaviors/index.ts"
+import { datasetSeeders } from "./datasets/index.ts"
+import { evaluationSeeders } from "./evaluations/index.ts"
+import { bootstrapTelemetryFlaggerSeeders, flaggerSeeders } from "./flaggers/index.ts"
+import { monitorSeeders } from "./monitors/index.ts"
+import { notificationSeeders } from "./notifications/index.ts"
+import { organizationSeeders } from "./organizations/index.ts"
+import { partnerSeeders } from "./partners/index.ts"
+import { projectSeeders } from "./projects/index.ts"
+import { scoreSeeders } from "./scores/index.ts"
+import { signalSeeders } from "./signals/index.ts"
+import { simulationSeeders } from "./simulations/index.ts"
+import type { Seeder } from "./types.ts"
+import { wrappedReportSeeders } from "./wrapped-reports/index.ts"
+
+/**
+ * Per-project ("content") seeders — datasets, evaluations, signals,
+ * simulations, scores. Re-used by the runtime
+ * "Create Demo Project" Temporal activity, which threads a per-project
+ * `SeedScope` so all entity ids derive fresh under the new project.
+ *
+ * Bootstrap-only seeders (org / users / api-keys / projects rows) are
+ * excluded — the demo path operates on an existing org with an existing
+ * default API key, and the project row itself is created up-front by
+ * the use-case before the workflow runs.
+ */
+export const contentSeeders: readonly Seeder[] = [
+  ...datasetSeeders,
+  ...signalSeeders,
+  ...evaluationSeeders,
+  ...simulationSeeders,
+  ...scoreSeeders,
+  ...flaggerSeeders,
+  // Runs after signals + scores so it can derive "currently escalating"
+  // from real occurrence patterns in the seeded data via the same
+  // threshold the production worker uses, instead of a fixture flag.
+  ...alertIncidentSeeders,
+  // Spawns in-app notifications mirroring what the runtime worker would
+  // produce for the seeded incidents — so a fresh `pg:seed` lights up
+  // the bell instead of leaving it empty. Must run after
+  // alertIncidentSeeders.
+  ...notificationSeeders,
+  // Must run after notificationSeeders so it fully controls which of its own
+  // incidents read as "Notified" vs "Muted".
+  ...monitorSeeders,
+  // Attaches agent-dispatch ledger rows to seeded signals; only depends on
+  // signalSeeders having run.
+  ...agentDispatchSeeders,
+]
+
+export const allSeeders: readonly Seeder[] = [
+  ...organizationSeeders,
+  ...projectSeeders,
+  ...apiKeySeeders,
+  // Bootstrap-only: the partner registry is global, not per-project, so the
+  // demo workflow must never re-run it.
+  ...partnerSeeders,
+  ...contentSeeders,
+  // Bootstrap-only: provisions flaggers on the dogfood telemetry project,
+  // which lives on the canonical seed org. Excluded from `contentSeeders`
+  // because the demo workflow's scope points at a different org/project.
+  ...bootstrapTelemetryFlaggerSeeders,
+  // 100 Claude Code Wrapped V2 reports for the backoffice analytics page
+  // and the public Wrapped share URLs. All created "today" so they appear
+  // in the backoffice list and form a single leaderboard cohort.
+  ...wrappedReportSeeders,
+  // Bootstrap-only: QA custom behaviors on the seed project. Excluded from
+  // `contentSeeders` so the demo workflow never provisions them; their backing
+  // sessions + observations come from the ClickHouse `spans/custom-behavior-qa`
+  // seeder.
+  ...customBehaviorQaSeeders,
+]

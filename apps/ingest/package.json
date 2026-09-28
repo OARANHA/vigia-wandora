@@ -1,0 +1,38 @@
+{
+  "name": "@app/ingest",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsx watch src/server.ts",
+    "check": "biome check src",
+    "format": "biome format --write src && biome check --fix src",
+    "typecheck": "tsgo -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests --dir src"
+  },
+  "dependencies": {
+    "@domain/api-keys": "workspace:*",
+    "@domain/billing": "workspace:*",
+    "@domain/queue": "workspace:*",
+    "@domain/sandboxes": "workspace:*",
+    "@domain/shared": "workspace:*",
+    "@domain/spans": "workspace:*",
+    "@hono/node-server": "catalog:",
+    "@hono/otel": "1.1.1",
+    "@platform/api-key-auth": "workspace:*",
+    "@platform/cache-redis": "workspace:*",
+    "@platform/db-postgres": "workspace:*",
+    "@platform/env": "workspace:*",
+    "@platform/queue-bullmq": "workspace:*",
+    "@platform/storage-object": "workspace:*",
+    "@repo/observability": "workspace:*",
+    "@repo/utils": "workspace:*",
+    "effect": "catalog:",
+    "hono": "catalog:",
+    "tsx": "catalog:"
+  },
+  "devDependencies": {
+    "tsdown": "catalog:"
+  }
+}

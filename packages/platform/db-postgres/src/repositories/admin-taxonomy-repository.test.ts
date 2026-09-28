@@ -1,0 +1,210 @@
+import { AdminTaxonomyRepository } from "@domain/admin"
+import { ProjectId } from "@domain/shared"
+import { Effect } from "effect"
+import { beforeAll, describe, expect, it } from "vitest"
+import { organizations } from "../schema/better-auth.ts"
+import { projects } from "../schema/projects.ts"
+import { taxonomyClusters } from "../schema/taxonomy-clusters.ts"
+import { setupTestPostgres } from "../test/in-memory-postgres.ts"
+import { withPostgres } from "../with-postgres.ts"
+import { AdminTaxonomyRepositoryLive } from "./admin-taxonomy-repository.ts"
+
+const pg = setupTestPostgres()
+
+const runWithLive = <A, E>(effect: Effect.Effect<A, E, AdminTaxonomyRepository>) =>
+  Effect.runPromise(effect.pipe(withPostgres(AdminTaxonomyRepositoryLive, pg.adminPostgresClient)))
+
+const makeId = (prefix: string): string => prefix.padEnd(24, "x").slice(0, 24)
+
+const ORG = makeId("org-tax-target")
+const OTHER_ORG = makeId("org-tax-other")
+const PROJECT = makeId("proj-tax-target")
+const OTHER_PROJECT = makeId("proj-tax-other")
+const CATEGORY = makeId("cat-tax-checkout")
+const SUBCATEGORY = makeId("clu-tax-card")
+const UNCATEGORIZED = makeId("clu-tax-uncat")
+const OTHER_SUBCATEGORY = makeId("clu-tax-other")
+const DEPRECATED_CLUSTER = makeId("clu-tax-deprecated")
+const EMPTY_CLUSTER = makeId("clu-tax-empty")
+const PENDING_CLUSTER = makeId("clu-tax-pending")
+
+const centroid = {
+  base: [],
+  mass: 0,
+  model: "test-model",
+  decay: 1,
+  weights: { default: 1 },
+}
+
+describe("AdminTaxonomyRepositoryLive.getProjectTaxonomy", () => {
+  beforeAll(async () => {
+    const baseTime = new Date("2026-01-01T00:00:00.000Z")
+
+    await pg.db.insert(organizations).values([
+      { id: ORG, name: "Taxonomy Co", slug: "taxonomy-co", createdAt: baseTime, updatedAt: baseTime },
+      { id: OTHER_ORG, name: "Other Co", slug: "other-co", createdAt: baseTime, updatedAt: baseTime },
+    ])
+
+    await pg.db.insert(projects).values([
+      {
+        id: PROJECT,
+        organizationId: ORG,
+        name: "Checkout",
+        slug: "checkout",
+        createdAt: baseTime,
+        updatedAt: baseTime,
+      },
+      {
+        id: OTHER_PROJECT,
+        organizationId: OTHER_ORG,
+        name: "Other",
+        slug: "other",
+        createdAt: baseTime,
+        updatedAt: baseTime,
+      },
+    ])
+
+    await pg.db.insert(taxonomyClusters).values([
+      {
+        id: CATEGORY,
+        organizationId: ORG,
+        projectId: PROJECT,
+        name: "Checkout signals",
+        description: "Problems during checkout.",
+        centroid,
+        observationCount: 3,
+        firstObservedAt: baseTime,
+        lastObservedAt: baseTime,
+        clusteredAt: baseTime,
+        createdAt: baseTime,
+        updatedAt: baseTime,
+      },
+      {
+        id: SUBCATEGORY,
+        organizationId: ORG,
+        projectId: PROJECT,
+        parentClusterId: CATEGORY,
+        depth: 1,
+        path: `${CATEGORY}/`,
+        name: "Card declined",
+        description: "Users see card declines.",
+        centroid,
+        observationCount: 7,
+        firstObservedAt: baseTime,
+        lastObservedAt: new Date(baseTime.getTime() + 1000),
+        clusteredAt: baseTime,
+        createdAt: baseTime,
+        updatedAt: baseTime,
+      },
+      {
+        id: UNCATEGORIZED,
+        organizationId: ORG,
+        projectId: PROJECT,
+        parentClusterId: makeId("missing-root"),
+        depth: 1,
+        path: `${makeId("missing-root")}/`,
+        name: "Orphan child",
+        description: "Root no longer exists.",
+        centroid,
+        observationCount: 3,
+        firstObservedAt: baseTime,
+        lastObservedAt: baseTime,
+        clusteredAt: baseTime,
+        createdAt: baseTime,
+        updatedAt: baseTime,
+      },
+      {
+        id: OTHER_SUBCATEGORY,
+        organizationId: OTHER_ORG,
+        projectId: OTHER_PROJECT,
+        name: "Other cluster",
+        description: "Should not be returned.",
+        centroid,
+        observationCount: 99,
+        firstObservedAt: baseTime,
+        lastObservedAt: baseTime,
+        clusteredAt: baseTime,
+        createdAt: baseTime,
+        updatedAt: baseTime,
+      },
+      {
+        id: DEPRECATED_CLUSTER,
+        organizationId: ORG,
+        projectId: PROJECT,
+        parentClusterId: CATEGORY,
+        depth: 1,
+        path: `${CATEGORY}/`,
+        name: "Deprecated cluster",
+        description: "Should not be returned.",
+        centroid,
+        observationCount: 99,
+        state: "deprecated",
+        firstObservedAt: baseTime,
+        lastObservedAt: baseTime,
+        clusteredAt: baseTime,
+        createdAt: baseTime,
+        updatedAt: baseTime,
+      },
+      {
+        id: EMPTY_CLUSTER,
+        organizationId: ORG,
+        projectId: PROJECT,
+        parentClusterId: CATEGORY,
+        depth: 1,
+        path: `${CATEGORY}/`,
+        name: "Empty cluster",
+        description: "Should not be returned.",
+        centroid,
+        observationCount: 0,
+        firstObservedAt: baseTime,
+        lastObservedAt: baseTime,
+        clusteredAt: baseTime,
+        createdAt: baseTime,
+        updatedAt: baseTime,
+      },
+      {
+        id: PENDING_CLUSTER,
+        organizationId: ORG,
+        projectId: PROJECT,
+        parentClusterId: CATEGORY,
+        depth: 1,
+        path: `${CATEGORY}/`,
+        name: "Pending",
+        description: "Should not be returned.",
+        centroid,
+        observationCount: 99,
+        firstObservedAt: baseTime,
+        lastObservedAt: baseTime,
+        clusteredAt: baseTime,
+        createdAt: baseTime,
+        updatedAt: baseTime,
+      },
+    ])
+  })
+
+  it("returns only taxonomy clusters visible to users", async () => {
+    const result = await runWithLive(
+      Effect.gen(function* () {
+        const repo = yield* AdminTaxonomyRepository
+        return yield* repo.getProjectTaxonomy(ProjectId(PROJECT))
+      }),
+    )
+
+    expect(result.categories).toHaveLength(1)
+    expect(result.categories[0]?.id).toBe(CATEGORY)
+    expect(result.categories[0]?.observationCount).toBe(10)
+    expect(result.categories[0]?.subcategories.map((subcategory) => subcategory.id)).toEqual([SUBCATEGORY])
+    expect(result.uncategorized).toEqual([])
+  })
+
+  it("fails with NotFoundError for a non-existent project id", async () => {
+    await expect(
+      runWithLive(
+        Effect.gen(function* () {
+          const repo = yield* AdminTaxonomyRepository
+          return yield* repo.getProjectTaxonomy(ProjectId(makeId("proj-tax-missing")))
+        }),
+      ),
+    ).rejects.toMatchObject({ _tag: "NotFoundError", entity: "Project" })
+  })
+})

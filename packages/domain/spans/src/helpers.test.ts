@@ -1,0 +1,222 @@
+import { describe, expect, it } from "vitest"
+import {
+  alignUnixSecondsToHistogramBucket,
+  denseTraceTimeHistogramBuckets,
+  pickTraceHistogramBucketSeconds,
+  resolveTraceHistogramRangeIso,
+} from "./helpers.ts"
+import { emptyTraceTimeHistogramBucket } from "./ports/trace-repository.ts"
+
+describe("alignUnixSecondsToHistogramBucket", () => {
+  it("matches ClickHouse-style intDiv(ts, bs) * bs", () => {
+    const bs = 3600
+    const t = Date.UTC(2024, 5, 1, 10, 0, 0) / 1000
+    expect(alignUnixSecondsToHistogramBucket(t + 90, bs)).toBe(t)
+    expect(alignUnixSecondsToHistogramBucket(t, bs)).toBe(t)
+  })
+})
+
+describe("resolveTraceHistogramRangeIso", () => {
+  const DAY = 24 * 60 * 60 * 1000
+  const now = Date.UTC(2026, 6, 9, 12, 0, 0)
+  const iso = (ms: number) => new Date(ms).toISOString()
+
+  it("unbounded ('All time'): last 7 days ending now", () => {
+    const r = resolveTraceHistogramRangeIso({}, now)
+    expect(r).toEqual({ rangeStartIso: iso(now - 7 * DAY), rangeEndIso: iso(now) })
+  })
+
+  it("empty startTime array (cleared to All time): same as unbounded", () => {
+    const r = resolveTraceHistogramRangeIso({ startTime: [] }, now)
+    expect(r).toEqual({ rangeStartIso: iso(now - 7 * DAY), rangeEndIso: iso(now) })
+  })
+
+  it("range ≤ 30 days is used verbatim", () => {
+    const gte = iso(now - 10 * DAY)
+    const lte = iso(now - 3 * DAY)
+    const r = resolveTraceHistogramRangeIso(
+      {
+        startTime: [
+          { op: "gte", value: gte },
+          { op: "lte", value: lte },
+        ],
+      },
+      now,
+    )
+    expect(r).toEqual({ rangeStartIso: gte, rangeEndIso: lte })
+  })
+
+  it("clamps a > 30 day range to the most recent 30 days of it", () => {
+    const gte = iso(now - 90 * DAY)
+    const lte = iso(now - 5 * DAY)
+    const r = resolveTraceHistogramRangeIso(
+      {
+        startTime: [
+          { op: "gte", value: gte },
+          { op: "lte", value: lte },
+        ],
+      },
+      now,
+    )
+    expect(r).toEqual({ rangeStartIso: iso(now - 35 * DAY), rangeEndIso: lte })
+  })
+
+  it("open-ended gte older than 30 days clamps to last 30 days ending now", () => {
+    const gte = iso(now - 90 * DAY)
+    const r = resolveTraceHistogramRangeIso({ startTime: [{ op: "gte", value: gte }] }, now)
+    expect(r).toEqual({ rangeStartIso: iso(now - 30 * DAY), rangeEndIso: iso(now) })
+  })
+
+  it("falls back safely on unparseable URL dates instead of throwing", () => {
+    const r = resolveTraceHistogramRangeIso(
+      {
+        startTime: [
+          { op: "gte", value: "not-a-date" },
+          { op: "lte", value: "also-bad" },
+        ],
+      },
+      now,
+    )
+    // Bad `lte` → end = now; bad `gte` → start = end - 7d default. Both valid ISO, no RangeError.
+    expect(r).toEqual({ rangeStartIso: iso(now - 7 * DAY), rangeEndIso: iso(now) })
+  })
+
+  it("clamps start ≤ end when the range is inverted (gte after lte)", () => {
+    const gte = iso(now - 2 * DAY)
+    const lte = iso(now - 5 * DAY)
+    const r = resolveTraceHistogramRangeIso(
+      {
+        startTime: [
+          { op: "gte", value: gte },
+          { op: "lte", value: lte },
+        ],
+      },
+      now,
+    )
+    expect(r).toEqual({ rangeStartIso: lte, rangeEndIso: lte })
+  })
+})
+
+describe("pickTraceHistogramBucketSeconds", () => {
+  it("7d range: ideal ~3.36h, smallest nice step ≥ ideal is 4h", () => {
+    const start = Date.UTC(2024, 5, 1, 0, 0, 0)
+    const end = start + 7 * 24 * 60 * 60 * 1000
+    expect(pickTraceHistogramBucketSeconds(start, end)).toBe(4 * 60 * 60)
+  })
+
+  it("picks 1h when ideal equals 1h exactly", () => {
+    const rangeMs = 3600 * 50 * 1000
+    expect(pickTraceHistogramBucketSeconds(0, rangeMs)).toBe(3600)
+  })
+
+  it("skips missing day steps: ideal at 6d width snaps to 7d (no 6d in nice list)", () => {
+    const sixDaysSec = 6 * 24 * 60 * 60
+    const rangeMs = sixDaysSec * 50 * 1000
+    expect(pickTraceHistogramBucketSeconds(0, rangeMs)).toBe(7 * 24 * 60 * 60)
+  })
+
+  it("returns 60 when range is zero", () => {
+    expect(pickTraceHistogramBucketSeconds(1000, 1000)).toBe(60)
+  })
+})
+
+describe("denseTraceTimeHistogramBuckets", () => {
+  it("fills missing buckets with zero across all metric fields", () => {
+    const rangeStartIso = "2024-06-01T10:00:00.000Z"
+    const rangeEndIso = "2024-06-01T12:00:00.000Z"
+    const populated = {
+      bucketStart: "2024-06-01T11:00:00.000Z",
+      traceCount: 7,
+      sessionCount: 5,
+      costTotalMicrocentsSum: 1234,
+      durationNsMedian: 5_000_000,
+      tokensTotalSum: 200,
+      spanCountSum: 14,
+      timeToFirstTokenNsMedian: 3_000_000,
+      tokensInputSum: 100,
+      tokensCacheReadSum: 80,
+      tokensCacheCreateSum: 20,
+    }
+    const dense = denseTraceTimeHistogramBuckets([populated], rangeStartIso, rangeEndIso, 3600)
+    expect(dense).toHaveLength(3)
+    expect(dense[0]).toEqual(emptyTraceTimeHistogramBucket("2024-06-01T10:00:00.000Z"))
+    expect(dense[1]).toEqual(populated)
+    expect(dense[2]).toEqual(emptyTraceTimeHistogramBucket("2024-06-01T12:00:00.000Z"))
+  })
+
+  it("returns all-zero buckets across every metric when sparse is empty", () => {
+    const rangeStartIso = "2024-06-01T00:00:00.000Z"
+    const rangeEndIso = "2024-06-01T01:00:00.000Z"
+    const dense = denseTraceTimeHistogramBuckets(undefined, rangeStartIso, rangeEndIso, 3600)
+    expect(dense).toHaveLength(2)
+    for (const bucket of dense) {
+      expect(bucket.traceCount).toBe(0)
+      expect(bucket.sessionCount).toBe(0)
+      expect(bucket.costTotalMicrocentsSum).toBe(0)
+      expect(bucket.durationNsMedian).toBe(0)
+      expect(bucket.tokensTotalSum).toBe(0)
+      expect(bucket.spanCountSum).toBe(0)
+      expect(bucket.timeToFirstTokenNsMedian).toBe(0)
+      expect(bucket.tokensInputSum).toBe(0)
+      expect(bucket.tokensCacheReadSum).toBe(0)
+      expect(bucket.tokensCacheCreateSum).toBe(0)
+    }
+  })
+
+  it("returns empty array for invalid range", () => {
+    expect(denseTraceTimeHistogramBuckets([], "2024-06-01T00:00:00.000Z", "2024-06-01T00:00:00.000Z", 60)).toEqual([])
+    expect(denseTraceTimeHistogramBuckets([], "not-a-date", "2024-06-01T01:00:00.000Z", 60)).toEqual([])
+  })
+
+  it("merges duplicate aligned sparse rows: sums additive fields, keeps max for medians", () => {
+    // ClickHouse GROUP BY guarantees one sparse row per aligned bucket, so this defensive fold
+    // is unreachable in practice. When it does fire, additive fields combine; medians can't be
+    // re-derived from two pre-computed medians, so we take the max as a safe upper bound rather
+    // than producing a meaningless sum.
+    const rangeStartIso = "2024-06-01T10:00:00.000Z"
+    const rangeEndIso = "2024-06-01T10:59:59.999Z"
+    const sparse = [
+      {
+        bucketStart: "2024-06-01T10:00:00.000Z",
+        traceCount: 2,
+        sessionCount: 2,
+        costTotalMicrocentsSum: 100,
+        durationNsMedian: 1_000,
+        tokensTotalSum: 30,
+        spanCountSum: 4,
+        timeToFirstTokenNsMedian: 500,
+        tokensInputSum: 10,
+        tokensCacheReadSum: 8,
+        tokensCacheCreateSum: 2,
+      },
+      {
+        bucketStart: "2024-06-01T10:00:00.123Z",
+        traceCount: 3,
+        sessionCount: 1,
+        costTotalMicrocentsSum: 200,
+        durationNsMedian: 2_000,
+        tokensTotalSum: 70,
+        spanCountSum: 6,
+        timeToFirstTokenNsMedian: 1_500,
+        tokensInputSum: 20,
+        tokensCacheReadSum: 16,
+        tokensCacheCreateSum: 4,
+      },
+    ]
+    const dense = denseTraceTimeHistogramBuckets(sparse, rangeStartIso, rangeEndIso, 3600)
+    expect(dense).toHaveLength(1)
+    expect(dense[0]).toEqual({
+      bucketStart: "2024-06-01T10:00:00.000Z",
+      traceCount: 5,
+      sessionCount: 3,
+      costTotalMicrocentsSum: 300,
+      durationNsMedian: 2_000,
+      tokensTotalSum: 100,
+      spanCountSum: 10,
+      timeToFirstTokenNsMedian: 1_500,
+      tokensInputSum: 30,
+      tokensCacheReadSum: 24,
+      tokensCacheCreateSum: 6,
+    })
+  })
+})

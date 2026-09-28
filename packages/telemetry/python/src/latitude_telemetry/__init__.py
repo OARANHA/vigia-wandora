@@ -1,0 +1,120 @@
+"""
+Latitude Telemetry SDK for Python.
+
+Instruments AI provider calls and forwards traces to Latitude.
+Built on OpenTelemetry.
+
+Example (Bootstrap - Recommended):
+    import anthropic
+    import openai
+
+    from latitude_telemetry import Latitude, capture
+
+    latitude = Latitude(
+        api_key="your-api-key",
+        project="my-project",
+        instrumentations={"openai": openai, "anthropic": anthropic},
+    )
+
+    @capture("agent-run", {"tags": ["prod"], "user_id": "user_123"})
+    def my_agent():
+        # Your LLM calls are now traced
+        response = client.chat.completions.create(...)
+        return response
+
+    # Or with the functional pattern:
+    result = capture("agent-run", lambda: agent.process(input), {"tags": ["prod"]})
+
+    latitude.shutdown()
+
+Example (Advanced - Existing OTel Setup):
+    import openai
+
+    from opentelemetry import trace
+    from opentelemetry.sdk.trace import TracerProvider
+    from latitude_telemetry import LatitudeSpanProcessor, register_latitude_instrumentations
+
+    provider = TracerProvider()
+    provider.add_span_processor(LatitudeSpanProcessor("api-key", "my-project"))
+    trace.set_tracer_provider(provider)
+
+    register_latitude_instrumentations({"openai": openai}, provider)
+"""
+
+from latitude_telemetry.constants import ATTRIBUTES, MEMORY_ATTRIBUTES, MEMORY_OPERATIONS
+from latitude_telemetry.sdk import (
+    CaptureScope,
+    ContextOptions,
+    InitLatitudeOptions,
+    InstrumentationName,
+    InstrumentationsInput,
+    InstrumentationType,
+    Latitude,
+    LatitudeOptions,
+    LatitudeSpanProcessorOptions,
+    MemoryRecord,
+    MemoryRedactInfo,
+    MemoryTelemetry,
+    SmartFilterOptions,
+    capture,
+    create_memory_telemetry,
+    get_latitude_context,
+    init_latitude,
+    register_latitude_instrumentations,
+)
+from latitude_telemetry.telemetry.latitude_span_processor import (
+    LatitudeSpanProcessor,
+)
+from latitude_telemetry.telemetry.redact_span_processor import (
+    RedactSpanProcessor,
+    RedactSpanProcessorOptions,
+    default_redact_span_processor,
+)
+from latitude_telemetry.telemetry.span_filter import (
+    ExportFilterSpanProcessor,
+    RedactThenExportSpanProcessor,
+    build_should_export_span,
+    is_default_export_span,
+    is_gen_ai_or_llm_attribute_span,
+    is_latitude_instrumentation_span,
+)
+
+__all__ = [
+    # New SDK API (OpenTelemetry-first)
+    "Latitude",
+    "init_latitude",
+    "capture",
+    "register_latitude_instrumentations",
+    "get_latitude_context",
+    "create_memory_telemetry",
+    # Types
+    "ContextOptions",
+    "CaptureScope",
+    "InitLatitudeOptions",
+    "InstrumentationName",
+    "InstrumentationsInput",
+    "InstrumentationType",
+    "LatitudeOptions",
+    "LatitudeSpanProcessorOptions",
+    "MemoryTelemetry",
+    "MemoryRecord",
+    "MemoryRedactInfo",
+    "SmartFilterOptions",
+    # Span Processor (composable mode)
+    "LatitudeSpanProcessor",
+    # Span filtering
+    "build_should_export_span",
+    "is_default_export_span",
+    "is_gen_ai_or_llm_attribute_span",
+    "is_latitude_instrumentation_span",
+    "ExportFilterSpanProcessor",
+    "RedactThenExportSpanProcessor",
+    # Redaction
+    "RedactSpanProcessor",
+    "RedactSpanProcessorOptions",
+    "default_redact_span_processor",
+    # Constants
+    "ATTRIBUTES",
+    "MEMORY_ATTRIBUTES",
+    "MEMORY_OPERATIONS",
+]

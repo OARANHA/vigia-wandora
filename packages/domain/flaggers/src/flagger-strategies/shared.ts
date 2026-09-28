@@ -1,0 +1,106 @@
+import type { FlaggerConversation } from "../conversation.ts"
+
+// Re-export shared constants from parent package for convenience
+export {
+  MAX_EXCERPT_LENGTH,
+  MAX_SNIPPET_EXCERPT_LENGTH,
+  MAX_STAGES_PER_PROMPT,
+  MAX_SUSPICIOUS_SNIPPETS,
+} from "../constants.ts"
+
+export const EXPLICIT_PROFANITY_PATTERN_SOURCE = String.raw`\b(?:fuck|shit|bitch|damn|asshole|cunt|dick|cock|pussy)\b`
+export const SLUR_PATTERN_SOURCE = String.raw`\b(?:nigger|faggot|retard|kike|chink|spic|wetback)\b`
+
+// ---------------------------------------------------------------------------
+// SuspiciousSnippet - shared shape for snippet-based detection
+// ---------------------------------------------------------------------------
+
+export interface SuspiciousSnippet {
+  /** Source of the snippet */
+  readonly source: "user" | "assistant" | "tool" | "unknown"
+  /** The suspicious text content */
+  readonly text: string
+  /** Brief reason for flagging */
+  readonly reason: string
+}
+
+/**
+ * Truncate text to maximum excerpt length.
+ */
+const loneSurrogatePattern = /[\uD800-\uDBFF](?![\uDC00-\uDFFF])|(?<![\uD800-\uDBFF])[\uDC00-\uDFFF]/g
+
+function replaceLoneSurrogates(text: string): string {
+  return text.replace(loneSurrogatePattern, "�")
+}
+
+export function truncateExcerpt(text: string, maxLength: number = 500): string {
+  const wellFormedText = replaceLoneSurrogates(text)
+  if (wellFormedText.length <= maxLength) return wellFormedText
+  return `${replaceLoneSurrogates(wellFormedText.slice(0, maxLength))}...`
+}
+
+// ---------------------------------------------------------------------------
+// Text extraction helpers used across strategies
+// ---------------------------------------------------------------------------
+
+export function iterMessageParts(parts: unknown): readonly unknown[] {
+  return Array.isArray(parts) ? parts : []
+}
+
+export function isMessagePart(value: unknown): value is Record<string, unknown> & { readonly type: string } {
+  return typeof value === "object" && value !== null && typeof (value as { type?: unknown }).type === "string"
+}
+
+export function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null
+}
+
+/**
+ * Extract text-only parts from messages for content scanning.
+ * Filters out tool calls, tool responses, and system messages.
+ */
+export function extractTextOnlyMessages(
+  conversation: Pick<FlaggerConversation, "allMessages">,
+): Array<{ readonly role: "user" | "assistant"; readonly content: string }> {
+  const result: Array<{ readonly role: "user" | "assistant"; readonly content: string }> = []
+
+  for (const message of conversation.allMessages) {
+    if (message.role !== "user" && message.role !== "assistant") continue
+
+    const textParts: string[] = []
+    for (const part of iterMessageParts(message.parts)) {
+      if (!isRecord(part) || part.type !== "text" || typeof part.content !== "string") continue
+      const trimmed = part.content.trim()
+      if (trimmed) textParts.push(trimmed)
+    }
+
+    if (textParts.length > 0) {
+      result.push({
+        role: message.role,
+        content: textParts.join(" "),
+      })
+    }
+  }
+
+  return result
+}
+
+/**
+ * Extract only user-authored text messages.
+ * Used for frustration detection and user-focused analysis.
+ */
+export function extractUserTextMessages(conversation: Pick<FlaggerConversation, "allMessages">): string[] {
+  const result: string[] = []
+
+  for (const message of conversation.allMessages) {
+    if (message.role !== "user") continue
+
+    for (const part of iterMessageParts(message.parts)) {
+      if (!isRecord(part) || part.type !== "text" || typeof part.content !== "string") continue
+      const trimmed = part.content.trim()
+      if (trimmed) result.push(trimmed)
+    }
+  }
+
+  return result
+}

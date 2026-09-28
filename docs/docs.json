@@ -1,0 +1,382 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "redirects": [
+    {
+      "source": "/issues/:slug*",
+      "destination": "/signals/:slug*"
+    },
+    {
+      "source": "/search/behaviours",
+      "destination": "/behaviours/overview"
+    },
+    {
+      "source": "/observability/guides/build-a-dashboard",
+      "destination": "/more/artifacts"
+    },
+    {
+      "source": "/more/data-destinations",
+      "destination": "/more/data-destinations/overview"
+    },
+    {
+      "source": "/more/sandbox",
+      "destination": "/observability/features/sandbox"
+    },
+    {
+      "source": "/more/agent-dispatch-cursor",
+      "destination": "/agent-dispatch/cursor"
+    },
+    {
+      "source": "/more/agent-dispatch-claude-code",
+      "destination": "/agent-dispatch/claude-code"
+    },
+    {
+      "source": "/more/agent-dispatch-linear",
+      "destination": "/agent-dispatch/linear"
+    },
+    {
+      "source": "/more/agent-dispatch-webhooks",
+      "destination": "/agent-dispatch/webhooks"
+    }
+  ],
+  "theme": "mint",
+  "name": "Latitude Docs",
+  "favicon": "/favicon.svg",
+  "logo": {
+    "light": "/logo/light.svg",
+    "dark": "/logo/dark.svg",
+    "href": "https://latitude.so"
+  },
+  "colors": {
+    "primary": "#0080FF",
+    "light": "#3399FF",
+    "dark": "#0066CC"
+  },
+  "appearance": {
+    "default": "system"
+  },
+  "fonts": {
+    "family": "Inter",
+    "heading": {
+      "family": "Inter",
+      "weight": 600
+    }
+  },
+  "icons": {
+    "library": "lucide"
+  },
+  "background": {
+    "decoration": "gradient"
+  },
+  "styling": {
+    "eyebrow": "breadcrumbs",
+    "codeblocks": {
+      "theme": {
+        "light": "github-light",
+        "dark": "github-dark"
+      }
+    }
+  },
+  "navigation": {
+    "global": {
+      "anchors": [
+        {
+          "anchor": "GitHub",
+          "icon": "github",
+          "href": "https://github.com/latitude-dev/latitude-llm"
+        },
+        {
+          "anchor": "YouTube",
+          "icon": "youtube",
+          "href": "https://www.youtube.com/@trylatitude"
+        },
+        {
+          "anchor": "Slack Community",
+          "icon": "slack",
+          "href": "https://join.slack.com/t/trylatitude/shared_invite/zt-35wu2h9es-N419qlptPMhyOeIpj3vjzw"
+        },
+        {
+          "anchor": "Status",
+          "icon": "activity",
+          "href": "https://status.latitude.so"
+        }
+      ]
+    },
+    "groups": [
+      {
+        "group": "Overview",
+        "pages": [
+          "getting-started/introduction",
+          "getting-started/how-to-use-latitude",
+          "getting-started/self-healing-agents",
+          "getting-started/concepts"
+        ]
+      },
+      {
+        "group": "Getting Started",
+        "pages": [
+          "telemetry/start-tracing",
+          "getting-started/migrate-from-v1",
+          "telemetry/memory",
+          {
+            "group": "Migrate from another platform",
+            "pages": [
+              "telemetry/imports/migrate",
+              "telemetry/imports/overview",
+              "telemetry/imports/langfuse",
+              "telemetry/imports/langsmith",
+              "telemetry/imports/braintrust"
+            ]
+          },
+          {
+            "group": "SDKs",
+            "pages": [
+              "telemetry/typescript",
+              "telemetry/python",
+              "telemetry/otel-exporter"
+            ]
+          },
+          {
+            "group": "Providers",
+            "pages": [
+              "telemetry/providers/openai",
+              "telemetry/providers/anthropic",
+              "telemetry/providers/gemini",
+              "telemetry/providers/azure",
+              "telemetry/providers/amazon-bedrock",
+              "telemetry/providers/google-ai-platform",
+              "telemetry/providers/vertex-ai",
+              "telemetry/providers/groq",
+              "telemetry/providers/mistral",
+              "telemetry/providers/ollama",
+              "telemetry/providers/cohere",
+              "telemetry/providers/together-ai",
+              "telemetry/providers/replicate",
+              "telemetry/providers/sagemaker",
+              "telemetry/providers/watsonx",
+              "telemetry/providers/aleph-alpha",
+              "telemetry/providers/transformers"
+            ]
+          },
+          {
+            "group": "Frameworks",
+            "pages": [
+              "telemetry/frameworks/vercel-ai-sdk",
+              "telemetry/frameworks/vercel-ai-sdk-v7",
+              "telemetry/frameworks/cloudflare-think",
+              "telemetry/frameworks/cloudflare-ai-gateway",
+              "telemetry/frameworks/openai-agents",
+              "telemetry/frameworks/google-adk",
+              "telemetry/frameworks/langchain",
+              "telemetry/frameworks/llamaindex",
+              "telemetry/frameworks/crewai",
+              "telemetry/frameworks/haystack",
+              "telemetry/frameworks/litellm",
+              "telemetry/frameworks/dspy",
+              "telemetry/frameworks/pydantic-ai",
+              "telemetry/frameworks/mastra",
+              "telemetry/frameworks/eve",
+              "telemetry/frameworks/flue",
+              "telemetry/frameworks/strands",
+              "telemetry/frameworks/livekit",
+              "telemetry/frameworks/elevenlabs"
+            ]
+          },
+          {
+            "group": "Agent harnesses",
+            "pages": [
+              "telemetry/claude-code",
+              "telemetry/hermes",
+              "telemetry/openclaw",
+              "telemetry/pi-coding-agent",
+              "telemetry/prime-intellect"
+            ]
+          }
+        ]
+      },
+      {
+        "group": "Observe",
+        "pages": [
+          "observability/overview",
+          "observability/agent-score",
+          "observability/sessions",
+          "observability/users",
+          "observability/tools",
+          "observability/memory",
+          "observability/cost",
+          "observability/traces",
+          "observability/spans",
+          "observability/tool-calls",
+          {
+            "group": "Search",
+            "pages": [
+              "search/overview",
+              "search/saved-searches",
+              "search/guides/search-and-review-effectively"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "observability/features/duration",
+              "observability/features/environments",
+              "observability/filters",
+              "observability/features/log-levels",
+              "observability/features/metadata",
+              "observability/features/percentile-cohorts",
+              "observability/features/releases-versioning",
+              "observability/features/sampling",
+              "observability/features/tags",
+              "observability/features/token-cost-tracking",
+              "observability/features/trace-ids",
+              "observability/features/trace-urls",
+              "observability/features/user-tracking",
+              "observability/features/sandbox"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "observability/guides/group-traces-by-project"
+            ]
+          }
+        ]
+      },
+      {
+        "group": "Understand",
+        "pages": [
+          "signals/overview",
+          "signals/create",
+          "signals/management",
+          "behaviours/overview",
+          "experiments/overview",
+          {
+            "group": "Annotations",
+            "pages": [
+              "annotations/overview",
+              "annotations/inline-annotations",
+              "annotations/flaggers",
+              "scores/overview",
+              "scores/analytics"
+            ]
+          },
+          {
+            "group": "Evaluations",
+            "pages": [
+              "evaluations/overview",
+              "evaluations/detection-methods",
+              "evaluations/custom-scripts",
+              "evaluations/triggers",
+              "evaluations/alignment"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "annotations/guides/annotate-effectively"
+            ]
+          }
+        ]
+      },
+      {
+        "group": "Refine",
+        "pages": [
+          "monitors/overview",
+          {
+            "group": "Agent dispatch",
+            "pages": [
+              "agent-dispatch/overview",
+              {
+                "group": "Integrations",
+                "pages": [
+                  "agent-dispatch/cursor",
+                  "agent-dispatch/claude-code",
+                  "agent-dispatch/linear",
+                  "agent-dispatch/webhooks"
+                ]
+              }
+            ]
+          },
+          {
+            "group": "Datasets",
+            "pages": [
+              "datasets/overview",
+              "datasets/add-traces",
+              "datasets/expected-output",
+              "datasets/custom-columns",
+              "datasets/edit-rows"
+            ]
+          },
+          "test-and-fix/simulations",
+          "test-and-fix/regression-testing"
+        ]
+      },
+      {
+        "group": "Security and Compliance",
+        "pages": [
+          "security/data-protection",
+          "security/pii-redaction",
+          {
+            "group": "Compliance",
+            "pages": [
+              "security/compliance/soc2",
+              "security/compliance/iso-27001",
+              "security/compliance/gdpr"
+            ]
+          }
+        ]
+      },
+      {
+        "group": "Deployment",
+        "pages": [
+          "deployment/overview",
+          "deployment/single-host",
+          "deployment/cluster",
+          "deployment/configuration"
+        ]
+      },
+      {
+        "group": "Development",
+        "pages": [
+          "development/setup",
+          "development/contributing"
+        ]
+      },
+      {
+        "group": "More",
+        "pages": [
+          "getting-started/mcp",
+          "getting-started/cli",
+          "getting-started/skills",
+          "more/api-reference",
+          "more/artifacts",
+          "more/notifications",
+          "more/slack",
+          "more/github",
+          {
+            "group": "Data destinations",
+            "pages": [
+              "more/data-destinations/overview",
+              "more/data-destinations/posthog"
+            ]
+          },
+          "more/partners"
+        ]
+      }
+    ]
+  },
+  "footer": {
+    "socials": {
+      "github": "https://github.com/latitude-dev/latitude-llm",
+      "slack": "https://join.slack.com/t/trylatitude/shared_invite/zt-35wu2h9es-N419qlptPMhyOeIpj3vjzw"
+    }
+  },
+  "integrations": {
+    "gtm": {
+      "tagId": "GTM-5NWGV24H"
+    },
+    "posthog": {
+      "apiKey": "phc_BWYPiCdzp7A2mGD3PsrXamcxmemNNctkLYMNDHmmYJJb",
+      "sessionRecording": true
+    }
+  }
+}

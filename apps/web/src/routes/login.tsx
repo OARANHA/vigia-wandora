@@ -222,13 +222,13 @@ function LoginPage() {
         </div>
 
         <div className="flex flex-col gap-2">
-          <Button variant="ghost" onClick={() => void submitSocialSignIn("google")} disabled={isLoading}>
-            <GoogleIcon className="mr-2" />
+          <Button size="full" variant="outline" onClick={() => void submitSocialSignIn("google")} disabled={isLoading}>
+            <GoogleIcon />
             {ptBR.auth.continueWithGoogle}
           </Button>
 
-          <Button size="lg" variant="ghost" onClick={() => void submitSocialSignIn("github")} disabled={isLoading}>
-            <GitHubIcon className="mr-2" />
+          <Button size="full" variant="outline" onClick={() => void submitSocialSignIn("github")} disabled={isLoading}>
+            <GitHubIcon />
             {ptBR.auth.continueWithGitHub}
           </Button>
         </div>

@@ -1,5 +1,0 @@
-node_modules/
-dist/
-.flue-build/
-.env
-package-lock.json

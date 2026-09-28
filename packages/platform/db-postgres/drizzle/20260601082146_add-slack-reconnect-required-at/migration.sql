@@ -1,1 +1,0 @@
-ALTER TABLE "latitude"."slack_integration_details" ADD COLUMN "reconnect_required_at" timestamp with time zone;

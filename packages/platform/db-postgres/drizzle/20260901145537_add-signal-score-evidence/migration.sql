@@ -1,1 +1,0 @@
-ALTER TABLE "latitude"."signals" ADD COLUMN "score_evidence" jsonb DEFAULT '[]' NOT NULL;

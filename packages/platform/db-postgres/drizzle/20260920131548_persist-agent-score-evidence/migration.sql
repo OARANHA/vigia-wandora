@@ -1,1 +1,0 @@
-ALTER TABLE "latitude"."agent_score_snapshots" ADD COLUMN "explanation" jsonb;

@@ -1,1 +1,0 @@
-CREATE INDEX "alert_incidents_open_by_kind_idx" ON "latitude"."alert_incidents" ("kind") WHERE ended_at IS NULL;

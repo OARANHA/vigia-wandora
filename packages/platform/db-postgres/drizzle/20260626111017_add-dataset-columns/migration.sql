@@ -1,1 +1,0 @@
-ALTER TABLE "latitude"."datasets" ADD COLUMN "columns" jsonb;

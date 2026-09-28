@@ -14,16 +14,19 @@ import {
 export function VigiaConnectionInstructions({
   projectSlug,
   source,
+  apiKeyToken,
 }: {
   readonly projectSlug: string
   readonly source: VigiaAgentStackId
+  readonly apiKeyToken?: string | null
 }) {
   const { toast } = useToast()
   const { data: apiKeysList = [] } = useApiKeysCollection()
   const [creatingKey, setCreatingKey] = useState(false)
 
   const preferredKey = apiKeysList.find((key) => key.name === DEFAULT_API_KEY_NAME) ?? apiKeysList[0] ?? null
-  const config = getVigiaConnectionValues(projectSlug, preferredKey?.token ?? null)
+  const resolvedApiKey = apiKeyToken !== undefined ? apiKeyToken : resolvedApiKey
+  const config = getVigiaConnectionValues(projectSlug, resolvedApiKey)
   const stack = VIGIA_AGENT_STACKS.find((entry) => entry.id === source) ?? VIGIA_AGENT_STACKS.at(-1)
 
   const handleCreateKey = async () => {
@@ -60,9 +63,9 @@ export function VigiaConnectionInstructions({
         </div>
         <div className="flex flex-col gap-2">
           <Text.H6 color="foregroundMuted">Chave Vigia</Text.H6>
-          {preferredKey ? (
-            <CodeBlock value={preferredKey.token} copyable />
-          ) : (
+          {resolvedApiKey ? (
+            <CodeBlock value={resolvedApiKey} copyable />
+          ) : apiKeyToken === undefined ? (
             <div className="flex flex-col items-start gap-2">
               <Text.H6 color="foregroundMuted">
                 Crie uma chave para autenticar os traces enviados por este ambiente.
@@ -71,6 +74,8 @@ export function VigiaConnectionInstructions({
                 {creatingKey ? "Criando chave…" : "Criar chave de conexão"}
               </Button>
             </div>
+          ) : (
+            <Text.H6 color="foregroundMuted">Nenhuma chave de conexão está disponível neste ambiente.</Text.H6>
           )}
         </div>
       </div>
@@ -80,7 +85,7 @@ export function VigiaConnectionInstructions({
         <Text.H5 color="foregroundMuted">
           Use OTLP HTTP para enviar traces. O cabeçalho X-Vigia-Project identifica este agente no Vigia.
         </Text.H5>
-        <CodeBlock value={getVigiaOtelEnvBlock(projectSlug, preferredKey?.token ?? null)} copyable />
+        <CodeBlock value={getVigiaOtelEnvBlock(projectSlug, resolvedApiKey)} copyable />
       </div>
 
       <div className="flex flex-col gap-2">
@@ -95,7 +100,7 @@ export function VigiaConnectionInstructions({
         <Text.H6 color="foregroundMuted">
           Este comando envia um trace mínimo para validar endpoint, chave e projeto antes de instrumentar o fluxo completo.
         </Text.H6>
-        <CodeBlock value={getVigiaOtelCurlVerifySnippet(projectSlug, preferredKey?.token ?? null)} copyable />
+        <CodeBlock value={getVigiaOtelCurlVerifySnippet(projectSlug, resolvedApiKey)} copyable />
       </div>
     </div>
   )

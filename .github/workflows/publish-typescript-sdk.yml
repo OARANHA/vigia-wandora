@@ -1,0 +1,38 @@
+name: Publish TypeScript SDK
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Git ref to publish from
+        required: false
+        type: string
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to publish from
+        required: false
+        type: string
+
+jobs:
+  publish:
+    name: Build and Publish
+    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'latitude-dev/latitude-llm' }}
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Publish
+        uses: ./.github/actions/publish-npm-package
+        with:
+          package_path: packages/sdk/typescript
+          npm_package: "@latitude-data/sdk"
+          pnpm_filter: "@latitude-data/sdk"
+          tag_prefix: typescript-sdk
+          release_name: TypeScript SDK
+          target_commitish: ${{ inputs.ref || github.sha }}

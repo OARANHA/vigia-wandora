@@ -25,7 +25,7 @@ export function VigiaConnectionInstructions({
   const [creatingKey, setCreatingKey] = useState(false)
 
   const preferredKey = apiKeysList.find((key) => key.name === DEFAULT_API_KEY_NAME) ?? apiKeysList[0] ?? null
-  const resolvedApiKey = apiKeyToken !== undefined ? apiKeyToken : preferredKey?.token ?? null
+  const resolvedApiKey = apiKeyToken !== undefined ? apiKeyToken : (preferredKey?.token ?? null)
   const config = getVigiaConnectionValues(projectSlug, resolvedApiKey)
   const stack = VIGIA_AGENT_STACKS.find((entry) => entry.id === source) ?? VIGIA_AGENT_STACKS.at(-1)
 
@@ -98,7 +98,8 @@ export function VigiaConnectionInstructions({
       <div className="flex flex-col gap-2">
         <Text.H6 color="foregroundMuted">Teste rápido opcional</Text.H6>
         <Text.H6 color="foregroundMuted">
-          Este comando envia um trace mínimo para validar endpoint, chave e projeto antes de instrumentar o fluxo completo.
+          Este comando envia um trace mínimo para validar endpoint, chave e projeto antes de instrumentar o fluxo
+          completo.
         </Text.H6>
         <CodeBlock value={getVigiaOtelCurlVerifySnippet(projectSlug, resolvedApiKey)} copyable />
       </div>

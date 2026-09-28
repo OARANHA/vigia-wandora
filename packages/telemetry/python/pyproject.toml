@@ -57,7 +57,7 @@ dev = [
     "openai-agents==0.21.0",
     # Note: 0.41.0 onwards made Prompt Caching generally available
     # which is not compatible with the instrumentation
-    "anthropic==0.117.0",
+    "anthropic==1.7.0",
     # LiteLLM is example-only and cannot share this group with openai 3.x:
     # every published litellm still requires openai>=2.20.0,<3.0.0.
     # Install it separately for examples (`uv add 'litellm>=1.88'`).

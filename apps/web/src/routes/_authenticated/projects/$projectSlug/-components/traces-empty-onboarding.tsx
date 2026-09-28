@@ -273,7 +273,7 @@ function TracesSetupSheet({
   readonly open: boolean
   readonly onClose: () => void
   readonly projectSlug: string
-  readonly apiKeyToken?: string | null
+  readonly apiKeyToken?: string | null | undefined
 }) {
   return (
     <Sheet open={open} onClose={onClose} closeAriaLabel="Fechar configuração">

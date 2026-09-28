@@ -25,7 +25,7 @@ export function VigiaConnectionInstructions({
   const [creatingKey, setCreatingKey] = useState(false)
 
   const preferredKey = apiKeysList.find((key) => key.name === DEFAULT_API_KEY_NAME) ?? apiKeysList[0] ?? null
-  const resolvedApiKey = apiKeyToken !== undefined ? apiKeyToken : resolvedApiKey
+  const resolvedApiKey = apiKeyToken !== undefined ? apiKeyToken : preferredKey?.token ?? null
   const config = getVigiaConnectionValues(projectSlug, resolvedApiKey)
   const stack = VIGIA_AGENT_STACKS.find((entry) => entry.id === source) ?? VIGIA_AGENT_STACKS.at(-1)
 

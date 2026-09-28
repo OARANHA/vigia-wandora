@@ -1,0 +1,49 @@
+---
+title: Data protection
+description: How Latitude keeps hosted customer data and Latitude-managed inference within AWS eu-central-1.
+---
+
+# Data protection
+
+Hosted Latitude is designed for teams that need AI observability while keeping production agent data within a defined European region. It stores and processes customer data and runs Latitude-managed inference in AWS eu-central-1 in Frankfurt, Germany.
+
+This covers data Latitude receives or creates while operating the platform, including traces, spans, sessions, annotations, scores, signals, evaluations, search indexes, and related metadata.
+
+## European data and inference boundary
+
+Latitude-managed inference includes the internal model calls that power product workflows such as:
+
+- signal discovery and clustering
+- signal names and descriptions
+- flagger review for supported failure categories
+- evaluation generation and alignment workflows
+- search, scoring, and reliability analysis
+
+Your application can call any model provider you choose. This boundary applies only to hosted Latitude and its managed inference.
+
+## Tenant and project boundaries
+
+Latitude scopes data by organization and project:
+
+- **Organizations** are the top-level access boundary.
+- **Projects** scope traces, search, scores, signals, evaluations, and related workflows.
+- Signal detection runs within a project, so teams can keep unrelated agents separate by routing them to separate projects.
+
+See [Group traces by project](../observability/guides/group-traces-by-project) for recommended project scoping patterns.
+
+## Data minimization
+
+Latitude reduces sensitive-data exposure throughout the telemetry pipeline:
+
+- SDKs redact common security-sensitive attributes before export by default.
+- Customers can configure additional SDK redaction patterns for application-specific PII.
+- Internal systems avoid exposing raw payloads when summaries, derived labels, scores, or references are enough.
+- Customer-facing workflows use scoped project data instead of broad organization-wide processing.
+
+See [PII redaction](./pii-redaction) for implementation details and examples.
+
+## Compliance status
+
+Latitude is SOC II certified. See [SOC II](./compliance/soc2) for scope and report availability.
+
+ISO 27001 audit work and GDPR readiness review are in progress and expected to be completed by the end of May 2026. Latitude does not claim ISO 27001 certification or a finalized GDPR compliance review until those reviews are complete.

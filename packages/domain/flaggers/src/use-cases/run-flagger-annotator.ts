@@ -1,0 +1,326 @@
+import {
+  AI,
+  AI_GENERATE_TELEMETRY_SPAN_NAMES,
+  AI_GENERATE_TELEMETRY_TAGS,
+  buildProjectScopedAiMetadata,
+  resolveGenerationConfig,
+} from "@domain/ai"
+import { LATITUDE_TELEMETRY_PROJECT_SLUGS } from "@domain/shared"
+import type { TraceDetail } from "@domain/spans"
+import { Effect } from "effect"
+import { FLAGGER_DEFAULT_ANNOTATOR_MODEL } from "../constants.ts"
+import type { FlaggerConversation } from "../conversation.ts"
+import { getFlaggerStrategy } from "../flagger-strategies/index.ts"
+import { isRecord, iterMessageParts } from "../flagger-strategies/shared.ts"
+import { reflagSuppressionTags } from "../reflag.ts"
+import { flaggerAnnotatorOutputSchema } from "./flagger-annotator-contracts.ts"
+
+/**
+ * Input for the pure annotator (no repository dependency).
+ *
+ * Callers that already hold a `TraceDetail` use this shape with
+ * {@link annotateTraceForFlaggerUseCase}.
+ */
+export interface AnnotateTraceForFlaggerInput {
+  readonly organizationId: string
+  readonly projectId: string
+  readonly flaggerSlug: string
+  readonly traceId: string
+  readonly scoreId: string
+  readonly trace: TraceDetail
+}
+
+export interface AnnotateConversationForFlaggerInput {
+  readonly organizationId: string
+  readonly projectId: string
+  readonly flaggerSlug: string
+  readonly scoreId: string
+  readonly conversation: FlaggerConversation
+  readonly summary: {
+    readonly durationNs: number
+    readonly spanCount: number
+    readonly errorCount: number
+  }
+  readonly traceId?: string | undefined
+  readonly sessionId?: string | undefined
+}
+
+const ANNOTATOR_SYSTEM_PROMPT_TEMPLATE = `
+You are the Annotation Writer for telemetry traces. Given a flagged trace and the flagger it matched, write a short, human-readable annotation describing the issue detected.
+The flag decision has already been made — your job is to draft the annotation, not to re-evaluate whether the trace belongs to this flagger.
+
+Flagger (the trace matched this flagger):
+- Name: {flaggerName}
+- Description: {flaggerDescription}
+- Reviewer guidance for what belongs to this flagger:
+{flaggerInstructions}
+
+Format constraints:
+- Write ONE to TWO sentences maximum.
+- Focus on what went wrong and the key evidence — not an exhaustive analysis.
+- Write so that similar issues across different traces produce similar annotations. The text will be used for semantic clustering.
+- Do NOT start with generic prefixes like "Trace shows", "The trace", "This trace", "The assistant" — lead with the specific issue or behavior.
+- Reference concrete numbers or field values when they strengthen the signal (e.g. "8 tool calls", "18s duration"), but do not enumerate every detail.
+
+Grounding rules:
+- Use ONLY the provided inputs. Do not invent facts.
+- The conversation is provided as a normalized transcript for annotation. Treat it as factual evidence about what happened, then describe the underlying behavior in natural language.
+- If evidence supports only a broad issue, name the issue plainly without speculating about hidden details.
+- Do not mention transcript formatting, redaction, omitted payloads, message labels, PromptL, system prompts, or other internal implementation details.
+
+Use the simplest wording that still carries the full meaning. Prefer short, everyday words over formal or technical synonyms when both fit, and keep the feedback only as long as it needs to be — no padding, no restatement, no meta-commentary. The original context and nuance must still come through; simpler wording is the goal, not less information.
+
+Respond with structured data containing a "feedback" field with your annotation text, and an optional "messageIndex" field (integer) pointing to the specific transcript line where the issue is most evident. Each transcript line is prefixed with its message index like \`[m12 assistant]:\`. Only specify messageIndex when you can confidently identify the line — it is better to omit it than to guess. When the transcript shows a toolcall or toolresult line that is the direct evidence, prefer its index.
+`.trim()
+
+const SYSTEM_PROMPT_PREVIEW_MAX_LINES = 4
+const SYSTEM_PROMPT_PREVIEW_MAX_CHARS = 600
+const ANNOTATOR_TEXT_PART_MAX_CHARS = 8_000
+const ANNOTATOR_TRANSCRIPT_MAX_CHARS = 120_000
+const TOOL_RESULT_ERROR_TEXT = /(^error\b|error:\s*|\bfailed\b|\bfailure\b|\bexception\b|\btimeout\b|\bunavailable\b)/i
+const TOOL_RESULT_ERROR_STATUSES = new Set(["error", "failed", "failure"])
+
+const buildAnnotatorSystemPrompt = (flaggerSlug: string): string => {
+  const strategy = getFlaggerStrategy(flaggerSlug)
+  const annotator = strategy?.annotator
+
+  if (!annotator) {
+    return ANNOTATOR_SYSTEM_PROMPT_TEMPLATE.replace("{flaggerName}", flaggerSlug)
+      .replace("{flaggerDescription}", "Flagger for pattern detection")
+      .replace("{flaggerInstructions}", "Review the conversation and provide feedback.")
+  }
+
+  return ANNOTATOR_SYSTEM_PROMPT_TEMPLATE.replace("{flaggerName}", annotator.name)
+    .replace("{flaggerDescription}", annotator.description)
+    .replace("{flaggerInstructions}", annotator.instructions)
+}
+
+function toNonEmptyString(value: unknown): string | null {
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null
+}
+
+function truncateMiddle(text: string, maxChars: number, label: string): string {
+  if (text.length <= maxChars) return text
+
+  const omitted = text.length - maxChars
+  const marker = `\n[... ${omitted} ${label} omitted ...]\n`
+  const available = Math.max(0, maxChars - marker.length)
+  const headLength = Math.ceil(available / 2)
+  const tailLength = available - headLength
+
+  return `${text.slice(0, headLength).trimEnd()}${marker}${text.slice(text.length - tailLength).trimStart()}`
+}
+
+function cropSystemPromptPreview(text: string): string {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line !== "")
+
+  if (lines.length === 0) return ""
+
+  const preview = lines.slice(0, SYSTEM_PROMPT_PREVIEW_MAX_LINES).join(" ")
+  const truncated =
+    preview.length > SYSTEM_PROMPT_PREVIEW_MAX_CHARS
+      ? preview.slice(0, SYSTEM_PROMPT_PREVIEW_MAX_CHARS).trimEnd()
+      : preview
+
+  return lines.length > SYSTEM_PROMPT_PREVIEW_MAX_LINES || truncated.length < preview.length
+    ? `${truncated}...`
+    : truncated
+}
+
+function responseIndicatesFailure(response: unknown): boolean {
+  if (typeof response === "string") {
+    const trimmed = response.trim()
+    if (trimmed === "") return false
+
+    try {
+      return responseIndicatesFailure(JSON.parse(trimmed))
+    } catch {
+      return TOOL_RESULT_ERROR_TEXT.test(trimmed)
+    }
+  }
+
+  if (Array.isArray(response)) {
+    return response.some(responseIndicatesFailure)
+  }
+
+  if (!isRecord(response)) return false
+
+  if (response.isError === true || response.ok === false || response.success === false) {
+    return true
+  }
+
+  const status = toNonEmptyString(response.status)
+  if (status && TOOL_RESULT_ERROR_STATUSES.has(status.toLowerCase())) {
+    return true
+  }
+
+  if ("error" in response) {
+    const error = response.error
+    if (error !== null && error !== undefined && error !== false && error !== "") {
+      return true
+    }
+  }
+
+  if (Array.isArray(response.errors) && response.errors.length > 0) {
+    return true
+  }
+
+  return false
+}
+
+const formatConversationForAnnotator = (messages: readonly { role: string; parts?: unknown }[]): string => {
+  const lines: string[] = []
+
+  for (let msgIdx = 0; msgIdx < messages.length; msgIdx++) {
+    const message = messages[msgIdx]!
+    if (message.role === "system") {
+      const systemText = iterMessageParts(message.parts)
+        .flatMap((part) => {
+          if (!isRecord(part) || part.type !== "text") return []
+          const content = toNonEmptyString(part.content)
+          return content ? [content] : []
+        })
+        .join("\n")
+
+      const preview = cropSystemPromptPreview(systemText)
+      if (preview) lines.push(`[m${msgIdx} system]: ${preview}`)
+      continue
+    }
+
+    const textParts: string[] = []
+
+    const flushText = () => {
+      if (message.role !== "user" && message.role !== "assistant") return
+
+      const body = textParts.join("\n").trim()
+      if (body) lines.push(`[m${msgIdx} ${message.role}]: ${body}`)
+      textParts.length = 0
+    }
+
+    for (const part of iterMessageParts(message.parts)) {
+      if (!isRecord(part)) continue
+
+      if (part.type === "text") {
+        const content = toNonEmptyString(part.content)
+        if (content && (message.role === "user" || message.role === "assistant")) {
+          textParts.push(truncateMiddle(content, ANNOTATOR_TEXT_PART_MAX_CHARS, "chars from this message"))
+        }
+        continue
+      }
+
+      if (part.type === "tool_call" || part.type === "tool-call") {
+        flushText()
+        const toolName = toNonEmptyString(part.name) ?? toNonEmptyString(part.toolName) ?? "<unknown tool>"
+        lines.push(`[m${msgIdx} toolcall]: ${toolName}`)
+        continue
+      }
+
+      if (part.type === "tool_call_response" || part.type === "tool-result") {
+        flushText()
+        const response = "response" in part ? part.response : part.result
+        const status = responseIndicatesFailure(response) ? "error" : "ok"
+        if (message.role === "tool" || message.role === "function") {
+          lines.push(`[m${msgIdx} toolresult]: ${status}`)
+        }
+      }
+    }
+
+    flushText()
+  }
+
+  if (lines.length === 0) return "<no conversation messages available>"
+
+  return truncateMiddle(lines.join("\n"), ANNOTATOR_TRANSCRIPT_MAX_CHARS, "chars from the middle of the transcript")
+}
+
+// Pure annotator — no repository dependency, no data loading.
+export const annotateConversationForFlaggerUseCase = Effect.fn("flaggers.annotateConversationForFlagger")(function* (
+  input: AnnotateConversationForFlaggerInput,
+) {
+  const ai = yield* AI
+
+  const systemPrompt = buildAnnotatorSystemPrompt(input.flaggerSlug)
+
+  const conversationText =
+    input.conversation.allMessages.length > 0
+      ? formatConversationForAnnotator(input.conversation.allMessages)
+      : "<no conversation messages available>"
+
+  const durationSeconds = input.summary.durationNs / 1_000_000_000
+
+  const prompt = `Provided inputs only — use these facts and the conversation below; do not invent details.
+
+Trace summary (telemetry aggregates; cite only when relevant):
+- Approximate duration: ${durationSeconds.toFixed(durationSeconds < 10 ? 2 : 1)}s
+- Span count: ${input.summary.spanCount}
+- Error count: ${input.summary.errorCount}
+- Trace messages (raw): ${input.conversation.allMessages.length}
+
+Conversation transcript for annotation:
+- This is a compact, normalized rendering of the trace.
+- [toolcall] lines name the tool that was invoked.
+- [toolresult] lines summarize only whether the tool succeeded or failed.
+- Write about the underlying issue in plain language, not about the transcript formatting or what was omitted.
+${conversationText}
+
+Return structured data with a single "feedback" field per the system instructions.`
+
+  const modelConfig = yield* resolveGenerationConfig("FLAGGER_ANNOTATOR", FLAGGER_DEFAULT_ANNOTATOR_MODEL)
+  const result = yield* ai.generate({
+    ...modelConfig,
+    system: systemPrompt,
+    prompt,
+    schema: flaggerAnnotatorOutputSchema,
+    telemetry: {
+      spanName: AI_GENERATE_TELEMETRY_SPAN_NAMES.flaggerDraft,
+      project: LATITUDE_TELEMETRY_PROJECT_SLUGS.flaggers,
+      // Same recursion break as classify: a draft for a flagger-generated trace
+      // must not itself be flagged.
+      tags: [...AI_GENERATE_TELEMETRY_TAGS.flaggerDraft, ...reflagSuppressionTags(input.conversation.tags)],
+      metadata: buildProjectScopedAiMetadata(
+        { organizationId: input.organizationId, projectId: input.projectId },
+        {
+          ...(input.traceId ? { traceId: input.traceId } : {}),
+          ...(input.sessionId ? { sessionId: input.sessionId } : {}),
+          flaggerSlug: input.flaggerSlug,
+          scoreId: input.scoreId,
+        },
+      ),
+    },
+  })
+
+  return {
+    feedback: result.object.feedback,
+    messageIndex: result.object.messageIndex,
+  }
+})
+
+// Trace-shaped adapter for eval harnesses and tests.
+export const annotateTraceForFlaggerUseCase = Effect.fn("flaggers.annotateTraceForFlagger")(function* (
+  input: AnnotateTraceForFlaggerInput,
+) {
+  const result = yield* annotateConversationForFlaggerUseCase({
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    flaggerSlug: input.flaggerSlug,
+    scoreId: input.scoreId,
+    conversation: input.trace,
+    summary: {
+      durationNs: input.trace.durationNs,
+      spanCount: input.trace.spanCount,
+      errorCount: input.trace.errorCount,
+    },
+    traceId: input.traceId,
+  })
+
+  return {
+    feedback: result.feedback,
+    traceCreatedAt: input.trace.startTime.toISOString(),
+    sessionId: input.trace.sessionId,
+    simulationId: input.trace.simulationId === "" ? null : input.trace.simulationId,
+    messageIndex: result.messageIndex,
+  }
+})

@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv
+.env
+.DS_Store
+
+# Fern generation provenance — records the git commit + dirty flag at generate
+# time, so it can never match on regeneration (would break the manifest drift
+# check). Fern rewrites it on every `generate`; it isn't SDK code.
+src/latitude_sdk/.fern/

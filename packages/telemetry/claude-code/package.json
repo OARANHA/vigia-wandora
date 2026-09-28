@@ -1,0 +1,60 @@
+{
+  "name": "@latitude-data/claude-code-telemetry",
+  "version": "0.0.15",
+  "description": "Claude Code Stop-hook that streams session transcripts to Latitude as OTLP traces",
+  "author": "Latitude Data SL <hello@latitude.so>",
+  "license": "MIT",
+  "keywords": [
+    "claude-code",
+    "telemetry",
+    "otlp",
+    "opentelemetry",
+    "latitude"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/latitude-dev/latitude-llm/tree/main/packages/telemetry/claude-code"
+  },
+  "homepage": "https://github.com/latitude-dev/latitude-llm/tree/main/packages/telemetry/claude-code#readme",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=20.12.0"
+  },
+  "bin": {
+    "latitude-claude-code": "./dist/entry.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./intercept": "./dist/intercept.js"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "check": "biome check src",
+    "format": "biome format --write src && biome check --fix src",
+    "typecheck": "tsgo -p tsconfig.json --noEmit",
+    "test": "vitest run --pool=forks --passWithNoTests --dir src"
+  },
+  "dependencies": {
+    "@clack/prompts": "1.4.0",
+    "picocolors": "1.1.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "catalog:",
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "@typescript/native-preview": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "typescript": "^6.0.3"
+  }
+}

@@ -1,0 +1,357 @@
+# Changelog
+
+All notable changes to the TypeScript Telemetry SDK will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [4.1.0] - 2026-09-01
+
+### Added
+
+- `injectTraceContext()` / `extractTraceContext()` / `withTraceContext()` carry the active span and
+  Latitude context across a boundary with no ambient OpenTelemetry context, so a second agent in its
+  own Cloudflare Durable Object joins the caller's trace instead of orphaning one. Injecting from
+  inside a tool's `execute` parents the callee on that tool call, which is what makes it render as a
+  subagent. The carrier is keyed by HTTP header names, so one object serves an RPC argument and
+  `fetch` headers, and an absent or malformed carrier leaves the callee a root rather than failing.
+- `withParentContext(tracer, context)` attaches a framework-owned tracer's first span to a remote
+  parent while leaving nested spans on their real parents.
+- `createDurableObjectTelemetry()` flushes at each unit of work, which is the only reliable point on
+  a runtime that evicts without warning. Exports are serialized and coalesced, a caller arriving
+  mid-export gets a later one, in-flight exports register with `ctx.waitUntil()`, and a failed
+  export is reported instead of failing the turn.
+- The Cloudflare Think guide and runnable example cover multi-agent propagation and eviction-safe
+  flushing, including a second `Planner` agent in its own Durable Object.
+
+### Fixed
+
+- Constructing `Latitude` no longer assumes `process.once` exists, so it works on runtimes without
+  Node signal handling.
+- Smart filter now promotes ancestors of kept spans (including already-ended parents held briefly
+  after a drop) so exported traces stay connected when only a descendant independently passed the
+  filter — e.g. a stamped `tcp.connect` no longer ships without its parent.
+
+## [4.0.0] - 2026-07-22
+
+### Changed
+
+- **Breaking:** `instrumentations` now accepts an array of instances created by opt-in `@latitude-data/telemetry/instrumentations/*` factories instead of an integration-name object map.
+- Provider instrumentations remain included with the package but are isolated behind subpath exports, preventing unused integrations and their transitive dependencies from entering consumer bundles.
+
+## [3.7.0] - 2026-07-20
+
+### Added
+
+- `createMemoryTelemetry()` emits OpenTelemetry GenAI memory-operation spans (`create_memory`, `update_memory`, `upsert_memory`, `delete_memory`, `search_memory`, `create_memory_store`, `delete_memory_store`). Each operation optionally wraps an `execute` callback — capturing latency, errors, and status — or emits a completed span. It sets `gen_ai.operation.name` and the `gen_ai.memory.*` attributes, stamps Latitude context, and maps a `search` result to the records it returned.
+- Content is opt-in via `captureContent` (off by default) and covers both record bodies (`gen_ai.memory.records`) and the search query (`gen_ai.memory.query.text`), with a `redact` hook to scrub records before they are sent.
+- `GEN_AI_MEMORY_ATTRIBUTES` and `MEMORY_OPERATIONS` constants are exported for raw OpenTelemetry instrumentation.
+
+## [3.6.0] - 2026-07-10
+
+### Added
+
+- `createCodemodeTelemetry()` wraps codemode `execute` tools and internal tool sets so tools called from inside codemode emit nested `ai.toolCall <name>` spans under the outer `execute` span. The helper stamps Latitude context, records AI SDK and GenAI tool attributes, supports input/output capture with redaction, and marks failed tool spans with exception details.
+- A public `@latitude-data/telemetry/cloudflare` subpath exports Cloudflare-specific helpers, starting with `createCodemodeTelemetry()`. Cloudflare helpers are not exported from the root SDK import.
+- The Cloudflare Think telemetry guide and runnable example now show codemode tracing with `createCodemodeTelemetry()` from the Cloudflare subpath.
+
+## [3.5.0] - 2026-06-29
+
+### Added
+
+- `capture.start()` and `capture.end()` support lifecycle capture boundaries for flows that cannot
+  wrap their work in a callback. `CaptureScope` can be ended directly, or `capture.end()` can end the
+  currently active lifecycle capture.
+- `Latitude#getTracer(scope, context?)` returns a tracer from the provider Latitude is exporting
+  from, prefixing scopes with `so.latitude.instrumentation.` when needed. Pass the optional context
+  to stamp spans with the same Latitude context accepted by `capture()` (`userId`, `sessionId`,
+  `tags`, `metadata`, and `project`), including when passing the tracer to the Vercel AI SDK v6
+  `experimental_telemetry.tracer` field.
+
+### Fixed
+
+- Capture root spans now record exceptions and set `ERROR` status when captured work raises or a
+  lifecycle capture ends with an error.
+
+## [3.4.0] - 2026-06-23
+
+### Added
+
+- **OpenAI Agents traces now capture system instructions.** The `openai-agents` instrumentation
+  forwards the agent's `instructions` (echoed on the Responses API `_response.instructions`) as
+  `gen_ai.system_instructions`, so the agent's system prompt populates the System Instructions field.
+
+### Changed
+
+- Bumped `@traceloop/instrumentation-bedrock` 0.26.0 → 0.27.0.
+- Bumped `@traceloop/instrumentation-llamaindex` 0.25.0 → 0.27.0.
+- Bumped `@traceloop/instrumentation-together` 0.25.0 → 0.27.0.
+- **LangChain is now instrumented via OpenInference** (`@arizeai/openinference-instrumentation-langchain`)
+  instead of Traceloop. OpenInference captures tool calls, tool definitions, and tool-call/result pairing
+  (which Traceloop dropped), and patches the callback manager synchronously so the first call in a process
+  is no longer missed. Pass `@langchain/core/callbacks/manager` as the `langchain` instrumentation. Removes
+  the `@traceloop/instrumentation-langchain` dependency.
+
+## [3.3.0] - 2026-06-22
+
+### Added
+
+- **OpenAI Agents traces now capture tool definitions.** The `openai-agents` instrumentation forwards the
+  Responses API's echoed tool schemas (`_response.tools`) as `gen_ai.tool.definitions`, so the available
+  tools surface on agent model spans like they already do for the OpenAI SDK integration.
+
+### Changed
+
+- Bumped Traceloop instrumentations: `@traceloop/instrumentation-openai` 0.25.0 → 0.27.0 and
+  `@traceloop/instrumentation-anthropic` 0.26.0 → 0.27.0.
+
+## [3.2.0] - 2026-06-18
+
+### Added
+
+- **Vercel AI SDK v7 support.** Telemetry from `ai@7` is now captured end-to-end. v7 moved
+  OpenTelemetry into the separate `@ai-sdk/otel` package (opt-out, registered via
+  `registerTelemetry(new OpenTelemetry())`); its `OpenTelemetry` integration emits standard
+  OpenTelemetry GenAI semantic-convention spans (`gen_ai.*`), and `LegacyOpenTelemetry` emits the
+  older `ai.*` spans. Both are exported by Latitude's smart filter with no configuration. The README
+  now documents the v6 (`experimental_telemetry: { isEnabled: true }`) and v7 setups side by side, and
+  a runnable `examples/test_vercel_ai_v7.ts` is included.
+- v6 (`ai@6`) support is unchanged and fully maintained.
+
+> No runtime change to the published SDK — the span processor already exported `gen_ai.*` and `ai.*`
+> spans. This release adds documentation, a v7 example, and tests that lock in v7 span coverage.
+
+## [3.1.1] - 2026-06-18
+
+### Added
+
+- Smart filtering now exports Flue framework spans that carry `flue.*` attributes, preserving workflow, operation, tool, task, compaction, and log spans alongside GenAI model turns.
+
+## [3.1.0] - 2026-06-12
+
+### Added
+
+- `userEmail` option on `capture()` (`ContextOptions`), emitted as the `user.email` span attribute alongside the existing `userId` → `user.id`. Both follow the same context-merging rules as `sessionId`: last-write-wins, with nested captures overriding the parent.
+
+## [3.0.1] - 2026-06-10
+
+### Changed
+
+- **First stable release of the 3.x line.** No code changes since `3.0.0-alpha.13` — this promotes the alpha channel to stable. The npm `latest` dist-tag, previously pointing at `3.0.0-alpha.13`, now resolves to a stable version.
+- Version `3.0.0` is skipped on purpose: it was published in February for the deprecated pre-rewrite line, and npm versions are immutable.
+
+## [3.0.0-alpha.13] - 2026-05-19
+
+### Fixed
+
+- Removed advisory TypeScript 6 and OpenAI Agents peer dependencies from the runtime package so consumers no longer get peer warnings for tools they do not use.
+- Pointed the CommonJS export's declaration condition at `dist/index.d.cts` so TypeScript resolves CJS consumers against CJS declarations.
+
+## [3.0.0-alpha.12] - 2026-05-16
+
+### Changed
+
+- **Renamed `projectSlug` → `project` on `LatitudeOptions` and `ContextOptions`.** Both are now spelled simply `project` — the `Slug` suffix leaked an internal concept (the database column name) into the SDK surface. Affects:
+  - `new Latitude({ apiKey, project })`
+  - `capture(name, fn, { project })`
+  - `initLatitude({ apiKey, project })`
+
+### Deprecated
+
+- `projectSlug` on both `LatitudeOptions` and `ContextOptions` still works but logs a one-time `console.warn` and will be removed in a future release. When both `project` and `projectSlug` are passed, `project` wins.
+
+### Migration
+
+```diff
+- new Latitude({ apiKey, projectSlug: "my-project" })
++ new Latitude({ apiKey, project: "my-project" })
+
+- await capture("run", fn, { projectSlug: "evaluations" })
++ await capture("run", fn, { project: "evaluations" })
+```
+
+The `X-Latitude-Project` HTTP header name, the `latitude.project` span attribute, and the `LATITUDE_PROJECT_SLUG` environment variable convention are all unchanged — they're independent of the SDK option name.
+
+## [3.0.0-alpha.11] - 2026-05-14
+
+### Breaking Changes
+
+- **`instrumentations` is now an object mapping integration name → LLM SDK module.** Replaces the magic-string array form. Example: `instrumentations: { openai: OpenAI, anthropic: AnthropicSDK }`. The consumer passes the LLM SDK module they already imported, so the patch lands on the same prototype their app code calls.
+- **The string-array form (`instrumentations: ["openai"]`) is removed with no fallback.** Passing a string array — or anything other than a plain object — throws at register time. Migration: `instrumentations: { openai: OpenAI }`. See the README's "Migrating from `instrumentations: ["openai"]`" section.
+- **`modules` option on `registerLatitudeInstrumentations` is removed.** Pass the module directly under its integration key on `instrumentations`.
+- **Why:** `tryRequire` inside the telemetry package's ESM-compiled `__require` shim loaded the CJS build of dual-bundled LLM SDKs (`openai@6`, `@anthropic-ai/sdk@0.96`, …), while the consumer app loaded the ESM build. Patching the CJS class had no effect on instances the app code actually called, so no traces appeared while the SDK reported a healthy bootstrap. Forcing the consumer to pass the module makes that bug impossible to express.
+
+### Added
+
+- New `InstrumentationName` and `InstrumentationsInput` types exported from `@latitude-data/telemetry`.
+
+### Removed
+
+- `tryRequire` fallback (the CJS/ESM auto-resolver behind the string-array path).
+- Legacy `LEGACY_INSTRUMENTATION_MAP` lookup table.
+
+## [3.0.0-alpha.10] - 2026-05-14
+
+### Added
+
+- **Per-span project scoping** — `capture({ projectSlug })` routes the wrapping span (and its OTel children) to a specific Latitude project by stamping `latitude.project` on the span. Useful when one process emits to multiple projects (e.g. multiple agents sharing a runtime). Server-side precedence: span attribute `latitude.project` → OTEL resource attribute `latitude.project` → `X-Latitude-Project` header.
+- **Optional ctor `projectSlug`** — `new Latitude({ apiKey })` is now valid without a default project. When omitted the SDK sends no `X-Latitude-Project` header, and each `capture()` must set its own `projectSlug` (or rely on a resource/span attribute). Existing customers passing `projectSlug` in the ctor see no behavior change.
+
+## [3.0.0-alpha.9] - 2026-05-13
+
+### Breaking Changes
+
+- **Bootstrap API is now class-based** — `new Latitude(options)` replaces `initLatitude(options)` as the public TypeScript SDK entry point. `LatitudeOptions` replaces `InitLatitudeOptions`.
+
+### Changed
+
+- **Automatic existing OTel provider coexistence** — `new Latitude()` detects common existing tracing providers (Sentry, Datadog, New Relic, Honeycomb, and custom OpenTelemetry SDKs) and attaches the Latitude span processor when possible instead of replacing their tracer provider, context manager, propagator, sampler, or processors.
+- **`serviceName` ownership is provider-aware** — when Latitude creates its own provider, `serviceName` is applied to the provider resource as `service.name`; when Latitude attaches to an existing provider, the host SDK remains the source of truth for `service.name`.
+
+### Fixed
+
+- **Provider detection no longer relies on private constructor names** — the SDK now uses OpenTelemetry's proxy provider delegate API and known span-processor containers to detect and attach to existing providers more reliably, including OTel JS v2 and Datadog bridge setups.
+
+## [3.0.0-alpha.8] - 2026-05-08
+
+### Changed
+
+- **Default exporter URL is now always `https://ingest.latitude.so`** — the SDK no longer inspects `NODE_ENV` to decide between production and localhost. Previously, the default URL was `http://localhost:3002` whenever `NODE_ENV` was anything other than exactly `production`, which silently dropped traces for consumers who didn't set `NODE_ENV=production` or who used values like `staging`. Production ingest is now the only default; point at a different ingest by setting `LATITUDE_TELEMETRY_URL` explicitly (e.g. `LATITUDE_TELEMETRY_URL=http://localhost:3002` for local development).
+
+## [3.0.0-alpha.7] - 2026-05-06
+
+### Added
+
+- **OpenAI Agents SDK auto-instrumentation** — new `"openai-agents"` instrumentation type for `initLatitude()` / `registerLatitudeInstrumentations()`. Hooks into the Agents SDK's native tracing system via `addTraceProcessor` and translates agent, generation, response, function, handoff, guardrail, MCP, and audio spans into OpenTelemetry spans on Latitude's tracer with `gen_ai.*` semantic-convention attributes. Works regardless of whether agents use the Responses API (default) or Chat Completions, with no monkey-patching of the OpenAI client. `@openai/agents` is an optional peer dependency.
+
+### Fixed
+
+- **`openai@6` manual instrumentation** — `manuallyInstrument()` is now passed the `OpenAI` class (`moduleRef.OpenAI`) instead of the package namespace. `openai@6` only exposes `Chat`/`Completions` as static members of the `OpenAI` class, so the previous namespace-based call silently no-op'd for v6 consumers. Auto-instrumentation now works on `openai@4`, `@5`, and `@6` alike.
+
+## [3.0.0-alpha.6] - 2026-04-23
+
+### Changed
+
+- **Lazy-load Traceloop instrumentations** — `@traceloop/instrumentation-*` packages are now `await import()`ed inside `registerLatitudeInstrumentations()` only for the instrumentation types the caller requests, instead of being statically imported when `@latitude-data/telemetry` is loaded. Importing the SDK no longer pulls every provider instrumentation (and its transitive AI SDK graph — e.g. `@langchain/core`, `langchain`) into the consumer's bundle. When a requested instrumentation's package is missing, a clear warning is logged and that instrumentation is skipped.
+
+## [3.0.0-alpha.5] - 2026-04-17
+
+### Fixed
+
+- `capture()` now starts a new Latitude root trace when called under an active non-Latitude span, so wrapper spans such as workflow-level capture names are preserved instead of being absorbed into foreign traces.
+- Nested Latitude `capture()` calls still reuse the existing Latitude-owned trace and merge context as before.
+
+## [3.0.0-alpha.4] - 2026-04-14
+
+### Fixed
+
+- **Provider SDK version coupling** — moved provider SDK packages (`openai`, `@anthropic-ai/sdk`, etc.) from `optionalDependencies` to `devDependencies` so they are no longer installed alongside `@latitude-data/telemetry`. Users can now use any compatible version of their provider SDK without conflicts.
+- **Bumped all Traceloop instrumentations to `^0.25.0`** — notably extends OpenAI support from `>=4 <6` to `>=4 <7`, fixing auto-instrumentation for users on `openai@6.x`.
+
+## [3.0.0-alpha.3] - 2026-04-07
+
+### Added
+
+- **`serviceName` on `LatitudeSpanProcessor` and `initLatitude()`** — optional `LatitudeSpanProcessorOptions.serviceName` / `InitLatitudeOptions.serviceName` sets OpenTelemetry **`service.name`** on each span so Latitude ingest can attribute telemetry to your service. When using `initLatitude()`, the value is also applied to the `NodeTracerProvider` resource (falling back to `npm_package_name` or `"unknown"` when omitted).
+
+## [3.0.0-alpha.2] - 2026-04-07
+
+### Changed
+
+- OpenTelemetry peer stack upgraded to align with **@opentelemetry/sdk-trace-node 2.6** and **@opentelemetry/exporter-trace-otlp-http / instrumentation 0.213** (previously 1.x / 0.57), so `LatitudeSpanProcessor` and related types match apps using **@opentelemetry/sdk-node** 0.213+.
+
+### Fixed
+
+- `initLatitude()` and examples now use `resourceFromAttributes()` instead of `new Resource()` (OpenTelemetry JS 2.x API).
+- Span filtering reads `ReadableSpan.instrumentationScope` instead of the removed `instrumentationLibrary` field.
+
+## [3.0.0-alpha.1] - 2026-04-01
+
+### Breaking Changes
+
+- **Complete SDK re-architecture** — monolithic `Telemetry` class replaced with modular, composable API
+- **New bootstrap API** — `initLatitude()` replaces `new Telemetry()` as primary entry point
+- **`capture()` no longer creates spans** — now only attaches context to spans created by auto-instrumentation
+- **Context propagation changed** — uses OpenTelemetry's native Context API instead of baggage
+- Removed manual instrumentation (`telemetry.tracer` still available via advanced setup)
+- Removed `Telemetry` class and `TelemetryOptions` interface
+- Removed `Instrumentors` enum — now use string literals via `registerLatitudeInstrumentations()`
+
+### Added
+
+- `initLatitude()` — one-call bootstrap for complete OTel + LLM instrumentation setup
+- `LatitudeSpanProcessor` — composable span processor for shared-provider setups
+- `registerLatitudeInstrumentations()` — register LLM auto-instrumentations (OpenAI, Anthropic, etc.)
+- Smart span filtering — only LLM-relevant spans exported by default (gen_ai.*, llm.*, openinference.*, ai.* attributes)
+- `disableSmartFilter` option — export all spans instead of just LLM spans
+- `shouldExportSpan` callback — custom span filtering
+- `blockedInstrumentationScopes` option — filter out unwanted instrumentation scopes
+- `capture()` now supports nested calls with proper context merging (tags dedupe, metadata shallow merge, last-write-wins for userId/sessionId)
+- Integration examples for Datadog and Sentry
+
+### Changed
+
+- SDK is now OpenTelemetry-first — designed for composability with existing OTel setups
+- `capture()` uses OTel's `context.with()` for reliable async context propagation
+- Span processors use standard OTel APIs (no deprecated methods)
+- Package structure: SDK split into `sdk/init.ts`, `sdk/context.ts`, `sdk/processor.ts`, `sdk/span-filter.ts`, `sdk/types.ts`
+
+## [3.0.0-alpha.0] - 2026-04-01
+
+### Breaking Changes
+
+- Constructor now requires `projectSlug` as second argument
+- `capture()` no longer takes `path`/`projectId` — takes `tags`/`metadata`/`sessionId`/`userId` instead
+- Removed opinionated span methods (`span.completion()`, `span.tool()`, etc.) — use `telemetry.tracer` directly
+- Removed `rosetta-ai` dependency
+- Env var renamed from `GATEWAY_BASE_URL` to `LATITUDE_TELEMETRY_URL`
+
+### Added
+
+- `telemetry.tracer` exposes raw OTel Tracer for custom span creation
+- `capture()` creates a root span when no active span exists, grouping child spans under one trace
+- `serviceName` option in constructor
+- `RedactSpanProcessor` for masking sensitive HTTP headers
+- Auto-instrumentation for 10 AI providers via Traceloop
+
+### Changed
+
+- `capture()` sets trace-wide baggage (`latitude.tags`, `latitude.metadata`, `session.id`, `user.id`) propagated via BaggageSpanProcessor
+- Span processors passed via `NodeTracerProvider` constructor (not deprecated `addSpanProcessor`)
+
+## [2.0.4] - 2026-02-26
+
+### Changed
+
+- `capture()` now propagates `path`, `project`, `commit`, and `conversation` references through baggage so child spans inherit the same metadata.
+
+## [2.0.2] - 2026-02-09
+
+### Fixed
+
+- Bump Rosetta AI version
+
+## [2.0.1] - 2026-02-09
+
+### Fixed
+
+- Move Rosetta AI to dependencies
+
+## [2.0.0] - 2026-02-04
+
+### Added
+
+- Manually instrumented completions now support any provider messages
+- The manual instrumentation now exports compliant GenAI messages
+
+## [1.1.1] - 2026-02-02
+
+### Fixed
+
+- Disabled `enrichTokens` for OpenAI and TogetherAI instrumentations to fix failures when using `stream: true`
+
+## [1.1.0] - 2026-01-29
+
+### Added
+
+- Initial changelog for TypeScript Telemetry SDK

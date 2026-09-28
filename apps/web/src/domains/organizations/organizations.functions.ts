@@ -1,0 +1,328 @@
+import {
+  completeOnboardingUseCase,
+  dismissShowcaseUseCase,
+  generateUniqueOrganizationSlugUseCase,
+  MembershipRepository,
+  OrganizationRepository,
+  teardownOrganizationUseCase,
+  updateOrganizationRedactionUseCase,
+  updateOrganizationUseCase,
+} from "@domain/organizations"
+import {
+  BadRequestError,
+  ForbiddenError,
+  OrganizationId,
+  organizationRedactionSettingSchema,
+  UserId,
+} from "@domain/shared"
+import { ApiKeyCacheInvalidatorLive } from "@platform/api-key-auth"
+import { RedisCacheStoreLive } from "@platform/cache-redis"
+import {
+  ApiKeyRepositoryLive,
+  invalidateOrganizationRedactionCache,
+  MembershipRepositoryLive,
+  OAuthKeyRepositoryLive,
+  OrganizationRepositoryLive,
+  OutboxEventWriterLive,
+  ProjectRepositoryLive,
+  withPostgres,
+} from "@platform/db-postgres"
+import { OAuthTokenCacheInvalidatorLive } from "@platform/oauth-token-auth"
+import { withTracing } from "@repo/observability"
+import { createServerFn } from "@tanstack/react-start"
+import { getRequestHeaders } from "@tanstack/react-start/server"
+import { Effect, Layer } from "effect"
+import { z } from "zod"
+import { rejectInvalidRedactionRules, rejectionMessage } from "../../lib/redaction-rules.ts"
+import { requireSession, requireUserSession } from "../../server/auth.ts"
+import { getAdminPostgresClient, getBetterAuth, getPostgresClient, getRedisClient } from "../../server/clients.ts"
+import {
+  type CompleteOnboardingDeps,
+  completeOnboardingInputSchema,
+  runCompleteOnboarding,
+} from "./complete-onboarding.ts"
+
+export const listOrganizations = createServerFn({ method: "GET" }).handler(async () => {
+  const userId = await requireUserSession()
+  const client = getAdminPostgresClient()
+  const repoLayer = Layer.merge(OrganizationRepositoryLive, MembershipRepositoryLive)
+  return await Effect.runPromise(
+    Effect.gen(function* () {
+      const repo = yield* OrganizationRepository
+      return yield* repo.listByUserId(UserId(userId))
+    }).pipe(withPostgres(repoLayer, client), withTracing),
+  )
+})
+
+export const createOrganization = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ name: z.string().min(1).max(256) }))
+  .handler(async ({ data }) => {
+    const userId = await requireUserSession()
+    const adminClient = getAdminPostgresClient()
+    const slug = await Effect.runPromise(
+      generateUniqueOrganizationSlugUseCase({ name: data.name }).pipe(
+        withPostgres(OrganizationRepositoryLive, adminClient),
+        withTracing,
+      ),
+    )
+
+    const organization = await getBetterAuth().api.createOrganization({
+      body: {
+        name: data.name,
+        slug,
+        userId,
+        keepCurrentActiveOrganization: false,
+      },
+      headers: await getRequestHeaders(),
+    })
+
+    const organizationId = OrganizationId(organization.id)
+    const workspace = await Effect.runPromise(
+      completeOnboardingUseCase({
+        organizationId,
+        actorUserId: userId,
+        name: data.name,
+        slug,
+        defaultProjectName: `${data.name.trim()}'s project`,
+      }).pipe(
+        withPostgres(
+          Layer.mergeAll(
+            ApiKeyRepositoryLive,
+            ProjectRepositoryLive,
+            OrganizationRepositoryLive,
+            OutboxEventWriterLive,
+          ),
+          adminClient,
+          organizationId,
+        ),
+        withTracing,
+      ),
+    )
+
+    return { ...organization, ...workspace }
+  })
+
+// Wires the real Better Auth + Postgres deps into `runCompleteOnboarding` (which owns the ordering).
+export const completeOnboarding = createServerFn({ method: "POST" })
+  .inputValidator(completeOnboardingInputSchema)
+  .handler(async ({ data }) => {
+    const userId = await requireUserSession()
+    const adminClient = getAdminPostgresClient()
+    const auth = getBetterAuth()
+    const headers = await getRequestHeaders()
+
+    const deps: CompleteOnboardingDeps = {
+      updateUserName: async (name) => {
+        await auth.api.updateUser({ body: { name }, headers })
+      },
+      generateOrganizationSlug: (organizationName) =>
+        Effect.runPromise(
+          generateUniqueOrganizationSlugUseCase({ name: organizationName }).pipe(
+            withPostgres(OrganizationRepositoryLive, adminClient),
+            withTracing,
+          ),
+        ),
+      createOrganization: async ({ name, slug }) => {
+        const organization = await auth.api.createOrganization({
+          body: { name, slug, userId, keepCurrentActiveOrganization: false },
+          headers,
+        })
+        return { id: organization.id }
+      },
+      provisionWorkspace: async ({ organizationId, actorUserId, name, slug, defaultProjectName }) => {
+        const orgId = OrganizationId(organizationId)
+        const workspace = await Effect.runPromise(
+          completeOnboardingUseCase({ organizationId: orgId, actorUserId, name, slug, defaultProjectName }).pipe(
+            withPostgres(
+              Layer.mergeAll(
+                ApiKeyRepositoryLive,
+                ProjectRepositoryLive,
+                OrganizationRepositoryLive,
+                OutboxEventWriterLive,
+              ),
+              adminClient,
+              orgId,
+            ),
+            withTracing,
+          ),
+        )
+        return { defaultProjectSlug: workspace.defaultProject.slug }
+      },
+      setActiveOrganization: async ({ organizationId, organizationSlug }) => {
+        await auth.api.setActiveOrganization({ body: { organizationId, organizationSlug }, headers })
+      },
+    }
+
+    return runCompleteOnboarding(deps, {
+      actorUserId: userId,
+      name: data.name,
+      organizationName: data.organizationName,
+    })
+  })
+
+const organizationSettingsSchema = z.object({
+  keepMonitoring: z.boolean().optional(), // TODO: deprecated. Removed from frontend but maintained to keep cascaded settings scaffold
+})
+
+export const updateOrganization = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      name: z.string().min(1).max(256).optional(),
+      settings: organizationSettingsSchema.optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { organizationId } = await requireSession()
+    const client = getPostgresClient()
+
+    return await Effect.runPromise(
+      // Patch, not replace: the schema above narrows `settings` to the keys this
+      // endpoint owns, so a replace would drop billing and showcase state.
+      updateOrganizationUseCase({ name: data.name, settingsPatch: data.settings }).pipe(
+        withPostgres(OrganizationRepositoryLive, client, organizationId),
+        withTracing,
+      ),
+    )
+  })
+
+/**
+ * Change the organization-wide PII redaction policy. Owner-only: `locked` lets an
+ * organization stop its projects from weakening the policy, which is not a decision an
+ * admin should be able to make. `null` clears it, leaving each project to its own.
+ *
+ * Ingestion resolves the org half of the cascade through a 60 s Redis cache, so the
+ * write invalidates it — otherwise a customer who just enabled redaction would watch
+ * plaintext land for another minute. A failed invalidation is not fatal: the TTL is
+ * the backstop, and the policy is already committed.
+ */
+export const updateOrganizationRedaction = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ redaction: organizationRedactionSettingSchema.nullable() }))
+  .handler(async ({ data }): Promise<void> => {
+    const { organizationId, userId } = await requireSession()
+    const client = getPostgresClient()
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const memberships = yield* MembershipRepository
+        const caller = yield* memberships.findByOrganizationAndUser(organizationId, userId)
+        if (caller.role !== "owner") {
+          return yield* new ForbiddenError({
+            message: "Only the organization owner can change the organization redaction policy",
+          })
+        }
+
+        const rejected = rejectInvalidRedactionRules(data.redaction)
+        if (rejected) {
+          return yield* new BadRequestError({ message: rejectionMessage(rejected) })
+        }
+
+        return yield* updateOrganizationRedactionUseCase({ actorUserId: userId, redaction: data.redaction })
+      }).pipe(
+        withPostgres(
+          Layer.mergeAll(OrganizationRepositoryLive, MembershipRepositoryLive, OutboxEventWriterLive),
+          client,
+          organizationId,
+        ),
+        withTracing,
+      ),
+    )
+
+    await Effect.runPromise(
+      invalidateOrganizationRedactionCache(organizationId).pipe(
+        Effect.provide(RedisCacheStoreLive(getRedisClient())),
+        Effect.ignore,
+        withTracing,
+      ),
+    )
+  })
+
+/**
+ * "Remove demo" — flip the current org's `wantsShowcase` flag to `false`. This
+ * is a write to the VIEWER'S OWN org (session-scoped), never the shared showcase
+ * org, so it stays a normal allowed write. It fires from app chrome while the
+ * user is viewing `/projects/lat-demo` (showcase scope), so it is on the
+ * write-gate's POST-read allowlist — otherwise the gate would reject it as a
+ * showcase write. Org-wide by design: any member can dismiss it for the whole
+ * team (the UI confirms this explicitly).
+ */
+export const dismissShowcase = createServerFn({ method: "POST" }).handler(async (): Promise<void> => {
+  const { organizationId, userId } = await requireSession()
+  const client = getPostgresClient()
+
+  await Effect.runPromise(
+    dismissShowcaseUseCase({ actorUserId: userId }).pipe(
+      withPostgres(OrganizationRepositoryLive, client, organizationId),
+      withTracing,
+    ),
+  )
+})
+
+/**
+ * Permanently delete an organization. Guarded so the only org that can be
+ * destroyed is the one you are currently in, you are its `owner`, and there
+ * are no other members — i.e. an org only you can see.
+ *
+ * Deletion is irreversible: each project is soft-deleted and emits a
+ * `ProjectDeleted` event (so the per-project cleanup cascade runs, matching a
+ * manual project deletion), then the org row is removed — its FK cascade drops
+ * memberships, invitations, and OAuth apps. The client then bounces to
+ * `/welcome`, which re-resolves the user's remaining orgs.
+ */
+export const deleteOrganization = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ id: z.string() }))
+  .handler(async ({ data }): Promise<void> => {
+    const { userId, organizationId } = await requireSession()
+
+    // You may only delete the organization you are currently active in. This
+    // keeps the RLS context (active org) aligned with the org being deleted.
+    if (data.id !== organizationId) {
+      throw new ForbiddenError({ message: "You can only delete the organization you are currently in." })
+    }
+
+    const targetId = OrganizationId(data.id)
+
+    // Authorize against the full member list. Read with the admin client so the
+    // count is never narrowed by RLS — an under-count would be a security hole.
+    const adminClient = getAdminPostgresClient()
+    const members = await Effect.runPromise(
+      Effect.gen(function* () {
+        const repo = yield* MembershipRepository
+        return yield* repo.listByOrganizationId(targetId)
+      }).pipe(withPostgres(MembershipRepositoryLive, adminClient), withTracing),
+    )
+
+    const caller = members.find((member) => member.userId === userId)
+    if (!caller || caller.role !== "owner") {
+      throw new ForbiddenError({ message: "Only the organization owner can delete it." })
+    }
+    if (members.length > 1) {
+      throw new BadRequestError({
+        message: "Remove all other members before deleting the organization.",
+      })
+    }
+
+    const client = getPostgresClient()
+    const redis = getRedisClient()
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        yield* teardownOrganizationUseCase({ actorUserId: userId })
+        const orgRepo = yield* OrganizationRepository
+        yield* orgRepo.delete(targetId)
+      }).pipe(
+        Effect.provide(ApiKeyCacheInvalidatorLive(redis)),
+        Effect.provide(OAuthTokenCacheInvalidatorLive(redis)),
+        withPostgres(
+          Layer.mergeAll(
+            ProjectRepositoryLive,
+            OrganizationRepositoryLive,
+            OutboxEventWriterLive,
+            ApiKeyRepositoryLive,
+            OAuthKeyRepositoryLive,
+          ),
+          client,
+          targetId,
+        ),
+        withTracing,
+      ),
+    )
+  })

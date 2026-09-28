@@ -1,0 +1,207 @@
+import * as pulumi from "@pulumi/pulumi"
+import { defaults, type EnvironmentConfig, productionConfig, stagingConfig } from "./config.ts"
+import { createAlb } from "./lib/alb.ts"
+import { createBastion } from "./lib/bastion.ts"
+import { createDatadogSynthetics } from "./lib/datadog-synthetics.ts"
+import { createCertificate, createDnsRecords, createDnssecSigning, createHostedZone, createTryLatitudeDnsRecords } from "./lib/dns.ts"
+import { createEcs } from "./lib/ecs.ts"
+import { createGithubActionsOidc } from "./lib/github-actions.ts"
+import { createRds } from "./lib/rds.ts"
+import { createRedis } from "./lib/redis.ts"
+import { createS3 } from "./lib/s3.ts"
+import { createApplicationSecrets } from "./lib/secrets.ts"
+import { createSecurityCompliance } from "./lib/security-compliance.ts"
+import { createSecurityGroups } from "./lib/security-groups.ts"
+import { createVpc } from "./lib/vpc.ts"
+import { createVpcEndpoints } from "./lib/vpc-endpoints.ts"
+
+const config = new pulumi.Config()
+const stackName = pulumi.getStack()
+const environment = stackName === "production" ? "production" : "staging"
+const envConfig: EnvironmentConfig = environment === "production" ? productionConfig : stagingConfig
+
+const imageTag = config.get("imageTag") ?? "latest"
+const hostedZoneId = config.get("hostedZoneId") ?? defaults.hostedZoneId
+const domainName = config.get("domainName") ?? defaults.domainName
+const githubOwner = config.get("githubOwner") ?? "latitude-dev"
+const githubRepo = config.get("githubRepo") ?? "latitude"
+const bastionAmiId = config.require("bastionAmiId")
+const datadogSite = config.get("datadogSite") ?? "datadoghq.eu"
+const datadogSlackAlertHandle = config.get("datadogSlackAlertHandle") ?? "@slack-alerts"
+const enableDatadogSynthetics = config.getBoolean("enableDatadogSynthetics") ?? false
+const enableMaintenanceRedirect = config.getBoolean("enableWebMaintenanceRedirect") ?? false
+const enableDnssecSigning = config.getBoolean("enableDnssecSigning") ?? false
+const enableJevFlaggerPreclassifier = config.getBoolean("enableJevFlaggerPreclassifier") ?? false
+
+const temporalCloudAddress = config.get("temporalCloudAddress") ?? `${envConfig.region}.aws.api.temporal.io:7233`
+const temporalCloudNamespace = config.get("temporalCloudNamespace") ?? ""
+const temporalTaskQueue = config.get("temporalTaskQueue") ?? "latitude-workflows"
+
+const hexSshPublicKey = config.getSecret("hexSshPublicKey")
+const hexEgressCidrs = config.getObject<string[]>("hexEgressCidrs")
+
+const name = `latitude-${environment}`
+
+pulumi.log.info(`Deploying ${environment} environment to ${envConfig.region}`)
+
+const vpc = createVpc(name, envConfig)
+
+const securityGroups = createSecurityGroups(name, envConfig, vpc.vpc)
+
+const vpcEndpoints = createVpcEndpoints(
+  name,
+  envConfig,
+  vpc.vpc,
+  vpc.publicSubnets,
+  vpc.privateSubnets,
+  vpc.privateRouteTable?.id,
+  vpc.publicRouteTable.id,
+  securityGroups.vpcEndpoints,
+)
+
+const tryLatitudeZone = environment === "production"
+  ? createHostedZone(name, envConfig, "trylatitude.com")
+  : undefined
+
+if (tryLatitudeZone) {
+  createTryLatitudeDnsRecords(name, tryLatitudeZone.zone)
+}
+
+const certificate = createCertificate(name, envConfig, hostedZoneId, domainName)
+
+const alb = createAlb(
+  name,
+  envConfig,
+  vpc.publicSubnets,
+  securityGroups.alb,
+  certificate.certificateValidation?.certificateArn ?? certificate.certificate.arn,
+  enableMaintenanceRedirect,
+)
+
+const _dns = createDnsRecords(name, envConfig, alb.alb, hostedZoneId)
+
+const dnssec = environment === "production" && enableDnssecSigning ? createDnssecSigning(name, hostedZoneId) : undefined
+
+const rds = createRds(name, envConfig, vpc.privateSubnets, securityGroups.rds)
+
+const redis = createRedis(name, envConfig, vpc.privateSubnets, securityGroups.redis)
+
+const hexBastionConfig = environment === "production" && hexSshPublicKey && hexEgressCidrs && rds.cluster
+  ? {
+      sshPublicKey: hexSshPublicKey,
+      egressCidrs: hexEgressCidrs,
+      rdsReaderEndpoint: rds.cluster.readerEndpoint,
+    }
+  : undefined
+
+const bastion = createBastion(
+  name,
+  envConfig,
+  vpc.vpc,
+  vpc.publicSubnets,
+  securityGroups.bastion,
+  bastionAmiId,
+  hexBastionConfig,
+)
+
+const s3 = createS3(name, envConfig)
+
+const securityCompliance = environment === "staging" ? createSecurityCompliance(name, envConfig) : undefined
+
+const appSecrets = createApplicationSecrets(name, environment)
+
+const ecs = createEcs(
+  name,
+  envConfig,
+  vpc.privateSubnets,
+  securityGroups.ecs,
+  appSecrets.secrets,
+  rds.secret,
+  rds.adminSecret,
+  redis.cache.connectionInfo.host,
+  redis.bullmq.connectionInfo.host,
+  s3.bucket,
+  imageTag,
+  {
+    web: alb.targetGroups.web.arn,
+    api: alb.targetGroups.api.arn,
+    ingest: alb.targetGroups.ingest.arn,
+    bullBoard: alb.targetGroups.bullBoard.arn,
+  },
+  {
+    address: temporalCloudAddress,
+    namespace: temporalCloudNamespace,
+    taskQueue: temporalTaskQueue,
+  },
+  enableJevFlaggerPreclassifier,
+)
+
+const datadogSynthetics = environment === "production" && enableDatadogSynthetics
+  ? createDatadogSynthetics(name, envConfig, {
+      datadogSite,
+      slackAlertHandle: datadogSlackAlertHandle,
+    })
+  : undefined
+
+const githubActions = createGithubActionsOidc(name, environment, githubOwner, githubRepo)
+
+export const outputs = {
+  environment: environment,
+  region: envConfig.region,
+
+  vpcId: vpc.vpc.id,
+  publicSubnetIds: vpc.publicSubnets.map((s) => s.id),
+  privateSubnetIds: vpc.privateSubnets.map((s) => s.id),
+
+  albDnsName: alb.alb.dnsName,
+  albZoneId: alb.alb.zoneId,
+
+  rdsEndpoint: rds.cluster?.endpoint ?? rds.dbInstance!.address,
+  rdsSecretArn: rds.secret.arn,
+
+  redisCacheEndpoint: redis.cache.connectionInfo.host,
+  redisBullmqEndpoint: redis.bullmq.connectionInfo.host,
+
+  s3BucketName: s3.bucket.id,
+
+  ecsClusterName: ecs.cluster.name,
+  ecsServiceNames: Object.fromEntries(Object.entries(ecs.services).map(([k, v]) => [k, v.name])),
+
+  certificateArn: certificate.certificate.arn,
+
+  githubActionsRoleArn: githubActions.deployRole.arn,
+
+  bastionInstanceId: bastion.instance.id,
+  bastionPublicIp: bastion.instance.publicIp,
+
+  rdsReaderEndpoint: rds.cluster?.readerEndpoint,
+  hexReadonlySecretArn: rds.hexReadonlySecret?.arn,
+
+  ...(securityCompliance
+    ? {
+        awsConfigRecorderName: securityCompliance.configRecorder.name,
+        cloudTrailName: securityCompliance.cloudTrail.name,
+        cloudTrailLogGroupName: securityCompliance.cloudTrailLogGroup.name,
+        guardDutyDetectorId: securityCompliance.guardDutyDetector.id,
+      }
+    : {}),
+
+  domains: envConfig.domains,
+
+  ...(datadogSynthetics
+    ? {
+        datadogSyntheticTestIds: Object.fromEntries(
+          Object.entries(datadogSynthetics.tests).map(([service, test]) => [service, test.id]),
+        ),
+      }
+    : {}),
+
+  ...(tryLatitudeZone ? {
+    tryLatitudeZoneId: tryLatitudeZone.zone.zoneId,
+    tryLatitudeNameServers: tryLatitudeZone.zone.nameServers,
+  } : {}),
+
+  ...(dnssec ? {
+    dnssecDsRecord: dnssec.dsRecord,
+  } : {}),
+}

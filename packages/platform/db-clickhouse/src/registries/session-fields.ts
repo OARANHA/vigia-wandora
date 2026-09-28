@@ -1,0 +1,34 @@
+import type { ChFieldRegistry } from "../filter-builder.ts"
+import {
+  buildCacheHitRateClause,
+  buildHasLlmActivityClause,
+  buildStatusClause,
+  dateTime64BestEffortExpression,
+} from "./helpers.ts"
+
+export const SESSION_FIELD_REGISTRY: ChFieldRegistry = {
+  status: { kind: "synthetic", buildClause: buildStatusClause },
+  hasLlmActivity: { kind: "synthetic", buildClause: buildHasLlmActivityClause },
+  sessionId: { column: "session_id", chType: "String" },
+  traceId: { column: "trace_ids", chType: "FixedString(32)", isArray: true, arrayContains: true },
+  simulationId: { column: "simulation_id", chType: "String" },
+  userId: { column: "user_id", chType: "String" },
+  name: { column: "root_span_name", chType: "String" },
+  tags: { column: "tags", chType: "String", isArray: true, arrayContains: true },
+  models: { column: "models", chType: "String", isArray: true, arrayContains: true },
+  providers: { column: "providers", chType: "String", isArray: true, arrayContains: true },
+  serviceNames: { column: "service_names", chType: "String", isArray: true, arrayContains: true },
+  tools: { column: "tools", chType: "String", isArray: true, arrayContains: true },
+  definedTools: { column: "defined_tools", chType: "String", isArray: true, arrayContains: true },
+  cost: { column: "cost_total_microcents", chType: "UInt64" },
+  duration: { column: "duration_ns", chType: "Int64" },
+  ttft: { column: "time_to_first_token_ns", chType: "Int64" },
+  spanCount: { column: "span_count", chType: "UInt64" },
+  errorCount: { column: "error_count", chType: "UInt64" },
+  traceCount: { column: "trace_count", chType: "UInt64" },
+  tokensInput: { column: "tokens_input", chType: "UInt64" },
+  tokensOutput: { column: "tokens_output", chType: "UInt64" },
+  cacheHitRate: { kind: "synthetic", buildClause: buildCacheHitRateClause },
+  startTime: { column: "start_time", chType: "DateTime64(9, 'UTC')", valueExpression: dateTime64BestEffortExpression },
+  endTime: { column: "end_time", chType: "DateTime64(9, 'UTC')", valueExpression: dateTime64BestEffortExpression },
+}

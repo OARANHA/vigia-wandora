@@ -1,0 +1,208 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "workspaces": {
+    ".": {
+      "ignore": [
+        ".agents/skills/**/scripts/**",
+        "scripts/taxonomy/*.ts"
+      ]
+    },
+    "apps/api": {
+      "project": [
+        "src/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "quickjs-emscripten",
+        "voyageai"
+      ]
+    },
+    "apps/ingest": {
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "apps/workers": {
+      "project": [
+        "src/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@temporalio/worker",
+        "quickjs-emscripten",
+        "voyageai"
+      ]
+    },
+    "apps/workflows": {
+      "project": [
+        "src/**/*.ts"
+      ],
+      "ignore": [
+        "src/workflows/**/*.ts",
+        "src/activities/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@temporalio/worker",
+        "quickjs-emscripten",
+        "voyageai"
+      ]
+    },
+    "apps/web": {
+      "entry": [
+        "src/router.tsx",
+        "src/start.ts",
+        "src/routes/**/*.tsx"
+      ],
+      "project": ["src/**/*.ts", "src/**/*.tsx"],
+      "ignoreDependencies": [
+        "@temporalio/client",
+        "quickjs-emscripten",
+        "voyageai"
+      ]
+    },
+    "apps/design-system": {
+      "entry": [
+        "src/routes/**/*.tsx"
+      ],
+      "project": ["src/**/*.{ts,tsx}"]
+    },
+    "packages/operations": {
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "infra": {
+      "entry": [],
+      "project": []
+    },
+    "packages/domain/email": {
+      "entry": [
+        "src/templates/**/index.tsx"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "src/**/*.tsx"
+      ]
+    },
+    "packages/domain/taxonomy": {
+      "project": [
+        "src/**/*.ts"
+      ],
+      "ignore": [
+        "src/calibration/**"
+      ]
+    },
+    "packages/domain/sandboxes": {
+      "project": [
+        "src/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@domain/oauth-keys"
+      ]
+    },
+    "packages/domain/*": {
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "packages/platform/db-postgres": {
+      "entry": [
+        "src/seeds/index.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "packages/platform/slack": {
+      "project": [
+        "src/**/*.ts",
+        "scripts/**/*.ts"
+      ]
+    },
+    "packages/platform/*": {
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "packages/sdk/typescript": {
+      "entry": [],
+      "project": []
+    },
+    "packages/sdk/typescript/examples": {
+      "entry": [
+        "src/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "packages/ui": {
+      "project": [
+        "src/**/*.ts",
+        "src/**/*.tsx"
+      ]
+    },
+    "packages/vitest-config": {
+      "project": [
+        "**/*.ts"
+      ]
+    },
+    "packages/tsconfig": {
+      "entry": [],
+      "project": []
+    },
+    "packages/telemetry/typescript": {
+      "entry": [
+        "examples/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "examples/*.ts"
+      ],
+      "ignore": [
+        "src/constants/**/*.ts"
+      ],
+      "ignoreDependencies": [
+        "@sentry/node",
+        "dd-trace"
+      ]
+    },
+    "packages/telemetry/pi": {
+      "project": [
+        "src/**/*.ts"
+      ]
+    },
+    "tools/ai-benchmarks": {
+      "entry": [
+        "src/scripts/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts",
+        "src/**/*.tsx"
+      ]
+    },
+    "tools/live-seeds": {
+      "entry": [
+        "src/scripts/**/*.ts"
+      ],
+      "project": [
+        "src/**/*.ts"
+      ]
+    }
+  },
+  "ignoreBinaries": [
+    "tmuxinator",
+    "pulumi",
+    "packages/cli/target/release/latitude"
+  ],
+  "ignoreDependencies": [
+    "@pulumi/awsx",
+    "@pulumi/aws",
+    "@pulumi/pulumi",
+    "@pulumi/datadog",
+    "@pulumi/random",
+    "fern-api",
+    "chdb"
+  ],
+  "tags": [
+    "-knipignore"
+  ]
+}

@@ -1,0 +1,1160 @@
+import { MOMENT_KINDS, type MomentKind } from "@domain/conversation-intelligence"
+import {
+  Badge,
+  BarChart,
+  Button,
+  cn,
+  DetailDrawer,
+  HistogramSkeleton,
+  Icon,
+  InfiniteTable,
+  type InfiniteTableColumn,
+  type InfiniteTableSelection,
+  Skeleton,
+  Slider,
+  Tabs,
+  TagList,
+  Text,
+  Tooltip,
+} from "@repo/ui"
+import { formatCount, relativeTime } from "@repo/utils"
+import { useHotkeys } from "@tanstack/react-hotkeys"
+import { BrainIcon, ChevronRightIcon, DatabaseIcon, SparklesIcon, TagIcon, XIcon } from "lucide-react"
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react"
+import {
+  addClusterSessionsToDatasetFunction,
+  type ClusterSource,
+  createDatasetFromClusterSessionsFunction,
+} from "../../../../../../domains/datasets/datasets.functions.ts"
+import {
+  type BehaviourSegment,
+  useBehaviourSessions,
+  useClusterProfile,
+} from "../../../../../../domains/taxonomy/taxonomy.collection.ts"
+import type {
+  BehaviourMomentRangeRecord,
+  BehaviourNodeRecord,
+  BehaviourSessionFilter,
+  BehaviourSessionRecord,
+  BehaviourTimeRangeRecord,
+  BehaviourTrajectoryMetric,
+} from "../../../../../../domains/taxonomy/taxonomy.functions.ts"
+import { trendBadgeVariant, trendIcon, trendLabel } from "../../../../../../domains/taxonomy/trend-display.tsx"
+import { ListingLayout as Layout } from "../../../../../../layouts/ListingLayout/index.tsx"
+import {
+  EMPTY_SELECTION,
+  type SelectionState,
+  useSelectableRows,
+} from "../../../../../../lib/hooks/useSelectableRows.ts"
+import { AddToDatasetModal } from "../../-components/add-to-dataset-modal.tsx"
+import { SessionDetailDrawer } from "../../-components/session-detail-drawer.tsx"
+import { BehavioursTrajectoryChart } from "./behaviours-trajectory-chart.tsx"
+
+const segmentOptions: ReadonlyArray<{ readonly id: BehaviourSegment; readonly label: string }> = [
+  { id: "all", label: "All" },
+  { id: "new_this_week", label: "New this week" },
+  { id: "spiking", label: "Spiking" },
+]
+
+interface BehaviourTableRow {
+  readonly node: BehaviourNodeRecord
+  readonly depth: number
+  readonly hasChildren: boolean
+}
+
+const formatDate = (iso: string) => new Date(iso).toLocaleDateString()
+const signalLabel = (kind: string) => kind.replaceAll("_", " ").replace(/^./, (char) => char.toUpperCase())
+
+const signalChartColors = [
+  "hsl(var(--chart-1))",
+  "hsl(var(--chart-2))",
+  "hsl(var(--chart-3))",
+  "hsl(var(--chart-4))",
+  "hsl(var(--success))",
+  "hsl(var(--warning-muted-foreground))",
+] as const
+
+const signalColorAt = (index: number) => signalChartColors[index % signalChartColors.length]
+const metricLabel = (metric: BehaviourTrajectoryMetric) =>
+  metric === "churnRisk" ? "Churn risk" : metric === "wins" ? "Wins" : signalLabel(metric)
+
+const momentKindsForTrajectoryMetric = (metric: BehaviourTrajectoryMetric): readonly MomentKind[] => {
+  switch (metric) {
+    case "escalation":
+      return ["escalation"]
+    case "resolution":
+      return ["resolution"]
+    case "churnRisk":
+      return ["abandonment", "user_frustration"]
+    case "wins":
+      return ["resolution", "user_satisfaction"]
+    case "frequency":
+      return []
+  }
+}
+
+const selectedMomentRangeLabel = (range: BehaviourMomentRangeRecord) =>
+  `${metricLabel(range.metric)} moments in turns ${range.fromTurn + 1}${
+    range.toTurn === range.fromTurn ? "" : `-${range.toTurn + 1}`
+  }`
+
+const parseTurnBucket = (bucket: string): { readonly fromTurn: number; readonly toTurn: number } | undefined => {
+  const [rawStart, rawEnd] = bucket.split(":")
+  const fromTurn = Number(rawStart)
+  const toTurn = rawEnd === undefined ? fromTurn : Number(rawEnd)
+  if (!Number.isInteger(fromTurn) || !Number.isInteger(toTurn) || fromTurn < 0 || toTurn < fromTurn) return undefined
+  return { fromTurn, toTurn }
+}
+
+const findBehaviourPath = (
+  nodes: readonly BehaviourNodeRecord[],
+  clusterId: string,
+  ancestors: readonly string[] = [],
+): readonly string[] | undefined => {
+  for (const node of nodes) {
+    const path = [...ancestors, node.cluster.id]
+    if (node.cluster.id === clusterId) return path
+    const childPath = findBehaviourPath(node.children, clusterId, path)
+    if (childPath) return childPath
+  }
+  return undefined
+}
+
+const trendRank = (status: BehaviourNodeRecord["trend"]["status"]): number => {
+  switch (status) {
+    case "new":
+      return 6
+    case "spike":
+      return 5
+    case "rising":
+      return 4
+    case "steady":
+      return 3
+    case "cooling":
+      return 2
+    case "fading":
+      return 1
+  }
+}
+
+/**
+ * Interior nodes hold only residue observations, so their own trend can be
+ * misleading; the subtree's strongest trend represents the topic.
+ */
+const subtreeTrendStatus = (node: BehaviourNodeRecord): BehaviourNodeRecord["trend"]["status"] => {
+  let dominant = node.trend.status
+  for (const child of node.children) {
+    const childStatus = subtreeTrendStatus(child)
+    if (trendRank(childStatus) > trendRank(dominant)) dominant = childStatus
+  }
+  return dominant
+}
+
+function BehaviourNameCell({
+  row,
+  expanded,
+  onToggle,
+}: {
+  readonly row: BehaviourTableRow
+  readonly expanded: boolean
+  readonly onToggle: () => void
+}) {
+  return (
+    <div className="flex min-w-0 items-start gap-1" style={{ paddingLeft: `${row.depth * 20}px` }}>
+      {row.hasChildren ? (
+        <button
+          type="button"
+          aria-label={`${expanded ? "Collapse" : "Expand"} ${row.node.cluster.name}`}
+          aria-expanded={expanded}
+          className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded hover:bg-muted/60"
+          onClick={(event) => {
+            event.stopPropagation()
+            onToggle()
+          }}
+        >
+          <Icon
+            icon={ChevronRightIcon}
+            size="xs"
+            color="foregroundMuted"
+            className={cn("transition-transform", expanded ? "rotate-90" : "rotate-0")}
+          />
+        </button>
+      ) : (
+        <span className="size-5 shrink-0" />
+      )}
+      <div className="flex min-w-0 flex-col gap-1">
+        <div className="flex min-w-0 items-center gap-2">
+          {row.depth === 0 ? <Icon icon={TagIcon} size="sm" color="foregroundMuted" /> : null}
+          <Text.H5 noWrap ellipsis>
+            {row.node.cluster.name}
+          </Text.H5>
+        </div>
+        {row.node.cluster.description ? (
+          <Text.H6 color="foregroundMuted" noWrap ellipsis>
+            {row.node.cluster.description}
+          </Text.H6>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+export function BehaviourDetailDrawer({
+  node,
+  parentName,
+  projectId,
+  timeRange,
+  momentRange,
+  momentRangeMaxTurn,
+  customBehaviorId,
+  facetId,
+  onMomentRangeChange,
+  onClose,
+}: {
+  readonly node: BehaviourNodeRecord
+  readonly parentName: string | null
+  readonly projectId: string
+  readonly timeRange: BehaviourTimeRangeRecord | undefined
+  readonly momentRange: BehaviourMomentRangeRecord | undefined
+  readonly momentRangeMaxTurn: number
+  readonly customBehaviorId?: string
+  readonly facetId?: string
+  readonly onMomentRangeChange: (range: BehaviourMomentRangeRecord | undefined, maxTurn?: number) => void
+  readonly onClose: () => void
+}) {
+  const cluster = node.cluster
+  const [sessionFilter, setSessionFilter] = useState<BehaviourSessionFilter>("all")
+  const [sessionOverlayId, setSessionOverlayId] = useState<string | null>(null)
+  const [sessionOverlayMomentId, setSessionOverlayMomentId] = useState<string | null>(null)
+  const [sessionPanelEntered, setSessionPanelEntered] = useState(false)
+  const [selectionState, setSelectionState] = useState<SelectionState<string>>(EMPTY_SELECTION)
+  const [addToDatasetOpen, setAddToDatasetOpen] = useState(false)
+  const { data: intelligence } = useClusterProfile(projectId, cluster.id, timeRange, customBehaviorId, facetId)
+  const {
+    data: behaviourSessionsData,
+    isLoading: behaviourSessionsLoading,
+    fetchNextPage: fetchNextBehaviourSessionsPage,
+    hasNextPage: hasNextBehaviourSessionsPage,
+    isFetchingNextPage: isFetchingNextBehaviourSessionsPage,
+  } = useBehaviourSessions(projectId, cluster.id, sessionFilter, timeRange, momentRange, customBehaviorId, facetId)
+  const behaviourSessions = behaviourSessionsData?.pages.flatMap((page) => page.sessions) ?? []
+  const behaviourSessionHistogram = behaviourSessionsData?.pages[0]?.histogram ?? []
+  // A session row's identity is its (first) trace id — the unit a dataset row is
+  // built from. Selecting rows therefore selects trace ids directly.
+  const sessionRowKey = useCallback((session: BehaviourSessionRecord) => session.traceId || session.sessionId, [])
+  const sessionRowKeys = useMemo(() => behaviourSessions.map(sessionRowKey), [behaviourSessions, sessionRowKey])
+  // The histogram is computed over the full filtered set (no pagination), so its
+  // total is the count "Select all" stands for, not just the loaded page.
+  const totalSessionCount = useMemo(
+    () => behaviourSessionHistogram.reduce((sum, bucket) => sum + bucket.count, 0),
+    [behaviourSessionHistogram],
+  )
+  const sessionSelection = useSelectableRows<string>({
+    rowIds: sessionRowKeys,
+    totalRowCount: totalSessionCount,
+    controlledState: selectionState,
+    onStateChange: setSelectionState,
+  })
+  const clusterSource = useMemo<ClusterSource>(
+    () => ({
+      clusterId: cluster.id,
+      ...(sessionFilter !== "all" ? { filter: sessionFilter } : {}),
+      ...(momentRange
+        ? { momentRange: { metric: momentRange.metric, fromTurn: momentRange.fromTurn, toTurn: momentRange.toTurn } }
+        : {}),
+      ...(timeRange?.fromIso ? { timeFromIso: timeRange.fromIso } : {}),
+      ...(timeRange?.toIso ? { timeToIso: timeRange.toIso } : {}),
+      ...(customBehaviorId ? { customBehaviorId } : {}),
+      ...(facetId ? { facetId } : {}),
+    }),
+    [cluster.id, sessionFilter, momentRange, timeRange, customBehaviorId, facetId],
+  )
+  const datasetSelection = sessionSelection.bulkSelection
+  const detectedSignals = intelligence?.topMoments ?? []
+  const activeMomentKinds = momentRange
+    ? momentKindsForTrajectoryMetric(momentRange.metric)
+    : sessionFilter === "all"
+      ? []
+      : [sessionFilter]
+  const hasSessionFilters = sessionFilter !== "all" || Boolean(momentRange)
+  const positiveSignals = detectedSignals.filter((signal) => signal.count > 0)
+  const signalColorByKind = new Map(positiveSignals.map((signal, index) => [signal.kind, signalColorAt(index)]))
+  const sessionFilterOptions = detectedSignals
+    .filter((signal): signal is { readonly kind: MomentKind; readonly count: number } =>
+      (MOMENT_KINDS as readonly string[]).includes(signal.kind),
+    )
+    .filter((signal) => signal.count > 0)
+    .map((signal) => ({
+      id: signal.kind satisfies BehaviourSessionFilter,
+      label: signalLabel(signal.kind),
+      valueText: formatCount(signal.count),
+      color: signalColorByKind.get(signal.kind) ?? signalColorAt(0),
+    }))
+  const showDetectedSignalsChart = positiveSignals.length > 1
+  useEffect(() => {
+    setSessionFilter("all")
+    setSessionOverlayId(null)
+    setSessionPanelEntered(false)
+  }, [cluster.id, timeRange])
+
+  useEffect(() => {
+    if (!momentRange) return
+    setSessionFilter("all")
+    setSessionOverlayId(null)
+    setSessionPanelEntered(false)
+  }, [momentRange])
+
+  // The selection stands for a specific filtered set; drop it whenever that set
+  // changes so a stale "select all" can't carry into a different filter.
+  useEffect(() => {
+    setSelectionState(EMPTY_SELECTION)
+  }, [cluster.id, sessionFilter, momentRange, timeRange])
+
+  const openSessionOverlay = (session: BehaviourSessionRecord) => {
+    setSessionOverlayId(session.sessionId)
+    setSessionOverlayMomentId(session.momentId || null)
+    requestAnimationFrame(() => setSessionPanelEntered(true))
+  }
+  const closeSessionOverlay = () => {
+    setSessionPanelEntered(false)
+    setTimeout(() => {
+      setSessionOverlayId(null)
+    }, 300)
+  }
+
+  return (
+    <>
+      <DetailDrawer storeKey="behaviour-detail-drawer-width" onClose={onClose}>
+        <div className="flex flex-1 flex-col gap-6 overflow-y-auto p-6">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {parentName ? (
+                <Badge variant="muted" ellipsis iconProps={{ icon: TagIcon, placement: "start" }}>
+                  {parentName}
+                </Badge>
+              ) : null}
+              <Badge variant="muted" ellipsis iconProps={{ icon: TagIcon, placement: "start" }}>
+                {`${formatCount(node.subtreeSessionCount)} sessions`}
+              </Badge>
+              <Badge
+                variant={trendBadgeVariant(node.trend.status)}
+                ellipsis
+                iconProps={{ icon: trendIcon(node.trend.status), placement: "start" }}
+              >
+                {trendLabel(node.trend.status)}
+              </Badge>
+              {node.firstSeenLabel === "older" || node.firstSeenLabel === "unknown" ? null : (
+                <Badge variant="muted" ellipsis iconProps={{ icon: SparklesIcon, placement: "start" }}>
+                  {`First seen ${node.firstSeenLabel.replaceAll("_", " ")}`}
+                </Badge>
+              )}
+            </div>
+            <Text.H6 color="foregroundMuted">
+              First seen {node.firstSeenLabel === "unknown" ? "on or before " : ""}
+              {formatDate(cluster.firstObservedAt)} · Last seen {relativeTime(new Date(cluster.lastObservedAt))}
+            </Text.H6>
+            <div className="flex flex-col gap-2">
+              <Text.H2>{cluster.name}</Text.H2>
+              <Text.H5 color="foregroundMuted">
+                {cluster.description || "This behavior has not been named in detail yet."}
+              </Text.H5>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2 pt-2">
+            <div className="flex flex-row items-center gap-2 text-muted-foreground">
+              <BrainIcon className="h-4 w-4" />
+              <Text.H6 color="foregroundMuted">Conversation intelligence</Text.H6>
+              <hr className="mx-2 flex-1 border-t-2 border-dashed border-border" />
+            </div>
+            <div className="flex flex-col gap-4 pt-2">
+              {intelligence ? (
+                <>
+                  <div className={cn("grid gap-2", showDetectedSignalsChart ? "grid-cols-2" : "grid-cols-1")}>
+                    <BehaviourSessionsHistogram
+                      isLoading={behaviourSessionsLoading}
+                      buckets={behaviourSessionHistogram}
+                      height={96}
+                    />
+                    {showDetectedSignalsChart ? <DetectedSignalsChart signals={detectedSignals} /> : null}
+                  </div>
+                  {sessionFilterOptions.length > 0 || hasSessionFilters ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      {sessionFilterOptions.map((option) => (
+                        <MetricButton
+                          key={option.id}
+                          active={activeMomentKinds.includes(option.id)}
+                          label={option.label}
+                          valueText={option.valueText}
+                          color={option.color}
+                          onClick={() => {
+                            onMomentRangeChange(undefined)
+                            setSessionFilter((current) => (current === option.id && !momentRange ? "all" : option.id))
+                          }}
+                        />
+                      ))}
+                      {hasSessionFilters ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSessionFilter("all")
+                            onMomentRangeChange(undefined)
+                          }}
+                        >
+                          <Icon icon={XIcon} size="xs" />
+                          Clear filters
+                        </Button>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  <div className="flex flex-col gap-2 pt-4">
+                    <Text.H5>Associated sessions</Text.H5>
+                    {momentRange ? (
+                      <TurnRangeSlider
+                        range={momentRange}
+                        maxTurn={momentRangeMaxTurn}
+                        onChange={onMomentRangeChange}
+                      />
+                    ) : null}
+                    <Text.H6 color="foregroundMuted">
+                      {momentRange
+                        ? selectedMomentRangeLabel(momentRange)
+                        : sessionFilter === "all"
+                          ? "All sessions for this behavior"
+                          : `Sessions matching ${sessionFilter.replaceAll("_", " ")}`}
+                    </Text.H6>
+                    {sessionSelection.selectedCount > 0 ? (
+                      <div className="flex items-center gap-2">
+                        <Button variant="outline" size="sm" onClick={() => setAddToDatasetOpen(true)}>
+                          <Icon icon={DatabaseIcon} size="xs" />
+                          Add to dataset ({sessionSelection.selectedCount.toLocaleString()})
+                        </Button>
+                      </div>
+                    ) : null}
+                    {behaviourSessionsLoading ? (
+                      <Skeleton className="h-16 rounded-xl" />
+                    ) : behaviourSessions.length ? (
+                      <BehaviourSessionsTable
+                        sessions={behaviourSessions}
+                        activeRowKey={
+                          behaviourSessions.find((session) => session.sessionId === sessionOverlayId)?.traceId ||
+                          (sessionOverlayId ?? undefined)
+                        }
+                        getRowKey={sessionRowKey}
+                        selection={sessionSelection}
+                        onSessionClick={openSessionOverlay}
+                        hasMore={hasNextBehaviourSessionsPage === true}
+                        isLoadingMore={isFetchingNextBehaviourSessionsPage}
+                        onLoadMore={() => void fetchNextBehaviourSessionsPage()}
+                      />
+                    ) : (
+                      <Text.H5 color="foregroundMuted">No sessions match this filter.</Text.H5>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <Text.H5 color="foregroundMuted">Conversation intelligence is not available yet.</Text.H5>
+              )}
+            </div>
+          </div>
+        </div>
+      </DetailDrawer>
+      {datasetSelection ? (
+        <AddToDatasetModal
+          open={addToDatasetOpen}
+          onOpenChange={setAddToDatasetOpen}
+          projectId={projectId}
+          itemLabel="session"
+          selectedCount={sessionSelection.selectedCount}
+          onAddToExisting={(datasetId) =>
+            addClusterSessionsToDatasetFunction({
+              data: { projectId, datasetId, cluster: clusterSource, selection: datasetSelection },
+            })
+          }
+          onCreateNew={(name) =>
+            createDatasetFromClusterSessionsFunction({
+              data: { projectId, name, cluster: clusterSource, selection: datasetSelection },
+            })
+          }
+          onSuccess={sessionSelection.clearSelections}
+        />
+      ) : null}
+      {sessionOverlayId !== null ? (
+        <>
+          <button
+            type="button"
+            aria-label="Close session panel"
+            className={cn(
+              "fixed inset-0 z-[45] bg-foreground/10 transition-opacity duration-200",
+              sessionPanelEntered ? "opacity-100" : "pointer-events-none opacity-0",
+            )}
+            onClick={closeSessionOverlay}
+          />
+          <div
+            className={cn(
+              "fixed inset-y-0 right-0 z-[50] flex max-h-dvh shadow-2xl will-change-transform transition-transform duration-300 ease-out",
+              sessionPanelEntered ? "translate-x-0" : "translate-x-full",
+            )}
+          >
+            <SessionDetailDrawer
+              key={sessionOverlayId}
+              projectId={projectId}
+              sessionId={sessionOverlayId}
+              onClose={closeSessionOverlay}
+              defaultTab="conversation"
+              focusMomentKind={sessionFilter === "all" ? undefined : sessionFilter}
+              focusMomentId={sessionOverlayMomentId ?? undefined}
+            />
+          </div>
+        </>
+      ) : null}
+    </>
+  )
+}
+
+function TurnRangeSlider({
+  range,
+  maxTurn,
+  onChange,
+}: {
+  readonly range: BehaviourMomentRangeRecord
+  readonly maxTurn: number
+  readonly onChange: (range: BehaviourMomentRangeRecord, maxTurn: number) => void
+}) {
+  const sliderMax = Math.max(maxTurn, range.toTurn, 1)
+  const committedValue = [range.fromTurn, range.toTurn] as const
+  const [draftValue, setDraftValue] = useState<readonly [number, number]>(committedValue)
+
+  useEffect(() => {
+    setDraftValue(committedValue)
+  }, [range.fromTurn, range.toTurn])
+
+  const [draftFrom, draftTo] = draftValue
+
+  const normalizeRange = (values: readonly number[]) => {
+    const first = values[0] ?? range.fromTurn
+    const second = values[1] ?? range.toTurn
+    const fromTurn = Math.max(0, Math.min(first, second))
+    const toTurn = Math.min(sliderMax, Math.max(first, second))
+    return [fromTurn, toTurn] as const
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-lg bg-secondary px-3 py-3">
+      <div className="flex items-center justify-between gap-3">
+        <Text.H6 color="foregroundMuted">Turn range</Text.H6>
+        <Text.H6B className="tabular-nums">
+          {draftFrom + 1}
+          {draftTo === draftFrom ? "" : `-${draftTo + 1}`}
+        </Text.H6B>
+      </div>
+      <Slider
+        aria-label="Selected turn range"
+        min={0}
+        max={sliderMax}
+        step={1}
+        minStepsBetweenThumbs={0}
+        value={[draftFrom, draftTo]}
+        onValueChange={(values) => setDraftValue(normalizeRange(values))}
+        onValueCommit={(values) => {
+          const [fromTurn, toTurn] = normalizeRange(values)
+          onChange({ ...range, fromTurn, toTurn }, sliderMax)
+        }}
+      />
+      <div className="flex items-center justify-between text-muted-foreground text-xs tabular-nums">
+        <span>1</span>
+        <span>{sliderMax + 1}</span>
+      </div>
+    </div>
+  )
+}
+
+function BehaviourSessionsTable({
+  sessions,
+  activeRowKey,
+  getRowKey,
+  selection,
+  onSessionClick,
+  hasMore,
+  isLoadingMore,
+  onLoadMore,
+}: {
+  readonly sessions: readonly BehaviourSessionRecord[]
+  readonly activeRowKey: string | undefined
+  readonly getRowKey: (session: BehaviourSessionRecord) => string
+  readonly selection: InfiniteTableSelection
+  readonly onSessionClick: (session: BehaviourSessionRecord) => void
+  readonly hasMore: boolean
+  readonly isLoadingMore: boolean
+  readonly onLoadMore: () => void
+}) {
+  const columns = useMemo(
+    (): InfiniteTableColumn<BehaviourSessionRecord>[] => [
+      {
+        key: "startTime",
+        header: "Start Time",
+        width: 150,
+        render: (session) => (
+          <Tooltip asChild trigger={<span className="truncate">{relativeTime(new Date(session.endTime))}</span>}>
+            {new Date(session.endTime).toLocaleString()}
+          </Tooltip>
+        ),
+      },
+      {
+        key: "moment",
+        header: "Moment",
+        width: 260,
+        render: (session) => session.summary || session.sessionId,
+      },
+      {
+        key: "signals",
+        header: "Moments",
+        width: 220,
+        render: (session) =>
+          session.momentKinds.length > 0 ? session.momentKinds.join(", ").replaceAll("_", " ") : "-",
+      },
+      {
+        key: "sessionId",
+        header: "Session ID",
+        width: 180,
+        render: (session) => session.sessionId,
+      },
+    ],
+    [],
+  )
+
+  return (
+    <ProjectStyleTableFrame>
+      <InfiniteTable
+        data={sessions}
+        columns={columns}
+        getRowKey={getRowKey}
+        selection={selection}
+        onRowClick={onSessionClick}
+        getRowAriaLabel={(session) => `Open session ${session.sessionId} in the session panel`}
+        rowInteractionRole="button"
+        {...(activeRowKey ? { activeRowKey } : {})}
+        scrollAreaLayout="intrinsic"
+        className="max-h-[min(28rem,50vh)]"
+        infiniteScroll={{ hasMore, isLoadingMore, onLoadMore }}
+        blankSlate="No sessions match this filter."
+      />
+    </ProjectStyleTableFrame>
+  )
+}
+
+function ProjectStyleTableFrame({ children }: { readonly children: ReactNode }) {
+  return <div className="overflow-hidden">{children}</div>
+}
+
+function MetricButton({
+  active,
+  label,
+  valueText,
+  color,
+  onClick,
+}: {
+  readonly active: boolean
+  readonly label: string
+  readonly valueText: string
+  readonly color: string
+  readonly onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        "inline-flex min-w-0 items-center gap-2 rounded-full border px-3 py-1.5 text-left hover:bg-muted/40",
+        active ? "border-primary bg-primary/10" : "border-border/60 bg-muted/20",
+      )}
+      onClick={onClick}
+    >
+      <span className="size-2 shrink-0 rounded-full" style={{ background: color }} />
+      <Text.H6 noWrap ellipsis className="min-w-0 flex-1">
+        {label}
+      </Text.H6>
+      <Text.H6 color={active ? "foreground" : "foregroundMuted"} className="shrink-0">
+        {valueText}
+      </Text.H6>
+    </button>
+  )
+}
+
+const polarToCartesian = (center: number, radius: number, angleInDegrees: number) => {
+  const angleInRadians = ((angleInDegrees - 90) * Math.PI) / 180
+  return {
+    x: center + radius * Math.cos(angleInRadians),
+    y: center + radius * Math.sin(angleInRadians),
+  }
+}
+
+const describePieSlice = (center: number, radius: number, startAngle: number, endAngle: number) => {
+  const start = polarToCartesian(center, radius, endAngle)
+  const end = polarToCartesian(center, radius, startAngle)
+  const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1"
+  return [
+    `M ${center} ${center}`,
+    `L ${start.x} ${start.y}`,
+    `A ${radius} ${radius} 0 ${largeArcFlag} 0 ${end.x} ${end.y}`,
+    "Z",
+  ].join(" ")
+}
+
+function ChartPanelHeader({ title, subtitle }: { readonly title: string; readonly subtitle?: string }) {
+  return (
+    <div className="shrink-0 p-2 pb-1">
+      <Text.H6 color="foregroundMuted">{title}</Text.H6>
+      <div className="mt-0.5 min-h-[1.25rem]">
+        {subtitle ? <Text.H6 className="tabular-nums">{subtitle}</Text.H6> : null}
+      </div>
+    </div>
+  )
+}
+
+function DetectedSignalsChart({
+  signals,
+}: {
+  readonly signals: readonly { readonly kind: string; readonly count: number }[]
+}) {
+  const visibleSignals = signals.filter((signal) => signal.count > 0).slice(0, 4)
+  const total = visibleSignals.reduce((sum, signal) => sum + signal.count, 0)
+  let cursor = 0
+  const slices = visibleSignals.map((signal, index) => {
+    const startAngle = cursor
+    const endAngle = cursor + (signal.count / total) * 360
+    cursor = endAngle
+    return { signal, startAngle, endAngle, color: signalColorAt(index) }
+  })
+
+  return (
+    <div className="flex h-full flex-col rounded-lg bg-secondary">
+      <ChartPanelHeader title="Moments" />
+      <div className="flex flex-1 items-center justify-center px-2 pb-2">
+        <svg className="size-24 shrink-0" viewBox="0 0 160 160" role="img" aria-label="Moment distribution">
+          <circle cx="80" cy="80" r="78" className="fill-muted" />
+          {slices.map((slice) => (
+            <Tooltip
+              key={slice.signal.kind}
+              asChild
+              trigger={
+                <path
+                  d={describePieSlice(80, 78, slice.startAngle, slice.endAngle)}
+                  fill={slice.color}
+                  className="cursor-default outline-none transition-opacity hover:opacity-80 focus:opacity-80"
+                  tabIndex={0}
+                />
+              }
+            >
+              {`${slice.signal.kind.replaceAll("_", " ")}: ${formatCount(slice.signal.count)} sessions`}
+            </Tooltip>
+          ))}
+        </svg>
+      </div>
+    </div>
+  )
+}
+
+function formatSessionHistogramLabel(startTime: string) {
+  const date = new Date(startTime)
+  return date.toLocaleDateString([], { month: "short", day: "numeric" }).replace(" ", " ")
+}
+
+function formatSessionHistogramTooltip(startTime: string, count: number) {
+  const date = new Date(startTime)
+  const label = date.toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
+  return `${label}<br/><b>${formatCount(count)}</b> sessions`
+}
+
+function BehaviourSessionsHistogram({
+  isLoading,
+  buckets,
+  height = 140,
+}: {
+  readonly isLoading: boolean
+  readonly buckets: readonly { readonly startTime: string; readonly count: number }[]
+  readonly height?: number
+}) {
+  const total = buckets.reduce((sum, bucket) => sum + bucket.count, 0)
+  const data = useMemo(
+    () =>
+      buckets.map((bucket) => ({
+        category: formatSessionHistogramLabel(bucket.startTime),
+        value: bucket.count,
+        tooltipCategory: bucket.startTime,
+      })),
+    [buckets],
+  )
+
+  return (
+    <div className="flex h-full flex-col rounded-lg bg-secondary">
+      <ChartPanelHeader title="Session activity" subtitle={`${formatCount(total)} sessions`} />
+      {isLoading ? (
+        <div className="px-2 pb-2">
+          <HistogramSkeleton height={height} />
+        </div>
+      ) : data.length === 0 || data.every((bucket) => bucket.value === 0) ? (
+        <div className="flex min-h-[80px] flex-1 items-center justify-center px-2 pb-2">
+          <Text.H6 color="foregroundMuted">No sessions in this time window</Text.H6>
+        </div>
+      ) : (
+        <div className="px-2 pb-2">
+          <BarChart
+            data={data}
+            height={height}
+            showYAxis={false}
+            xAxisLabelFontSize={10}
+            ariaLabel="Behavior sessions over time"
+            formatTooltip={(category, value) => formatSessionHistogramTooltip(category, value)}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function BehavioursView({
+  topics,
+  projectId,
+  isLoading,
+  segment,
+  behaviourPath,
+  timeFilter,
+  timeRange,
+  momentRange,
+  customBehaviorId,
+  facetId,
+  onSegmentChange,
+  onBehaviourPathChange,
+  onMomentRangeChange,
+}: {
+  readonly topics: readonly BehaviourNodeRecord[]
+  readonly projectId: string
+  readonly isLoading: boolean
+  /** Global-only chrome, like `timeFilter`: pass `segment` + `onSegmentChange`
+   * to show the segment tabs; omit them (e.g. a scoped tree, whose trends are
+   * neutral) to hide them. */
+  readonly segment?: BehaviourSegment
+  readonly behaviourPath: readonly string[]
+  /** Slot for the global time-window picker; scoped trees pass `null` (fixed 7d). */
+  readonly timeFilter: ReactNode
+  readonly timeRange: BehaviourTimeRangeRecord | undefined
+  readonly momentRange: BehaviourMomentRangeRecord | undefined
+  /** Data scope only: reads the behavior's scoped clusters/sessions/trajectory.
+   * It does not drive chrome — visible controls are chosen by the caller. */
+  readonly customBehaviorId?: string
+  /** The behavior's facet; threads to scoped facet reads alongside customBehaviorId. */
+  readonly facetId?: string
+  readonly onSegmentChange?: (segment: BehaviourSegment) => void
+  readonly onBehaviourPathChange: (path: readonly string[]) => void
+  readonly onMomentRangeChange: (range: BehaviourMomentRangeRecord | undefined, maxTurn?: number) => void
+}) {
+  const activeBehaviourId = behaviourPath.at(-1)
+  const scrollAreaRef = useRef<HTMLDivElement>(null)
+  const expandableKeys = useMemo(() => {
+    const keys = new Set<string>()
+    const walk = (nodes: readonly BehaviourNodeRecord[]) => {
+      for (const node of nodes) {
+        if (node.children.length > 0) keys.add(node.cluster.id)
+        walk(node.children)
+      }
+    }
+    walk(topics)
+    return keys
+  }, [topics])
+  const defaultCollapsedKeys = useMemo(() => {
+    const keys = new Set<string>()
+    const walk = (nodes: readonly BehaviourNodeRecord[], depth: number) => {
+      for (const node of nodes) {
+        if (depth > 0 && node.children.length > 0) keys.add(node.cluster.id)
+        walk(node.children, depth + 1)
+      }
+    }
+    walk(topics, 0)
+    return keys
+  }, [topics])
+  const [collapsedKeys, setCollapsedKeys] = useState<ReadonlySet<string>>(() => defaultCollapsedKeys)
+
+  useEffect(() => {
+    setCollapsedKeys((previous) => {
+      const next = new Set([...previous].filter((key) => expandableKeys.has(key)))
+      for (const key of defaultCollapsedKeys) next.add(key)
+      return next.size === previous.size && [...next].every((key) => previous.has(key)) ? previous : next
+    })
+  }, [defaultCollapsedKeys, expandableKeys])
+
+  // Chart clicks drive the table selection too: the path tail becomes the
+  // active behaviour (highlighted row + detail drawer). Clearing the path
+  // closes the drawer.
+  const handleDotChartPathChange = useCallback(
+    (path: readonly string[]) => {
+      onBehaviourPathChange(path)
+      onMomentRangeChange(undefined)
+    },
+    [onBehaviourPathChange, onMomentRangeChange],
+  )
+
+  const handleDotChartPointSelect = useCallback(
+    ({
+      path,
+      axis,
+      metric,
+      bucket,
+      maxTurn,
+    }: {
+      readonly path: readonly string[]
+      readonly axis: "day" | "turn"
+      readonly metric: BehaviourTrajectoryMetric
+      readonly bucket: string
+      readonly maxTurn: number
+    }) => {
+      onBehaviourPathChange(path)
+      if (axis !== "turn") {
+        onMomentRangeChange(undefined)
+        return
+      }
+
+      const turnRange = parseTurnBucket(bucket)
+      onMomentRangeChange(turnRange ? { metric, ...turnRange } : undefined, maxTurn)
+    },
+    [onBehaviourPathChange, onMomentRangeChange],
+  )
+
+  const rows: readonly BehaviourTableRow[] = useMemo(() => {
+    const out: BehaviourTableRow[] = []
+    const walk = (nodes: readonly BehaviourNodeRecord[], depth: number) => {
+      for (const node of nodes) {
+        out.push({ node, depth, hasChildren: node.children.length > 0 })
+        if (node.children.length > 0 && !collapsedKeys.has(node.cluster.id)) walk(node.children, depth + 1)
+      }
+    }
+    walk(topics, 0)
+    return out
+  }, [topics, collapsedKeys])
+
+  const activeAncestorKeys = useMemo(() => {
+    const keys = new Set<string>()
+    const walk = (nodes: readonly BehaviourNodeRecord[], ancestors: readonly string[]): boolean => {
+      for (const node of nodes) {
+        if (node.cluster.id === activeBehaviourId) {
+          for (const ancestor of ancestors) keys.add(ancestor)
+          return true
+        }
+        if (walk(node.children, [...ancestors, node.cluster.id])) return true
+      }
+      return false
+    }
+    if (activeBehaviourId) walk(topics, [])
+    return keys
+  }, [activeBehaviourId, topics])
+
+  useEffect(() => {
+    if (activeAncestorKeys.size === 0) return
+    setCollapsedKeys((previous) => {
+      const next = new Set([...previous].filter((key) => !activeAncestorKeys.has(key)))
+      return next.size === previous.size ? previous : next
+    })
+  }, [activeAncestorKeys])
+
+  const activeIndex = activeBehaviourId ? rows.findIndex((row) => row.node.cluster.id === activeBehaviourId) : -1
+
+  const setActiveByOffset = useCallback(
+    (offset: number) => {
+      const next = rows[activeIndex + offset]
+      if (next) {
+        onBehaviourPathChange(findBehaviourPath(topics, next.node.cluster.id) ?? [next.node.cluster.id])
+        onMomentRangeChange(undefined)
+      } else if (activeIndex === -1 && rows[0]) {
+        onBehaviourPathChange(findBehaviourPath(topics, rows[0].node.cluster.id) ?? [rows[0].node.cluster.id])
+        onMomentRangeChange(undefined)
+      }
+    },
+    [activeIndex, rows, topics, onBehaviourPathChange, onMomentRangeChange],
+  )
+
+  useHotkeys([
+    { hotkey: "J", callback: () => setActiveByOffset(1) },
+    { hotkey: "K", callback: () => setActiveByOffset(-1) },
+  ])
+
+  const toggleNode = useCallback(
+    (key: string) => {
+      if (!expandableKeys.has(key)) return
+      setCollapsedKeys((previous) => {
+        const next = new Set(previous)
+        if (next.has(key)) next.delete(key)
+        else next.add(key)
+        return next
+      })
+    },
+    [expandableKeys],
+  )
+
+  const columns: InfiniteTableColumn<BehaviourTableRow>[] = [
+    {
+      key: "behaviour",
+      header: "Behavior",
+      width: 420,
+      minWidth: 300,
+      render: (row) => (
+        <BehaviourNameCell
+          row={row}
+          expanded={!collapsedKeys.has(row.node.cluster.id)}
+          onToggle={() => toggleNode(row.node.cluster.id)}
+        />
+      ),
+    },
+    {
+      key: "sessions",
+      header: "Sessions",
+      width: 110,
+      align: "end",
+      render: (row) => formatCount(row.node.subtreeSessionCount),
+    },
+    {
+      key: "signals",
+      header: "Moments",
+      width: 240,
+      render: (row) => {
+        const signals = row.node.intelligence.signals.filter((signal) => signal.rate > 0)
+        if (signals.length === 0) return <Text.H5 color="foregroundMuted">-</Text.H5>
+        return <TagList tags={signals.map((signal) => signalLabel(signal.kind))} />
+      },
+    },
+    {
+      key: "trend",
+      header: "Trend",
+      width: 130,
+      render: (row) => {
+        const status = row.hasChildren ? subtreeTrendStatus(row.node) : row.node.trend.status
+        return (
+          <Badge
+            variant={trendBadgeVariant(status)}
+            ellipsis
+            iconProps={{ icon: trendIcon(status), placement: "start" }}
+          >
+            {trendLabel(status)}
+          </Badge>
+        )
+      },
+    },
+    {
+      key: "seen",
+      header: "First seen",
+      width: 170,
+      render: (row) => {
+        const firstObservedAt = row.node.cluster.firstObservedAt
+        // "unknown" means the earliest member sits at the edge of what this
+        // behavior has been analyzed over: it started then AT THE LATEST, and
+        // reporting that edge as a first sighting is what made every row read
+        // "First seen: <the day the lens was created>".
+        const bounded = row.node.firstSeenLabel === "unknown"
+        return (
+          <Tooltip
+            asChild
+            trigger={
+              <span>{bounded ? `Before ${formatDate(firstObservedAt)}` : relativeTime(new Date(firstObservedAt))}</span>
+            }
+          >
+            <div className="flex flex-col gap-1">
+              <Text.H6 color="foregroundMuted">First seen</Text.H6>
+              <Text.H6B>
+                {bounded ? `On or before ${formatDate(firstObservedAt)}` : formatDate(firstObservedAt)}
+              </Text.H6B>
+              {bounded ? (
+                <Text.H6 color="foregroundMuted">Grouping does not reach further back, so it may be older.</Text.H6>
+              ) : null}
+              <Text.H6 color="foregroundMuted">Last seen</Text.H6>
+              <Text.H6B>{new Date(row.node.cluster.lastObservedAt).toLocaleString()}</Text.H6B>
+            </div>
+          </Tooltip>
+        )
+      },
+    },
+  ]
+
+  return (
+    <>
+      <Layout.Actions>
+        <Layout.ActionsRow>
+          <Layout.ActionRowItem>
+            {timeFilter}
+            {momentRange ? (
+              <Badge variant="muted" ellipsis iconProps={{ icon: TagIcon, placement: "start" }}>
+                {selectedMomentRangeLabel(momentRange)}
+              </Badge>
+            ) : null}
+          </Layout.ActionRowItem>
+          {onSegmentChange ? (
+            <Layout.ActionRowItem>
+              <Tabs
+                variant="bordered"
+                size="sm"
+                options={segmentOptions.map((option) => ({ id: option.id, label: option.label }))}
+                active={segment ?? "all"}
+                onSelect={(value) => onSegmentChange(value)}
+              />
+            </Layout.ActionRowItem>
+          ) : null}
+        </Layout.ActionsRow>
+      </Layout.Actions>
+      <Layout.Body>
+        <Layout.List ref={scrollAreaRef} className="gap-3 overflow-y-auto">
+          {isLoading ? (
+            <div className="flex flex-col gap-2 p-6">
+              <Skeleton className="h-12 rounded-xl" />
+              <Skeleton className="h-12 rounded-xl" />
+              <Skeleton className="h-12 rounded-xl" />
+            </div>
+          ) : (
+            <>
+              <BehavioursTrajectoryChart
+                projectId={projectId}
+                topics={topics}
+                selectedPath={behaviourPath}
+                timeRange={timeRange}
+                {...(customBehaviorId ? { customBehaviorId } : {})}
+                {...(facetId ? { facetId } : {})}
+                onSelectPath={handleDotChartPathChange}
+                onSelectPoint={handleDotChartPointSelect}
+              />
+              <InfiniteTable
+                scrollAreaLayout="external"
+                scrollContainerRef={scrollAreaRef}
+                data={rows}
+                isLoading={false}
+                columns={columns}
+                getRowKey={(row) => row.node.cluster.id}
+                getRowAriaLabel={(row) =>
+                  row.node.cluster.id === activeBehaviourId
+                    ? `Close ${row.node.cluster.name}`
+                    : `Open ${row.node.cluster.name}`
+                }
+                onRowClick={(row) => {
+                  // Selecting a parent row also reveals its nested group; the
+                  // chevron stays the only way to collapse it back.
+                  if (row.hasChildren) {
+                    setCollapsedKeys((previous) => {
+                      if (!previous.has(row.node.cluster.id)) return previous
+                      const next = new Set(previous)
+                      next.delete(row.node.cluster.id)
+                      return next
+                    })
+                  }
+                  onBehaviourPathChange(
+                    row.node.cluster.id === activeBehaviourId
+                      ? []
+                      : (findBehaviourPath(topics, row.node.cluster.id) ?? [row.node.cluster.id]),
+                  )
+                  onMomentRangeChange(undefined)
+                }}
+                {...(activeBehaviourId ? { activeRowKey: activeBehaviourId, activeRowAutoScroll: true } : {})}
+                blankSlate="No behaviors match the current filters"
+              />
+            </>
+          )}
+        </Layout.List>
+      </Layout.Body>
+    </>
+  )
+}

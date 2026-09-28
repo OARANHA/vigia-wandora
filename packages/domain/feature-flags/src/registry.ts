@@ -1,0 +1,61 @@
+/**
+ * Code-defined registry of feature flags.
+ *
+ * Adding a flag here makes it referenceable from code immediately — the DB
+ * does not need to know about it. A flag is "enabled" only when an explicit
+ * row in `feature_flags` (with `enabled_for_all = true`) or
+ * `organization_feature_flags` exists for it. Missing rows = disabled.
+ *
+ * Removing an entry here forces every call site to update via the
+ * `FeatureFlagId` literal-union; leftover DB rows for a removed identifier
+ * are inert and can be cleaned from the backoffice.
+ */
+export const FEATURE_FLAGS = {
+  sso: {
+    emoji: "🔐",
+    name: "Enterprise SSO",
+    description:
+      "Lets org owners/admins configure SAML or OIDC single sign-on and (optionally) enforce it for their verified email domain.",
+  },
+  customBehaviors: {
+    emoji: "🎛️",
+    name: "Custom behaviors",
+    description:
+      "Project-scoped, filter-defined behavior taxonomies with their own authoring UI. Hidden until the Generate flow ships.",
+  },
+  costDashboard: {
+    emoji: "💰",
+    name: "Cost dashboard",
+    description:
+      "Project-scoped Cost section: spend over time, per-dimension cost breakdown, and the data-confidence figures (provider-verified share and unpriced usage).",
+  },
+  agentScore: {
+    emoji: "📊",
+    name: "Agent Score",
+    description:
+      "Project-scoped Agent Score: one number from 0 to 100 over a rolling window, the five dimensions behind it, and what explains them. Published only when every dimension passes its floors.",
+  },
+  adaptiveTaxonomyClustering: {
+    emoji: "🌳",
+    name: "Adaptive taxonomy clustering",
+    description:
+      "Builds every project's behaviour tree with node-relative adaptive clustering instead of the static builder. Takes effect on the organization's next gardening pass, either way.",
+  },
+  jevFlaggerPreclassifier: {
+    emoji: "🚦",
+    name: "Jev flagger preclassifier",
+    description:
+      "Runs Jev as a session-level pre-classifier that can gate LLM flaggers into classify when probability meets the threshold. Disabled by default.",
+  },
+} as const satisfies Record<
+  string,
+  {
+    readonly emoji: string
+    readonly name: string
+    readonly description: string
+  }
+>
+
+export type FeatureFlagId = keyof typeof FEATURE_FLAGS
+
+export const FEATURE_FLAG_IDS = Object.keys(FEATURE_FLAGS) as readonly FeatureFlagId[]

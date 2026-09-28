@@ -1,0 +1,185 @@
+import { SegmentBar, type SegmentBarItem, Text, Tooltip } from "@repo/ui"
+import { formatCount, formatPrice } from "@repo/utils"
+import type React from "react"
+import { useMemo } from "react"
+import type { CostDisplay } from "../../../../../../../../../domains/spans/cost-display.ts"
+import { SegmentBreakdownRows } from "../../../segment-breakdown-rows.tsx"
+
+export interface UsageData {
+  readonly tokensInput: number
+  readonly tokensOutput: number
+  readonly tokensCacheRead: number
+  readonly tokensCacheCreate: number
+  readonly tokensReasoning: number
+  readonly costInputMicrocents: number
+  readonly costOutputMicrocents: number
+  readonly costTotalMicrocents: number
+  readonly costIsEstimated?: boolean
+}
+
+function costTotalLabel(data: UsageData, costDisplay: CostDisplay | undefined): string {
+  const total = costDisplay?.label ?? formatPrice(microcentsToDollars(data.costTotalMicrocents))
+  // The estimated marker only qualifies a real amount; it says nothing about "Free" or "-".
+  return data.costIsEstimated && data.costTotalMicrocents > 0 ? `${total}*` : total
+}
+
+function costFooter(data: UsageData, costDisplay: CostDisplay | undefined): { footer?: string } {
+  if (costDisplay?.note) return { footer: costDisplay.note }
+  return data.costIsEstimated && data.costTotalMicrocents > 0 ? { footer: "Cost is estimated" } : {}
+}
+
+const TOKEN_COLORS = {
+  cacheRead: "hsl(var(--viz-gold-faint))",
+  cacheCreate: "hsl(var(--viz-gold-soft))",
+  prompt: "hsl(var(--viz-gold))",
+  reasoning: "hsl(var(--viz-blue-soft))",
+  completion: "hsl(var(--viz-blue))",
+} as const
+
+const COST_COLORS = {
+  input: "hsl(var(--viz-gold))",
+  output: "hsl(var(--viz-blue))",
+  total: "hsl(var(--viz-gray))",
+} as const
+
+export function hasAnyUsage(data: UsageData): boolean {
+  return (
+    data.tokensInput > 0 ||
+    data.tokensOutput > 0 ||
+    data.tokensCacheRead > 0 ||
+    data.tokensCacheCreate > 0 ||
+    data.tokensReasoning > 0
+  )
+}
+
+export function computeTotalTokens(data: UsageData): number {
+  return data.tokensInput + data.tokensCacheRead + data.tokensCacheCreate + data.tokensOutput + data.tokensReasoning
+}
+
+export function buildTokenSegments(data: UsageData): SegmentBarItem[] {
+  // Core categories are always emitted (even at 0) so a no-cache trace reads as
+  // "Cached Input: 0" rather than looking like Latitude failed to capture cache.
+  // The bar drops zero segments; the tooltip breakdown keeps them.
+  const segments: SegmentBarItem[] = [
+    { label: "Input", value: data.tokensInput, color: TOKEN_COLORS.prompt },
+    { label: "Cached Input", value: data.tokensCacheRead, color: TOKEN_COLORS.cacheRead },
+    { label: "Cache Write", value: data.tokensCacheCreate, color: TOKEN_COLORS.cacheCreate },
+  ]
+  // Reasoning is model-dependent, so it only appears when the model reports it.
+  if (data.tokensReasoning > 0) {
+    segments.push({ label: "Reasoning", value: data.tokensReasoning, color: TOKEN_COLORS.reasoning })
+  }
+  segments.push({ label: "Output", value: data.tokensOutput, color: TOKEN_COLORS.completion })
+  return segments
+}
+
+export function buildCostSegments(data: UsageData): SegmentBarItem[] {
+  const input = data.costInputMicrocents
+  const output = data.costOutputMicrocents
+
+  const segments: SegmentBarItem[] = []
+  if (input > 0) segments.push({ label: "Input", value: input, color: COST_COLORS.input })
+  if (output > 0) segments.push({ label: "Output", value: output, color: COST_COLORS.output })
+
+  // Cost reported only as a total (no input/output split) still fills the bar.
+  if (segments.length === 0 && data.costTotalMicrocents > 0) {
+    segments.push({ label: "Cost", value: data.costTotalMicrocents, color: COST_COLORS.total })
+  }
+  return segments
+}
+
+function UsageRow({
+  label,
+  formattedTotal,
+  segments,
+  formatValue,
+  footer,
+  badges,
+}: {
+  readonly label: string
+  readonly formattedTotal: string
+  readonly segments: readonly SegmentBarItem[]
+  readonly formatValue: (value: number) => string
+  readonly footer?: string
+  readonly badges?: React.ReactNode
+}) {
+  return (
+    <div className="flex min-h-8 flex-row items-center gap-3">
+      <div className="flex min-w-12 self-center">
+        <Text.H6 color="foregroundMuted" noWrap>
+          {label}
+        </Text.H6>
+      </div>
+
+      <Tooltip
+        trigger={
+          <div className="flex min-w-0 w-full max-w-48 self-center items-center">
+            <SegmentBar segments={segments} />
+          </div>
+        }
+        asChild
+      >
+        <SegmentBreakdownRows segments={segments} formatValue={formatValue} {...(footer ? { footer } : {})} />
+      </Tooltip>
+
+      <div className="flex items-center gap-2 self-center">
+        <Text.H5 color="foreground" noWrap>
+          {formattedTotal}
+        </Text.H5>
+        {badges}
+      </div>
+    </div>
+  )
+}
+
+function microcentsToDollars(microcents: number): number {
+  return microcents / 100_000_000
+}
+
+export function UsageSummary({
+  data,
+  costBadges,
+  costDisplay,
+}: {
+  readonly data: UsageData
+  readonly costBadges?: React.ReactNode
+  /**
+   * How to read this cost, from the caller that knows whether it is one span or a rollup. Without it
+   * a zero cost hides the row, which cannot distinguish a free call from one we failed to price.
+   */
+  readonly costDisplay?: CostDisplay
+}) {
+  const tokenSegments = useMemo(() => buildTokenSegments(data), [data])
+  const costSegments = useMemo(() => buildCostSegments(data), [data])
+
+  const totalTokens = computeTotalTokens(data)
+  const hasCost = data.costTotalMicrocents > 0
+  const hasTokens = hasAnyUsage(data)
+  const showCost = hasCost || (costDisplay !== undefined && hasTokens)
+
+  if (!hasTokens && !hasCost) return null
+
+  return (
+    <div className="flex flex-col gap-2">
+      {hasTokens && (
+        <UsageRow
+          label="Tokens"
+          formattedTotal={formatCount(totalTokens)}
+          segments={tokenSegments}
+          formatValue={(v) => formatCount(v)}
+        />
+      )}
+
+      {showCost && (
+        <UsageRow
+          label="Cost"
+          formattedTotal={costTotalLabel(data, costDisplay)}
+          segments={costSegments}
+          formatValue={(v) => formatPrice(microcentsToDollars(v))}
+          {...costFooter(data, costDisplay)}
+          badges={costBadges}
+        />
+      )}
+    </div>
+  )
+}

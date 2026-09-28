@@ -1,0 +1,461 @@
+import type {
+  PublishOptions,
+  QueueConsumer,
+  QueueName,
+  QueuePublisherShape,
+  ScheduleRepeatableOptions,
+  SubscribeOptions,
+  TaskHandlers,
+  TaskName,
+  TaskPayload,
+} from "@domain/queue"
+import { QueueClientError, QueuePublishError, QueuePublisher, QueueSubscribeError, TOPIC_NAMES } from "@domain/queue"
+import { SpanStatusCode, trace } from "@opentelemetry/api"
+import { recordSpanExceptionForDatadog, serializeError } from "@repo/observability"
+import { base64urlEncode } from "@repo/utils"
+import { type Job, Queue, Worker } from "bullmq"
+import { Cause, Effect, Layer } from "effect"
+import { createBullMqRedisConnection } from "./connection.ts"
+import { BULLMQ_PREFIX } from "./constants.ts"
+import { type BullMqWorkerIncident, failedJobContextFromJob } from "./worker-incidents.ts"
+
+const tracer = trace.getTracer("bullmq")
+
+const toError = (value: unknown): Error => (value instanceof Error ? value : new Error(String(value)))
+
+/**
+ * BullMQ v5 rejects colons in custom jobId values. We base64url-encode the
+ * dedupeKey so the raw (human-readable) key can still contain ':' separators.
+ * The encoded value is only used for BullMQ's jobId; deduplication.id keeps
+ * the original key so dedup windows behave as expected.
+ */
+const toSafeJobId = (dedupeKey: string): string => base64urlEncode(dedupeKey)
+
+/**
+ * Translate {@link PublishOptions} into BullMQ job options. Pure + exported so the
+ * mapping (especially the jobId-vs-deduplication split) can be unit-tested without Redis.
+ * Throws on mutually-exclusive or incomplete coalescing options.
+ */
+export const buildBullMqJobOptions = (label: string, options?: PublishOptions): Record<string, unknown> => {
+  const coalescingOptions = [
+    options?.debounceMs,
+    options?.throttleMs,
+    options?.latestThrottleMs,
+    options?.leadingThrottleMs,
+  ].filter((value) => value !== undefined)
+  if (coalescingOptions.length > 1) {
+    throw new Error(`${label}: debounceMs, throttleMs, latestThrottleMs and leadingThrottleMs are mutually exclusive`)
+  }
+  if (options?.delayMs !== undefined && coalescingOptions.length > 0) {
+    throw new Error(`${label}: delayMs is mutually exclusive with the coalescing options`)
+  }
+  if (
+    (options?.throttleMs !== undefined ||
+      options?.latestThrottleMs !== undefined ||
+      options?.leadingThrottleMs !== undefined) &&
+    !options.dedupeKey
+  ) {
+    throw new Error(`${label}: throttleMs, latestThrottleMs and leadingThrottleMs require a dedupeKey`)
+  }
+
+  const bullmqOptions: Record<string, unknown> = {}
+  // Delayed coalescing options map to BullMQ's `delay` + `deduplication`,
+  // but the dedup flags differ by semantic:
+  //   - debounce: `extend: true, replace: true` — each publish within the TTL
+  //     pushes the fire time forward and overwrites the payload. Fires after
+  //     `debounceMs` of quiet.
+  //   - throttle: `extend: false, replace: false` — the first publish wins.
+  //     Subsequent publishes within the TTL are dropped by BullMQ. Fires
+  //     exactly `throttleMs` after the first publish.
+  //   - latest-throttle: `extend: false, replace: true` — the first publish
+  //     sets the fire time, later publishes update the payload only.
+  //   - leading-throttle: same flags as throttle (`extend: false, replace: false`)
+  //     but with NO delay — the first publish fires immediately and the TTL
+  //     marker drops re-adds for the window. The run lands at the *start* of the
+  //     window, so a trailing-window evaluation still covers the triggering activity.
+  const coalesceDelayMs = options?.debounceMs ?? options?.throttleMs ?? options?.latestThrottleMs
+  const isCoalescing = coalesceDelayMs !== undefined || options?.leadingThrottleMs !== undefined
+  // Custom jobId is for bare-dedupeKey idempotency only (including a plain `delayMs`
+  // deferred job). Coalescing relies on the TTL-based `deduplication` marker instead — a
+  // jobId would be retained by removeOnComplete and shadow later publishes, so a recurring
+  // throttle/debounce would fire once and go dormant.
+  if (options?.dedupeKey && !isCoalescing) {
+    bullmqOptions.jobId = toSafeJobId(options.dedupeKey)
+  }
+  if (coalesceDelayMs !== undefined) {
+    bullmqOptions.delay = coalesceDelayMs
+    if (options?.dedupeKey) {
+      const extendsWindow = options.debounceMs !== undefined
+      const replacesPayload = options.throttleMs === undefined
+      bullmqOptions.deduplication = {
+        id: options.dedupeKey,
+        ttl: coalesceDelayMs,
+        extend: extendsWindow,
+        replace: replacesPayload,
+      }
+    }
+  } else if (options?.leadingThrottleMs !== undefined && options?.dedupeKey) {
+    bullmqOptions.deduplication = {
+      id: options.dedupeKey,
+      ttl: options.leadingThrottleMs,
+      extend: false,
+      replace: false,
+    }
+  } else if (options?.delayMs !== undefined) {
+    bullmqOptions.delay = options.delayMs
+  }
+  if (options?.attempts !== undefined && options.attempts > 0) {
+    bullmqOptions.attempts = options.attempts
+  }
+  if (options?.backoff) {
+    bullmqOptions.backoff = {
+      type: options.backoff.type,
+      delay: options.backoff.delayMs,
+    }
+  }
+  return bullmqOptions
+}
+
+const incidentToLogFields = (incident: BullMqWorkerIncident) => {
+  if (incident.kind === "worker_error") {
+    return {
+      kind: incident.kind,
+      queue: incident.queue,
+      error: serializeError(incident.error),
+    }
+  }
+  if (incident.kind === "job_failed") {
+    return {
+      kind: incident.kind,
+      queue: incident.queue,
+      job: incident.job,
+      error: serializeError(incident.error),
+    }
+  }
+  return { kind: incident.kind, queue: incident.queue, jobId: incident.jobId }
+}
+
+interface BullMqJobData {
+  readonly payload: unknown
+}
+
+type AnyFinalFailureHandler = (
+  payload: unknown,
+  error: Error,
+  context: { attemptsMade: number; attemptsConfigured: number },
+) => Effect.Effect<void, unknown>
+
+type AnyFinalFailureHandlers = Record<string, AnyFinalFailureHandler>
+
+interface FinalFailureInvocation {
+  readonly hook: AnyFinalFailureHandler
+  readonly payload: unknown
+  readonly context: { attemptsMade: number; attemptsConfigured: number }
+}
+
+/**
+ * Decide whether a failed job should fire its terminal-failure hook, and with
+ * what arguments. Pure + exported so the gating (only on the terminal attempt,
+ * only when a hook is registered for the task) can be unit-tested without Redis.
+ * Returns `null` when the hook must not run: no job, no registered handlers,
+ * a non-terminal attempt (`willRetry`), no handler for the task name, or a
+ * malformed job with no payload (the hook would only crash dereferencing it,
+ * masking the real "missing payload" failure).
+ */
+export const resolveFinalFailureHook = (
+  job: Job | undefined,
+  handlers: AnyFinalFailureHandlers | undefined,
+): FinalFailureInvocation | null => {
+  if (!job || !handlers) return null
+
+  const context = failedJobContextFromJob(job)
+  if (!context || context.willRetry) return null
+
+  const hook = handlers[job.name]
+  if (!hook) return null
+
+  const payload = (job.data as BullMqJobData)?.payload
+  if (payload === undefined) return null
+
+  return {
+    hook,
+    payload,
+    context: {
+      attemptsMade: context.attemptsMade,
+      attemptsConfigured: context.attemptsConfigured,
+    },
+  }
+}
+
+export type {
+  BullMqFailedJobContext,
+  BullMqWorkerIncident,
+} from "./worker-incidents.ts"
+
+export interface BullMqRedisConfig {
+  readonly redis: {
+    readonly host: string
+    readonly port: number
+    readonly password?: string
+    readonly tls?: boolean
+    readonly cluster?: boolean
+  }
+  /** Optional sink for worker incidents (errors, failed jobs, stalls) for alerting and dashboards. */
+  readonly onWorkerIncident?: (incident: BullMqWorkerIncident) => void
+}
+
+export const createBullMqQueuePublisher = (
+  config: BullMqRedisConfig,
+): Effect.Effect<QueuePublisherShape, QueueClientError> =>
+  Effect.gen(function* () {
+    const connection = createBullMqRedisConnection(config.redis)
+
+    const queues = new Map<string, Queue>()
+    const readyQueues = new Map<string, Promise<Queue>>()
+
+    const getQueue = (name: QueueName): Queue => {
+      let queue = queues.get(name)
+      if (!queue) {
+        queue = new Queue(name, { connection, prefix: BULLMQ_PREFIX })
+        queues.set(name, queue)
+      }
+      return queue
+    }
+
+    const getReadyQueue = (name: QueueName): Promise<Queue> => {
+      const existing = readyQueues.get(name)
+      if (existing) {
+        return existing
+      }
+
+      const queue = getQueue(name)
+      const readyQueue = queue.waitUntilReady().then(() => queue)
+      readyQueues.set(name, readyQueue)
+
+      return readyQueue.catch((error) => {
+        readyQueues.delete(name)
+        throw error
+      })
+    }
+
+    return {
+      publish: <T extends QueueName, K extends TaskName<T>>(
+        queue: T,
+        task: K,
+        payload: TaskPayload<T, K>,
+        options?: PublishOptions,
+      ) =>
+        Effect.tryPromise({
+          try: async () => {
+            const bullmqOptions = buildBullMqJobOptions(`publish(${queue}, ${String(task)})`, options)
+            const readyQueue = await getReadyQueue(queue)
+            await readyQueue.add(task, { payload } satisfies BullMqJobData, bullmqOptions)
+          },
+          catch: (cause: unknown) => new QueuePublishError({ cause, queue }),
+        }),
+      scheduleRepeatable: <T extends QueueName, K extends TaskName<T>>(
+        queue: T,
+        task: K,
+        payload: TaskPayload<T, K>,
+        options: ScheduleRepeatableOptions,
+      ) =>
+        Effect.tryPromise({
+          try: async () => {
+            const readyQueue = await getReadyQueue(queue)
+            await readyQueue.upsertJobScheduler(
+              options.key,
+              { pattern: options.pattern, tz: options.tz ?? "UTC" },
+              {
+                name: String(task),
+                data: { payload } satisfies BullMqJobData,
+                opts: {
+                  removeOnComplete: { count: 1000 },
+                  removeOnFail: { count: 1000 },
+                },
+              },
+            )
+          },
+          catch: (cause: unknown) => new QueuePublishError({ cause, queue }),
+        }),
+      close: () =>
+        Effect.tryPromise({
+          try: async () => {
+            await Promise.allSettled(Array.from(queues.values()).map((queue) => queue.close()))
+            await connection.quit()
+          },
+          catch: (cause: unknown) => new QueueClientError({ cause }),
+        }).pipe(Effect.tapError(Effect.logError), Effect.ignore),
+    }
+  })
+
+type AnyTaskHandlers = Record<string, (payload: unknown) => Effect.Effect<void, unknown>>
+
+export const createBullMqQueueConsumer = (config: BullMqRedisConfig): Effect.Effect<QueueConsumer, QueueClientError> =>
+  Effect.gen(function* () {
+    const DEFAULT_CONCURRENCY = 10
+    const services = yield* Effect.context<never>()
+    const workers: Map<QueueName, Worker> = new Map()
+    const subscriptions = new Map<QueueName, AnyTaskHandlers>()
+    const finalFailureHandlers = new Map<QueueName, AnyFinalFailureHandlers>()
+    const concurrencyOverrides = new Map<QueueName, number>()
+    let isRunning = false
+    const emitIncident = config.onWorkerIncident
+
+    const logIncident = (incident: BullMqWorkerIncident) => {
+      emitIncident?.(incident)
+      void Effect.runPromiseExitWith(services)(
+        Effect.logError("BullMQ worker incident", incidentToLogFields(incident)),
+      ).then((exit) => {
+        if (exit._tag === "Failure") {
+          console.error("Effect.logError failed after BullMQ incident", Cause.squash(exit.cause))
+        }
+      })
+    }
+
+    const start = () => {
+      const missing = TOPIC_NAMES.filter((t) => !subscriptions.has(t))
+      if (missing.length > 0) {
+        return Effect.fail(
+          new QueueSubscribeError({
+            cause: new Error(`Missing handlers for topics: ${missing.join(", ")}`),
+          }),
+        )
+      }
+
+      return Effect.tryPromise({
+        try: async () => {
+          if (isRunning) return
+          isRunning = true
+
+          for (const [queue, handlers] of subscriptions.entries()) {
+            const worker = new Worker(
+              queue,
+              async (job) => {
+                const task = job.name
+                const handler = handlers[task]
+                if (!handler) {
+                  throw new Error(`Unknown task "${task}" on topic "${queue}" — no handler registered`)
+                }
+
+                const payload = (job.data as BullMqJobData)?.payload
+                if (payload === undefined) {
+                  throw new Error(`Missing payload for task "${task}" on topic "${queue}"`)
+                }
+
+                // Wrap handler execution with OTel instrumentation
+                await tracer.startActiveSpan(
+                  `bullmq.${queue}.${task}`,
+                  {
+                    attributes: {
+                      "messaging.system": "bullmq",
+                      "messaging.destination": queue,
+                      "messaging.operation": "process",
+                      "messaging.message_id": job.id,
+                      "messaging.bullmq.task": task,
+                      "messaging.bullmq.attempts_made": job.attemptsMade,
+                    },
+                  },
+                  async (span) => {
+                    try {
+                      await Effect.runPromiseWith(services)(handler(payload))
+                      span.setStatus({ code: SpanStatusCode.OK })
+                    } catch (error) {
+                      const err = recordSpanExceptionForDatadog(span, error)
+                      span.setStatus({
+                        code: SpanStatusCode.ERROR,
+                        message: err.message,
+                      })
+                      throw err
+                    } finally {
+                      span.end()
+                    }
+                  },
+                )
+              },
+              {
+                connection: createBullMqRedisConnection(config.redis),
+                prefix: BULLMQ_PREFIX,
+                concurrency: concurrencyOverrides.get(queue) ?? DEFAULT_CONCURRENCY,
+                removeOnComplete: { count: 1000 },
+                removeOnFail: { count: 1000 },
+                autorun: false,
+              },
+            )
+
+            worker.on("error", (error) => {
+              logIncident({
+                kind: "worker_error",
+                queue,
+                error: toError(error),
+              })
+            })
+
+            worker.on("failed", (job, error) => {
+              logIncident({
+                kind: "job_failed",
+                queue,
+                job: failedJobContextFromJob(job),
+                error: toError(error),
+              })
+
+              const invocation = resolveFinalFailureHook(job, finalFailureHandlers.get(queue))
+              if (!invocation) return
+              void Effect.runPromiseExitWith(services)(
+                invocation.hook(invocation.payload, toError(error), invocation.context),
+              ).then((exit) => {
+                if (exit._tag === "Failure") {
+                  console.error(`final-failure hook threw for ${queue}.${job?.name}`, Cause.squash(exit.cause))
+                }
+              })
+            })
+
+            worker.on("stalled", (jobId) => {
+              logIncident({ kind: "job_stalled", queue, jobId })
+            })
+
+            workers.set(queue, worker)
+          }
+
+          for (const worker of workers.values()) {
+            worker.run()
+          }
+        },
+        catch: (cause: unknown) => new QueueSubscribeError({ cause }),
+      })
+    }
+
+    const stop = () =>
+      Effect.gen(function* () {
+        if (!isRunning) return
+
+        yield* Effect.tryPromise({
+          try: async () => {
+            await Promise.allSettled(Array.from(workers.values()).map((worker) => worker.close()))
+          },
+          catch: (cause: unknown) => new QueueClientError({ cause }),
+        }).pipe(Effect.tapError(Effect.logError), Effect.ignore)
+
+        isRunning = false
+      })
+
+    const subscribe = <T extends QueueName>(
+      queue: T,
+      handlers: TaskHandlers<T>,
+      options?: SubscribeOptions<T>,
+    ): void => {
+      if (isRunning) {
+        throw new Error(`Cannot subscribe to queue "${queue}" after consumer has started`)
+      }
+      subscriptions.set(queue, handlers as unknown as AnyTaskHandlers)
+      if (options?.concurrency) {
+        concurrencyOverrides.set(queue, options.concurrency)
+      }
+      if (options?.onFinalFailure) {
+        finalFailureHandlers.set(queue, options.onFinalFailure as unknown as AnyFinalFailureHandlers)
+      }
+    }
+
+    return { start, stop, subscribe }
+  })
+
+export const QueuePublisherLive = (publisher: QueuePublisherShape) => Layer.succeed(QueuePublisher, publisher)

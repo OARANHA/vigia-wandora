@@ -1,0 +1,67 @@
+export interface ColumnMapping {
+  readonly input: string[]
+  readonly output: string[]
+  readonly expectedOutput: string[]
+  readonly metadata: string[]
+}
+
+export interface CsvTransformOptions {
+  readonly flattenSingleColumn: boolean
+  readonly autoParseJson: boolean
+}
+
+export type MappedFieldValue = Record<string, unknown> | string | number | boolean | null
+
+export function applyMapping(
+  row: Record<string, string>,
+  mapping: ColumnMapping,
+  options: CsvTransformOptions,
+): {
+  input: MappedFieldValue
+  output: MappedFieldValue
+  expectedOutput: MappedFieldValue
+  metadata: MappedFieldValue
+} {
+  const pick = (columns: string[]): MappedFieldValue => {
+    const result: Record<string, unknown> = {}
+    for (const col of columns) {
+      if (!(col in row)) continue
+      const raw = row[col] as string
+      result[col] = options.autoParseJson ? tryParseJson(raw) : raw
+    }
+
+    const firstCol = columns[0]
+    if (options.flattenSingleColumn && columns.length === 1 && firstCol && firstCol in result) {
+      return result[firstCol] as MappedFieldValue
+    }
+
+    return result
+  }
+
+  return {
+    input: pick(mapping.input),
+    output: pick(mapping.output),
+    expectedOutput: pick(mapping.expectedOutput),
+    metadata: pick(mapping.metadata),
+  }
+}
+
+function tryParseJson(value: string): unknown {
+  const trimmed = value.trim()
+  if (trimmed === "") return value
+  if (trimmed === "null") return null
+  if (trimmed === "true") return true
+  if (trimmed === "false") return false
+
+  const asNumber = Number(trimmed)
+  if (trimmed !== "" && !Number.isNaN(asNumber)) return asNumber
+
+  if ((trimmed.startsWith("{") && trimmed.endsWith("}")) || (trimmed.startsWith("[") && trimmed.endsWith("]"))) {
+    try {
+      return JSON.parse(trimmed)
+    } catch {
+      return value
+    }
+  }
+  return value
+}

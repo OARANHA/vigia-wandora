@@ -1,0 +1,48 @@
+import type { OptimizationCandidate, OptimizationTrajectory } from "@domain/optimizations"
+import { minimalScriptSession } from "@domain/sandbox"
+import { Effect } from "effect"
+import type { HydratedEvaluationAlignmentExample } from "../../alignment/types.ts"
+import {
+  buildEvaluationOptimizationJudgeTelemetryCapture,
+  type EvaluationOptimizationJudgeTelemetryScope,
+} from "../../runtime/ai-telemetry.ts"
+import { executeEvaluationScriptSandboxed } from "../../runtime/sandbox-execution.ts"
+
+export const evaluateOptimizationCandidate = Effect.fn("evaluations.evaluateOptimizationCandidate")(function* (input: {
+  readonly candidate: OptimizationCandidate
+  readonly example: HydratedEvaluationAlignmentExample
+  readonly signalName: string
+  readonly signalDescription: string
+  readonly judgeTelemetry: EvaluationOptimizationJudgeTelemetryScope
+}) {
+  yield* Effect.annotateCurrentSpan("evaluation.candidateHash", input.candidate.hash)
+  yield* Effect.annotateCurrentSpan("evaluation.exampleTraceId", input.example.traceId)
+
+  const execution = yield* executeEvaluationScriptSandboxed({
+    script: input.candidate.text,
+    session: minimalScriptSession(input.example.conversation),
+    telemetry: buildEvaluationOptimizationJudgeTelemetryCapture({
+      scope: input.judgeTelemetry,
+      candidateHash: input.candidate.hash,
+      exampleTraceId: String(input.example.traceId),
+    }),
+  })
+
+  const expectedPositive = input.example.label === "positive"
+  const predictedPositive = execution.result.passed === true
+  const score = expectedPositive === predictedPositive ? 1 : 0
+
+  return {
+    trajectory: {
+      id: input.example.traceId,
+      conversationText: input.example.conversationText,
+      feedback: execution.result.feedback,
+      ...(input.example.annotationFeedback ? { annotationContext: input.example.annotationFeedback } : {}),
+      expectedPositive,
+      predictedPositive,
+      passed: execution.result.passed,
+      score,
+      totalTokens: execution.totalTokens,
+    } satisfies OptimizationTrajectory,
+  }
+})

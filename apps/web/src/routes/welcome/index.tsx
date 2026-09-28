@@ -1,0 +1,91 @@
+import { Button, Input, useToast } from "@repo/ui"
+import { useForm } from "@tanstack/react-form"
+import { createFileRoute } from "@tanstack/react-router"
+import { AuthScreen } from "../../components/auth-screen.tsx"
+import { completeOnboarding } from "../../domains/organizations/organizations.functions.ts"
+import { getSession } from "../../domains/sessions/session.functions.ts"
+import { clarityHeadScriptsUnlessExcluded } from "../../lib/analytics/clarity.ts"
+import { gtmHeadScripts, validateTrackingSearch } from "../../lib/analytics/gtm.ts"
+import { resolveEntryDestination } from "../../lib/entry-destination.ts"
+import { toUserMessage } from "../../lib/errors.ts"
+import { createFormSubmitHandler, fieldErrorsAsStrings } from "../../lib/form-server-action.ts"
+import { ptBR } from "../../lib/i18n/pt-BR.ts"
+import { isLatitudeStaffEmail } from "../../lib/posthog/posthog-client.ts"
+import { welcomeLoader } from "./-lib/loader.ts"
+
+export const Route = createFileRoute("/welcome/")({
+  component: WelcomePage,
+  validateSearch: validateTrackingSearch,
+  head: ({ loaderData }) => ({
+    scripts: [...gtmHeadScripts(), ...clarityHeadScriptsUnlessExcluded(loaderData?.excludeFromAnalytics)],
+  }),
+  loader: () => welcomeLoader({ getSession, resolveEntryDestination, isLatitudeStaffEmail }),
+})
+
+function WelcomePage() {
+  const { toast } = useToast()
+  const form = useForm({
+    defaultValues: { name: "", organizationName: "" },
+    onSubmit: createFormSubmitHandler((value) => completeOnboarding({ data: value }), {
+      resetOnSuccess: false,
+      onSuccess: ({ defaultProjectSlug }) => {
+        window.location.href = `/projects/${defaultProjectSlug}/onboarding`
+      },
+      onError: (err) => toast({ variant: "destructive", description: toUserMessage(err) }),
+    }),
+  })
+
+  return (
+    <AuthScreen title={ptBR.onboarding.title} description={ptBR.onboarding.description}>
+      <div className="flex flex-col gap-4 rounded-xl overflow-hidden shadow-none bg-muted/50 border border-border p-6">
+        <form
+          className="flex flex-col gap-4"
+          onSubmit={(e) => {
+            e.preventDefault()
+            void form.handleSubmit()
+          }}
+        >
+          <form.Field name="name">
+            {(field) => (
+              <Input
+                type="text"
+                name={field.name}
+                label={ptBR.onboarding.nameLabel}
+                placeholder={ptBR.onboarding.namePlaceholder}
+                autoComplete="name"
+                data-autofocus="true"
+                background="background"
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                errors={fieldErrorsAsStrings(field.state.meta.errors)}
+              />
+            )}
+          </form.Field>
+
+          <form.Field name="organizationName">
+            {(field) => (
+              <Input
+                type="text"
+                name={field.name}
+                label={ptBR.onboarding.organizationLabel}
+                placeholder={ptBR.onboarding.organizationPlaceholder}
+                background="background"
+                value={field.state.value}
+                onChange={(e) => field.handleChange(e.target.value)}
+                errors={fieldErrorsAsStrings(field.state.meta.errors)}
+              />
+            )}
+          </form.Field>
+
+          <form.Subscribe selector={(state) => state.isSubmitting}>
+            {(isFormSubmitting) => (
+              <Button size="full" type="submit" variant="default" disabled={isFormSubmitting}>
+                {isFormSubmitting ? ptBR.onboarding.saving : ptBR.onboarding.continue}
+              </Button>
+            )}
+          </form.Subscribe>
+        </form>
+      </div>
+    </AuthScreen>
+  )
+}

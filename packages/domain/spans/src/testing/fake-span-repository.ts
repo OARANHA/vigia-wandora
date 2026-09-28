@@ -1,0 +1,50 @@
+import { NotFoundError } from "@domain/shared"
+import { Effect } from "effect"
+import type { SpanDetail } from "../entities/span.ts"
+import type { SpanRepositoryShape } from "../ports/span-repository.ts"
+
+export const createFakeSpanRepository = (overrides?: Partial<SpanRepositoryShape>) => {
+  const inserted: SpanDetail[][] = []
+
+  const repository: SpanRepositoryShape = {
+    // TODO(repositories): rename insert -> save to match the repository port
+    // once the public write verb cleanup lands.
+    insert: (spans) => {
+      inserted.push([...spans])
+      return Effect.void
+    },
+    listExistingIdentities: ({ spans }) => {
+      const stored = new Set(
+        inserted.flat().map((span) => `${span.projectId as string}:${span.traceId as string}:${span.spanId as string}`),
+      )
+      return Effect.succeed(
+        spans.filter((span) =>
+          stored.has(`${span.projectId as string}:${span.traceId as string}:${span.spanId as string}`),
+        ),
+      )
+    },
+    listByTraceId: () => Effect.succeed([]),
+    listByTraceIds: ({ traceIds }) => {
+      const wanted = new Set(traceIds)
+      return Effect.succeed(inserted.flat().filter((span) => wanted.has(span.traceId)))
+    },
+    listBySessionId: () => Effect.succeed([]),
+    listGenerationFactsByTraceIds: () => Effect.succeed([]),
+    listToolCallFactsByTraceIds: () => Effect.succeed([]),
+    listToolSpansBySessionId: () => Effect.succeed([]),
+    listMemoryOperationSpansByTraceId: () => Effect.succeed([]),
+    listByProjectId: () => Effect.succeed({ items: [], nextCursor: null }),
+    findBySpanId: () => Effect.fail(new NotFoundError({ entity: "Span", id: "" })),
+    findMessagesForTrace: () => Effect.succeed([]),
+    findSpanConversationChunk: () =>
+      Effect.succeed({ messages: [], offset: 0, limit: 0, totalMessages: 0, hasMore: false, payloadBytes: 0 }),
+    findMessagesForSession: () => Effect.succeed([]),
+    findLatestOutputTraceId: () => Effect.succeed(null),
+    listByIngestedAtWindow: () => Effect.succeed({ spans: [], nextCursor: null }),
+    listRecentDetailsByProjectId: () => Effect.succeed([]),
+    findIngestedAtFloorForRecentLimit: () => Effect.succeed(null),
+    ...overrides,
+  }
+
+  return { repository, inserted }
+}

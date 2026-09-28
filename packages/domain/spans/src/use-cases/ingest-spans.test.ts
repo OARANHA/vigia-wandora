@@ -1,0 +1,1163 @@
+import {
+  BillingOverrideRepository,
+  BillingUsagePeriodRepository,
+  NoCreditsRemainingError,
+  StripeSubscriptionLookup,
+} from "@domain/billing"
+import {
+  createFakeBillingOverrideRepository,
+  createFakeBillingUsagePeriodRepository,
+  createFakeStripeSubscriptionLookup,
+  seedBillingUsagePeriod,
+} from "@domain/billing/testing"
+import { createProject, ProjectRepository } from "@domain/projects"
+import type { QueuePublisherShape } from "@domain/queue"
+import { QueuePublishError, QueuePublisher } from "@domain/queue"
+import { createFakeQueuePublisher } from "@domain/queue/testing"
+import {
+  type Sandbox,
+  SandboxArchivedError,
+  SandboxQuotaExceededError,
+  SandboxRepository,
+  SandboxSignals,
+} from "@domain/sandboxes"
+import { createFakeSandboxRepository, createFakeSandboxSignals } from "@domain/sandboxes/testing"
+import {
+  DEFAULT_REDACTION_ENTITIES,
+  generateId,
+  NotFoundError,
+  OrganizationId,
+  type OrganizationRedactionSetting,
+  ProjectId,
+  type ProjectSettings,
+  type RedactionRule,
+  type SerializedRedactionPolicy,
+  SettingsReader,
+  SqlClient,
+  StorageDisk,
+  type StorageDiskPort,
+} from "@domain/shared"
+import { createFakeSqlClient, createFakeStorageDisk } from "@domain/shared/testing"
+import { base64Decode } from "@repo/utils"
+import { Effect, Layer, Result } from "effect"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { decodeOtlpRequest, ingestSpansUseCase } from "./ingest-spans.ts"
+import { ingestSpansWithBillingUseCase } from "./ingest-spans-with-billing.ts"
+
+// Branded IDs are CUID2s — 24 characters exactly.
+const ORGANIZATION_ID = OrganizationId(generateId())
+const PRIMARY_PROJECT_ID = generateId()
+const SECONDARY_PROJECT_ID = generateId()
+
+const emptyBatch = new TextEncoder().encode(JSON.stringify({ resourceSpans: [] }))
+
+const buildOtlpJson = (slug?: string): Uint8Array =>
+  new TextEncoder().encode(
+    JSON.stringify({
+      resourceSpans: [
+        {
+          resource: { attributes: [{ key: "service.name", value: { stringValue: "test" } }] },
+          scopeSpans: [
+            {
+              scope: { name: "test", version: "1.0.0" },
+              spans: [
+                {
+                  traceId: "0af7651916cd43dd8448eb211c80319c",
+                  spanId: "b7ad6b7169203331",
+                  name: "test-span",
+                  startTimeUnixNano: "1710590400000000000",
+                  endTimeUnixNano: "1710590401000000000",
+                  attributes: slug ? [{ key: "latitude.project", value: { stringValue: slug } }] : [],
+                  status: { code: 1 },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }),
+  )
+
+const largeSinglePayload = (() => {
+  // Pad an OTLP batch past 50 KB by adding many spans.
+  const spans = Array.from({ length: 200 }, (_, i) => ({
+    traceId: "0af7651916cd43dd8448eb211c80319c",
+    spanId: `b7ad6b716920${String(i).padStart(4, "0")}`,
+    name: "test-span",
+    startTimeUnixNano: "1710590400000000000",
+    endTimeUnixNano: "1710590401000000000",
+    attributes: [{ key: "fill", value: { stringValue: "x".repeat(300) } }],
+    status: { code: 1 },
+  }))
+  return new TextEncoder().encode(
+    JSON.stringify({
+      resourceSpans: [
+        {
+          resource: { attributes: [{ key: "service.name", value: { stringValue: "test" } }] },
+          scopeSpans: [{ scope: { name: "test", version: "1.0.0" }, spans }],
+        },
+      ],
+    }),
+  )
+})()
+
+const makeProject = (slug: string, id: string, settings: ProjectSettings = {}) =>
+  createProject({
+    id: ProjectId(id),
+    organizationId: ORGANIZATION_ID,
+    name: `Project ${slug}`,
+    slug,
+    settings,
+    createdAt: new Date("2026-01-01T00:00:00Z"),
+    updatedAt: new Date("2026-01-01T00:00:00Z"),
+    lastEditedAt: new Date("2026-01-01T00:00:00Z"),
+  })
+
+const makeProjectRepository = (
+  resolutions: Record<string, string | null>,
+  settingsBySlug: Record<string, ProjectSettings> = {},
+) =>
+  ProjectRepository.of({
+    findById: () => Effect.die("not used"),
+    findByIdForUpdate: () => Effect.die("not used"),
+    findBySlug: (slug: string) => {
+      const id = resolutions[slug]
+      if (!id) return Effect.fail(new NotFoundError({ entity: "Project", id: slug }))
+      return Effect.succeed(makeProject(slug, id, settingsBySlug[slug] ?? {}))
+    },
+    list: () => Effect.die("not used"),
+    listIncludingDeleted: () => Effect.die("not used"),
+    save: () => Effect.die("not used"),
+    markFirstTraceAt: () => Effect.die("not used"),
+    softDelete: () => Effect.die("not used"),
+    hardDelete: () => Effect.die("not used"),
+    existsByName: () => Effect.die("not used"),
+    countBySlug: () => Effect.die("not used"),
+  })
+
+const makeInput = (
+  payload: Uint8Array,
+  opts: {
+    defaultProjectSlug?: string
+    isSandbox?: boolean
+    organizationRedaction?: OrganizationRedactionSetting | null
+  } = {},
+) => ({
+  organizationId: ORGANIZATION_ID,
+  apiKeyId: "key-1",
+  isSandbox: opts.isSandbox ?? false,
+  payload,
+  contentType: "application/json",
+  ...(opts.defaultProjectSlug ? { defaultProjectSlug: opts.defaultProjectSlug } : {}),
+  ...(opts.organizationRedaction !== undefined ? { organizationRedaction: opts.organizationRedaction } : {}),
+})
+
+const runUseCase = (
+  input: ReturnType<typeof makeInput>,
+  diskPort: StorageDiskPort,
+  publisher: QueuePublisherShape,
+  resolutions: Record<string, string | null> = { primary: PRIMARY_PROJECT_ID },
+  settingsBySlug: Record<string, ProjectSettings> = {},
+) =>
+  ingestSpansUseCase({ ...input, decoded: decodeOtlpRequest(input.payload, input.contentType) }).pipe(
+    Effect.provide(
+      Layer.mergeAll(
+        Layer.succeed(StorageDisk, diskPort),
+        Layer.succeed(QueuePublisher, publisher),
+        Layer.succeed(ProjectRepository, makeProjectRepository(resolutions, settingsBySlug)),
+        Layer.succeed(SqlClient, createFakeSqlClient({ organizationId: ORGANIZATION_ID })),
+      ),
+    ),
+  )
+
+const makeSandbox = (status: Sandbox["status"]): Sandbox => ({
+  id: generateId<"SandboxId">(),
+  organizationId: ORGANIZATION_ID,
+  status,
+  lastActivityAt: new Date("2026-01-01T00:00:00Z"),
+  createdByUserId: generateId<"UserId">(),
+  createdAt: new Date("2026-01-01T00:00:00Z"),
+  updatedAt: new Date("2026-01-01T00:00:00Z"),
+})
+
+const createBillingLayer = (
+  opts: { sandbox?: Sandbox | null; signalsOverrides?: Parameters<typeof createFakeSandboxSignals>[0] } = {},
+) => {
+  const { repository: billingOverrides } = createFakeBillingOverrideRepository()
+  const { repository: billingPeriods } = createFakeBillingUsagePeriodRepository()
+  const { service: stripeSubscriptions } = createFakeStripeSubscriptionLookup()
+  const sandboxRepo = createFakeSandboxRepository({ findOptional: () => Effect.succeed(opts.sandbox ?? null) })
+  const sandboxSignals = createFakeSandboxSignals(opts.signalsOverrides)
+
+  return {
+    billingPeriods,
+    sandboxRepo,
+    sandboxSignals,
+    layer: Layer.mergeAll(
+      Layer.succeed(BillingOverrideRepository, billingOverrides),
+      Layer.succeed(BillingUsagePeriodRepository, billingPeriods),
+      Layer.succeed(StripeSubscriptionLookup, stripeSubscriptions),
+      Layer.succeed(SqlClient, createFakeSqlClient({ organizationId: ORGANIZATION_ID })),
+      Layer.succeed(ProjectRepository, makeProjectRepository({ primary: PRIMARY_PROJECT_ID })),
+      Layer.succeed(SandboxRepository, sandboxRepo.repository),
+      Layer.succeed(SandboxSignals, sandboxSignals.signals),
+      Layer.succeed(SettingsReader, {
+        getOrganizationSettings: () => Effect.succeed(null),
+        getProjectSettings: () => Effect.die("ingestSpansWithBillingUseCase tests do not read project settings"),
+      }),
+    ),
+  }
+}
+
+describe("ingestSpansUseCase", () => {
+  it("returns zeros for an empty batch and does not publish", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+
+    const result = await Effect.runPromise(
+      runUseCase(makeInput(emptyBatch, { defaultProjectSlug: "primary" }), disk, publisher),
+    )
+
+    expect(result).toEqual({ totalSpans: 0, acceptedSpans: 0, rejectedSpans: 0 })
+    expect(published).toHaveLength(0)
+  })
+
+  it("inlines small payloads without writing to disk", async () => {
+    const { disk, written } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+
+    const result = await Effect.runPromise(
+      runUseCase(makeInput(buildOtlpJson(), { defaultProjectSlug: "primary" }), disk, publisher),
+    )
+
+    expect(result).toEqual({ totalSpans: 1, acceptedSpans: 1, rejectedSpans: 0 })
+    expect(written).toHaveLength(0)
+    expect(published).toHaveLength(1)
+    expect(published[0]?.queue).toBe("span-ingestion")
+    expect(published[0]?.task).toBe("ingest")
+    expect(published[0]?.options).toEqual({
+      attempts: 10,
+      backoff: { type: "exponential", delayMs: 1_000 },
+    })
+
+    const payload = published[0]?.payload as {
+      fileKey: string | null
+      inlinePayload: string | null
+      defaultProjectId: string | null
+    }
+    expect(payload.fileKey).toBeNull()
+    expect(payload.inlinePayload).toBeDefined()
+    expect(payload.defaultProjectId).toBe(PRIMARY_PROJECT_ID)
+  })
+
+  it("writes large payloads to disk and sends fileKey", async () => {
+    const { disk, written } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+
+    await Effect.runPromise(
+      runUseCase(makeInput(largeSinglePayload, { defaultProjectSlug: "primary" }), disk, publisher),
+    )
+
+    expect(written).toHaveLength(1)
+    expect(written[0]?.key).toContain(`tmp-ingest/${ORGANIZATION_ID}/${PRIMARY_PROJECT_ID}/`)
+
+    expect(published).toHaveLength(1)
+    const payload = published[0]?.payload as { fileKey: string | null; inlinePayload: string | null }
+    expect(payload.fileKey).toBe(written[0]?.key)
+    expect(payload.inlinePayload).toBeNull()
+  })
+
+  it("fails with QueuePublishError when publish fails (inline path)", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher } = createFakeQueuePublisher({
+      publish: (queue) => Effect.fail(new QueuePublishError({ cause: new Error("queue down"), queue })),
+    })
+
+    const res = await Effect.runPromise(
+      Effect.result(runUseCase(makeInput(buildOtlpJson(), { defaultProjectSlug: "primary" }), disk, publisher)),
+    )
+
+    expect(Result.isFailure(res)).toBe(true)
+    if (Result.isFailure(res)) {
+      expect(res.failure._tag).toBe("QueuePublishError")
+    }
+  })
+
+  it("passes per-span resolution map and apiKey/org in queue payload", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+
+    await Effect.runPromise(
+      runUseCase(makeInput(buildOtlpJson("primary"), { defaultProjectSlug: "primary" }), disk, publisher),
+    )
+
+    expect(published).toHaveLength(1)
+    const payload = published[0]?.payload as {
+      contentType: string
+      organizationId: string
+      apiKeyId: string
+      ingestedAt: string
+      defaultProjectId: string | null
+      projectIdBySlug: Record<string, string>
+    }
+    expect(payload.contentType).toBe("application/json")
+    expect(payload.organizationId).toBe(ORGANIZATION_ID)
+    expect(payload.apiKeyId).toBe("key-1")
+    expect(payload.ingestedAt).toBeDefined()
+    expect(payload.defaultProjectId).toBe(PRIMARY_PROJECT_ID)
+    expect(payload.projectIdBySlug).toEqual({ primary: PRIMARY_PROJECT_ID })
+  })
+
+  it("decodes inline payload back to original JSON", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+
+    await Effect.runPromise(runUseCase(makeInput(buildOtlpJson(), { defaultProjectSlug: "primary" }), disk, publisher))
+
+    const payload = published[0]?.payload as { inlinePayload: string | null }
+    expect(payload.inlinePayload).toBeDefined()
+    expect(JSON.parse(new TextDecoder().decode(base64Decode(payload.inlinePayload ?? "")))).toHaveProperty(
+      "resourceSpans",
+    )
+  })
+})
+
+describe("ingestSpansUseCase project scoping", () => {
+  it("rejects every span when neither header nor per-span attribute resolves", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+
+    const result = await Effect.runPromise(runUseCase(makeInput(buildOtlpJson()), disk, publisher, {}))
+
+    expect(result).toEqual({ totalSpans: 1, acceptedSpans: 0, rejectedSpans: 1 })
+    expect(published).toHaveLength(0)
+  })
+
+  it("rejects spans whose latitude.project slug isn't in the org and keeps the rest", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+
+    const twoSpans = new TextEncoder().encode(
+      JSON.stringify({
+        resourceSpans: [
+          {
+            scopeSpans: [
+              {
+                scope: { name: "test", version: "1.0.0" },
+                spans: [
+                  {
+                    traceId: "0af7651916cd43dd8448eb211c80319c",
+                    spanId: "0000000000000001",
+                    name: "ok",
+                    startTimeUnixNano: "1710590400000000000",
+                    endTimeUnixNano: "1710590401000000000",
+                    attributes: [{ key: "latitude.project", value: { stringValue: "primary" } }],
+                    status: { code: 1 },
+                  },
+                  {
+                    traceId: "0af7651916cd43dd8448eb211c80319c",
+                    spanId: "0000000000000002",
+                    name: "reject",
+                    startTimeUnixNano: "1710590400000000000",
+                    endTimeUnixNano: "1710590401000000000",
+                    attributes: [{ key: "latitude.project", value: { stringValue: "other-org-project" } }],
+                    status: { code: 1 },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    )
+
+    const result = await Effect.runPromise(
+      runUseCase(makeInput(twoSpans), disk, publisher, { primary: PRIMARY_PROJECT_ID }),
+    )
+
+    expect(result).toEqual({ totalSpans: 2, acceptedSpans: 1, rejectedSpans: 1 })
+    expect(published).toHaveLength(1)
+    const payload = published[0]?.payload as { projectIdBySlug: Record<string, string> }
+    expect(payload.projectIdBySlug).toEqual({ primary: PRIMARY_PROJECT_ID })
+  })
+
+  it("resolves each unique slug exactly once even across many spans", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher } = createFakeQueuePublisher()
+
+    let findBySlugCalls = 0
+    const layer = Layer.mergeAll(
+      Layer.succeed(StorageDisk, disk),
+      Layer.succeed(QueuePublisher, publisher),
+      Layer.succeed(SqlClient, createFakeSqlClient({ organizationId: ORGANIZATION_ID })),
+      Layer.succeed(
+        ProjectRepository,
+        ProjectRepository.of({
+          findById: () => Effect.die("not used"),
+          findByIdForUpdate: () => Effect.die("not used"),
+          findBySlug: (slug: string) => {
+            findBySlugCalls++
+            return Effect.succeed(makeProject(slug, slug === "primary" ? PRIMARY_PROJECT_ID : SECONDARY_PROJECT_ID))
+          },
+          list: () => Effect.die("not used"),
+          listIncludingDeleted: () => Effect.die("not used"),
+          save: () => Effect.die("not used"),
+          markFirstTraceAt: () => Effect.die("not used"),
+          softDelete: () => Effect.die("not used"),
+          hardDelete: () => Effect.die("not used"),
+          existsByName: () => Effect.die("not used"),
+          countBySlug: () => Effect.die("not used"),
+        }),
+      ),
+    )
+
+    const manySpans = new TextEncoder().encode(
+      JSON.stringify({
+        resourceSpans: [
+          {
+            scopeSpans: [
+              {
+                scope: { name: "test", version: "1.0.0" },
+                spans: Array.from({ length: 50 }, (_, i) => ({
+                  traceId: "0af7651916cd43dd8448eb211c80319c",
+                  spanId: `aa${String(i).padStart(14, "0")}`,
+                  name: "s",
+                  startTimeUnixNano: "1710590400000000000",
+                  endTimeUnixNano: "1710590401000000000",
+                  attributes: [
+                    { key: "latitude.project", value: { stringValue: i % 2 === 0 ? "primary" : "secondary" } },
+                  ],
+                  status: { code: 1 },
+                })),
+              },
+            ],
+          },
+        ],
+      }),
+    )
+
+    const manySpansInput = makeInput(manySpans)
+    await Effect.runPromise(
+      ingestSpansUseCase({
+        ...manySpansInput,
+        decoded: decodeOtlpRequest(manySpansInput.payload, manySpansInput.contentType),
+      }).pipe(Effect.provide(layer)),
+    )
+
+    expect(findBySlugCalls).toBe(2)
+  })
+})
+
+describe("ingestSpansUseCase trace sampling", () => {
+  const buildBatch = (sessionId: string, slug = "primary"): Uint8Array =>
+    new TextEncoder().encode(
+      JSON.stringify({
+        resourceSpans: [
+          {
+            resource: { attributes: [{ key: "service.name", value: { stringValue: "test" } }] },
+            scopeSpans: [
+              {
+                scope: { name: "test", version: "1.0.0" },
+                spans: [
+                  {
+                    traceId: "0af7651916cd43dd8448eb211c80319c",
+                    spanId: "b7ad6b7169203331",
+                    name: "test-span",
+                    startTimeUnixNano: "1710590400000000000",
+                    endTimeUnixNano: "1710590401000000000",
+                    attributes: [
+                      { key: "latitude.project", value: { stringValue: slug } },
+                      { key: "session.id", value: { stringValue: sessionId } },
+                    ],
+                    status: { code: 1 },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    )
+
+  it("drops the whole batch when rate = 0 and reports spans as accepted", async () => {
+    const { disk, written } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+
+    const result = await Effect.runPromise(
+      runUseCase(
+        makeInput(buildBatch("sess-1"), { defaultProjectSlug: "primary" }),
+        disk,
+        publisher,
+        { primary: PRIMARY_PROJECT_ID },
+        { primary: { sampling: { enabled: true, rate: 0 } } },
+      ),
+    )
+
+    expect(result).toEqual({ totalSpans: 1, acceptedSpans: 1, rejectedSpans: 0 })
+    expect(published).toHaveLength(0)
+    expect(written).toHaveLength(0)
+  })
+
+  it("keeps the whole batch when rate >= 1", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+
+    await Effect.runPromise(
+      runUseCase(
+        makeInput(buildBatch("sess-1"), { defaultProjectSlug: "primary" }),
+        disk,
+        publisher,
+        { primary: PRIMARY_PROJECT_ID },
+        { primary: { sampling: { enabled: true, rate: 1 } } },
+      ),
+    )
+
+    expect(published).toHaveLength(1)
+  })
+
+  it("is a no-op when sampling.enabled is false even with rate = 0", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+
+    await Effect.runPromise(
+      runUseCase(
+        makeInput(buildBatch("sess-1"), { defaultProjectSlug: "primary" }),
+        disk,
+        publisher,
+        { primary: PRIMARY_PROJECT_ID },
+        { primary: { sampling: { enabled: false, rate: 0 } } },
+      ),
+    )
+
+    expect(published).toHaveLength(1)
+  })
+
+  it("produces the same decision for repeated batches with the same session_id", async () => {
+    const decisions = new Set<boolean>()
+    for (let i = 0; i < 5; i++) {
+      const { disk } = createFakeStorageDisk()
+      const { publisher, published } = createFakeQueuePublisher()
+      await Effect.runPromise(
+        runUseCase(
+          makeInput(buildBatch("repeat-key"), { defaultProjectSlug: "primary" }),
+          disk,
+          publisher,
+          { primary: PRIMARY_PROJECT_ID },
+          { primary: { sampling: { enabled: true, rate: 0.5 } } },
+        ),
+      )
+      decisions.add(published.length === 1)
+    }
+
+    expect(decisions.size).toBe(1)
+  })
+
+  it("samples roughly to the configured rate across many distinct session keys", async () => {
+    let kept = 0
+    const n = 200
+    for (let i = 0; i < n; i++) {
+      const { disk } = createFakeStorageDisk()
+      const { publisher, published } = createFakeQueuePublisher()
+      await Effect.runPromise(
+        runUseCase(
+          makeInput(buildBatch(`sess-${i}`), { defaultProjectSlug: "primary" }),
+          disk,
+          publisher,
+          { primary: PRIMARY_PROJECT_ID },
+          { primary: { sampling: { enabled: true, rate: 0.5 } } },
+        ),
+      )
+      if (published.length === 1) kept++
+    }
+
+    const ratio = kept / n
+    expect(ratio).toBeGreaterThan(0.35)
+    expect(ratio).toBeLessThan(0.65)
+  })
+
+  it("skips disk write and queue publish for large sampled-out batches", async () => {
+    const { disk, written } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+
+    await Effect.runPromise(
+      runUseCase(
+        makeInput(largeSinglePayload, { defaultProjectSlug: "primary" }),
+        disk,
+        publisher,
+        { primary: PRIMARY_PROJECT_ID },
+        { primary: { sampling: { enabled: true, rate: 0 } } },
+      ),
+    )
+
+    // The whole point of HTTP-side sampling: a >50KB sampled-out batch must not touch
+    // object storage or the queue.
+    expect(written).toHaveLength(0)
+    expect(published).toHaveLength(0)
+  })
+
+  it("uses the header-default project's settings to decide the batch", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+
+    // Two-project batch: header default is `primary` (sampling rate=0); the span itself
+    // points at `secondary` (no sampling settings). The decision must follow `primary`.
+    const twoProjectBatch = new TextEncoder().encode(
+      JSON.stringify({
+        resourceSpans: [
+          {
+            scopeSpans: [
+              {
+                spans: [
+                  {
+                    traceId: "0af7651916cd43dd8448eb211c80319c",
+                    spanId: "b7ad6b7169203331",
+                    name: "test-span",
+                    startTimeUnixNano: "1710590400000000000",
+                    endTimeUnixNano: "1710590401000000000",
+                    attributes: [
+                      { key: "latitude.project", value: { stringValue: "secondary" } },
+                      { key: "session.id", value: { stringValue: "sess-1" } },
+                    ],
+                    status: { code: 1 },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    )
+
+    await Effect.runPromise(
+      runUseCase(
+        makeInput(twoProjectBatch, { defaultProjectSlug: "primary" }),
+        disk,
+        publisher,
+        { primary: PRIMARY_PROJECT_ID, secondary: SECONDARY_PROJECT_ID },
+        { primary: { sampling: { enabled: true, rate: 0 } } },
+      ),
+    )
+
+    expect(published).toHaveLength(0)
+  })
+
+  it("returns zeros for an empty payload even when sampling is enabled", async () => {
+    const { disk, written } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+
+    const result = await Effect.runPromise(
+      runUseCase(
+        makeInput(emptyBatch, { defaultProjectSlug: "primary" }),
+        disk,
+        publisher,
+        { primary: PRIMARY_PROJECT_ID },
+        { primary: { sampling: { enabled: true, rate: 0 } } },
+      ),
+    )
+
+    expect(result).toEqual({ totalSpans: 0, acceptedSpans: 0, rejectedSpans: 0 })
+    expect(published).toHaveLength(0)
+    expect(written).toHaveLength(0)
+  })
+})
+
+describe("ingestSpansWithBillingUseCase", () => {
+  beforeEach(() => {
+    vi.stubEnv("LAT_BILLING_ENABLED", "true")
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it("checks billing before enqueueing spans", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+    const { layer } = createBillingLayer()
+
+    await Effect.runPromise(
+      ingestSpansWithBillingUseCase(makeInput(buildOtlpJson(), { defaultProjectSlug: "primary" })).pipe(
+        Effect.provide(
+          Layer.mergeAll(Layer.succeed(StorageDisk, disk), Layer.succeed(QueuePublisher, publisher), layer),
+        ),
+      ),
+    )
+
+    expect(published).toHaveLength(1)
+  })
+
+  it("fails before enqueueing when billing blocks the request", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+    const { billingPeriods, layer } = createBillingLayer()
+
+    await Effect.runPromise(
+      billingPeriods
+        .upsert(
+          seedBillingUsagePeriod({
+            organizationId: ORGANIZATION_ID,
+            planSlug: "free",
+            periodStart: new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)),
+            periodEnd: new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1)),
+            includedCredits: 20_000,
+            consumedCredits: 20_000,
+          }),
+        )
+        .pipe(Effect.provideService(SqlClient, createFakeSqlClient({ organizationId: ORGANIZATION_ID }))),
+    )
+
+    const result = await Effect.runPromise(
+      Effect.result(
+        ingestSpansWithBillingUseCase(makeInput(buildOtlpJson(), { defaultProjectSlug: "primary" })).pipe(
+          Effect.provide(
+            Layer.mergeAll(Layer.succeed(StorageDisk, disk), Layer.succeed(QueuePublisher, publisher), layer),
+          ),
+        ),
+      ),
+    )
+
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect(result.failure).toBeInstanceOf(NoCreditsRemainingError)
+    }
+    expect(published).toHaveLength(0)
+  })
+
+  it("never blocks ingestion when the deployment does not enforce billing", async () => {
+    vi.stubEnv("LAT_BILLING_ENABLED", "false")
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+    const { billingPeriods, layer } = createBillingLayer()
+
+    await Effect.runPromise(
+      billingPeriods
+        .upsert(
+          seedBillingUsagePeriod({
+            organizationId: ORGANIZATION_ID,
+            planSlug: "free",
+            periodStart: new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)),
+            periodEnd: new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1)),
+            includedCredits: 20_000,
+            consumedCredits: 20_000,
+          }),
+        )
+        .pipe(Effect.provideService(SqlClient, createFakeSqlClient({ organizationId: ORGANIZATION_ID }))),
+    )
+
+    await Effect.runPromise(
+      ingestSpansWithBillingUseCase(makeInput(buildOtlpJson(), { defaultProjectSlug: "primary" })).pipe(
+        Effect.provide(
+          Layer.mergeAll(Layer.succeed(StorageDisk, disk), Layer.succeed(QueuePublisher, publisher), layer),
+        ),
+      ),
+    )
+
+    expect(published).toHaveLength(1)
+  })
+})
+
+describe("ingestSpansWithBillingUseCase sandbox path", () => {
+  beforeEach(() => {
+    vi.stubEnv("LAT_BILLING_ENABLED", "true")
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  const seedExhaustedFreePeriod = (billingPeriods: ReturnType<typeof createBillingLayer>["billingPeriods"]) =>
+    Effect.runPromise(
+      billingPeriods
+        .upsert(
+          seedBillingUsagePeriod({
+            organizationId: ORGANIZATION_ID,
+            planSlug: "free",
+            periodStart: new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)),
+            periodEnd: new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth() + 1, 1)),
+            includedCredits: 20_000,
+            consumedCredits: 20_000,
+          }),
+        )
+        .pipe(Effect.provideService(SqlClient, createFakeSqlClient({ organizationId: ORGANIZATION_ID }))),
+    )
+
+  it("active sandbox: no billing, quota incremented, activity stamped, liveness pulsed, enqueued with isSandbox", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+    const { billingPeriods, sandboxRepo, sandboxSignals, layer } = createBillingLayer({
+      sandbox: makeSandbox("active"),
+    })
+    // Exhaust the free credits: a live org would be refused here. The sandbox is
+    // never billed, so this must be ignored.
+    await seedExhaustedFreePeriod(billingPeriods)
+
+    await Effect.runPromise(
+      ingestSpansWithBillingUseCase(
+        makeInput(buildOtlpJson(), { defaultProjectSlug: "primary", isSandbox: true }),
+      ).pipe(
+        Effect.provide(
+          Layer.mergeAll(Layer.succeed(StorageDisk, disk), Layer.succeed(QueuePublisher, publisher), layer),
+        ),
+      ),
+    )
+
+    expect(published).toHaveLength(1)
+    expect((published[0]?.payload as { isSandbox: boolean }).isSandbox).toBe(true)
+    expect(sandboxSignals.state.quotaIncrements).toEqual([{ organizationId: ORGANIZATION_ID, spanCount: 1 }])
+    expect(sandboxRepo.stampCount).toBe(1)
+    expect(sandboxSignals.state.rejected).toHaveLength(0)
+  })
+
+  it("archived sandbox: refuses with SandboxArchived before persist and records the marker", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+    const { sandboxSignals, layer } = createBillingLayer({ sandbox: makeSandbox("archived") })
+
+    const result = await Effect.runPromise(
+      Effect.result(
+        ingestSpansWithBillingUseCase(
+          makeInput(buildOtlpJson(), { defaultProjectSlug: "primary", isSandbox: true }),
+        ).pipe(
+          Effect.provide(
+            Layer.mergeAll(Layer.succeed(StorageDisk, disk), Layer.succeed(QueuePublisher, publisher), layer),
+          ),
+        ),
+      ),
+    )
+
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect(result.failure).toBeInstanceOf(SandboxArchivedError)
+    }
+    expect(published).toHaveLength(0)
+    expect(sandboxSignals.state.quotaIncrements).toHaveLength(0)
+    expect(sandboxSignals.state.rejected).toEqual([
+      { organizationId: ORGANIZATION_ID, marker: { kind: "SandboxArchived", at: expect.any(String), spansDropped: 1 } },
+    ])
+  })
+
+  it("over-quota sandbox: refuses with SandboxQuotaExceeded and records the marker", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+    const { sandboxSignals, layer } = createBillingLayer({
+      sandbox: makeSandbox("active"),
+      // Force the running total past any plan ceiling.
+      signalsOverrides: { incrementSpanQuota: () => Effect.succeed(Number.MAX_SAFE_INTEGER) },
+    })
+
+    const result = await Effect.runPromise(
+      Effect.result(
+        ingestSpansWithBillingUseCase(
+          makeInput(buildOtlpJson(), { defaultProjectSlug: "primary", isSandbox: true }),
+        ).pipe(
+          Effect.provide(
+            Layer.mergeAll(Layer.succeed(StorageDisk, disk), Layer.succeed(QueuePublisher, publisher), layer),
+          ),
+        ),
+      ),
+    )
+
+    expect(Result.isFailure(result)).toBe(true)
+    if (Result.isFailure(result)) {
+      expect(result.failure).toBeInstanceOf(SandboxQuotaExceededError)
+    }
+    expect(published).toHaveLength(0)
+    expect(sandboxSignals.state.rejected).toEqual([
+      {
+        organizationId: ORGANIZATION_ID,
+        marker: { kind: "SandboxQuotaExceeded", at: expect.any(String), spansDropped: 1 },
+      },
+    ])
+  })
+
+  it("live org: billing checked, enqueued without the sandbox bit, quota untouched", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+    const { sandboxSignals, sandboxRepo, layer } = createBillingLayer({ sandbox: null })
+
+    await Effect.runPromise(
+      ingestSpansWithBillingUseCase(makeInput(buildOtlpJson(), { defaultProjectSlug: "primary" })).pipe(
+        Effect.provide(
+          Layer.mergeAll(Layer.succeed(StorageDisk, disk), Layer.succeed(QueuePublisher, publisher), layer),
+        ),
+      ),
+    )
+
+    expect(published).toHaveLength(1)
+    expect((published[0]?.payload as { isSandbox: boolean }).isSandbox).toBe(false)
+    expect(sandboxSignals.state.quotaIncrements).toHaveLength(0)
+    expect(sandboxRepo.stampCount).toBe(0)
+  })
+})
+
+describe("ingestSpansUseCase redaction policy stamping", () => {
+  const singleSpanBatch = (slug?: string): Uint8Array =>
+    new TextEncoder().encode(
+      JSON.stringify({
+        resourceSpans: [
+          {
+            resource: { attributes: [{ key: "service.name", value: { stringValue: "test" } }] },
+            scopeSpans: [
+              {
+                scope: { name: "test", version: "1.0.0" },
+                spans: [
+                  {
+                    traceId: "0af7651916cd43dd8448eb211c80319c",
+                    spanId: "b7ad6b7169203331",
+                    name: "test-span",
+                    kind: 3,
+                    startTimeUnixNano: "1710590400000000000",
+                    endTimeUnixNano: "1710590401000000000",
+                    attributes: slug ? [{ key: "latitude.project", value: { stringValue: slug } }] : [],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    )
+
+  const publishedRedaction = (published: { payload: unknown }[]) =>
+    (published[0]?.payload as { redaction?: Record<string, SerializedRedactionPolicy> } | undefined)?.redaction
+
+  const stamp = async (
+    opts: {
+      organizationRedaction?: OrganizationRedactionSetting | null
+      settingsBySlug?: Record<string, ProjectSettings>
+      resolutions?: Record<string, string | null>
+      slug?: string
+    } = {},
+  ) => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+
+    await Effect.runPromise(
+      runUseCase(
+        makeInput(singleSpanBatch(opts.slug), {
+          defaultProjectSlug: "primary",
+          ...(opts.organizationRedaction !== undefined ? { organizationRedaction: opts.organizationRedaction } : {}),
+        }),
+        disk,
+        publisher,
+        opts.resolutions ?? { primary: PRIMARY_PROJECT_ID },
+        opts.settingsBySlug ?? {},
+      ),
+    )
+
+    return { published, redaction: publishedRedaction(published) }
+  }
+
+  it("omits the redaction field entirely when no project opted in", async () => {
+    const { published, redaction } = await stamp()
+
+    expect(published).toHaveLength(1)
+    expect(redaction).toBeUndefined()
+    expect(published[0]?.payload).not.toHaveProperty("redaction")
+  })
+
+  it("omits a project whose policy resolves to off", async () => {
+    const { redaction } = await stamp({ settingsBySlug: { primary: { redaction: { mode: "off" } } } })
+
+    expect(redaction).toBeUndefined()
+  })
+
+  it("stamps an enforce policy keyed by project id", async () => {
+    const { redaction } = await stamp({ settingsBySlug: { primary: { redaction: { mode: "enforce" } } } })
+
+    expect(redaction).toEqual({
+      [PRIMARY_PROJECT_ID]: {
+        entities: [...DEFAULT_REDACTION_ENTITIES],
+        redactMetadata: false,
+        identities: "keep",
+      },
+    })
+  })
+
+  it("serializes the configured entity set and scopes", async () => {
+    const { redaction } = await stamp({
+      settingsBySlug: {
+        primary: {
+          redaction: {
+            mode: "enforce",
+            entities: ["email", "secret"],
+            scopes: { metadata: true },
+            identities: "pseudonymize",
+          },
+        },
+      },
+    })
+
+    expect(redaction?.[PRIMARY_PROJECT_ID]).toEqual({
+      entities: ["email", "secret"],
+      redactMetadata: true,
+      identities: "pseudonymize",
+    })
+  })
+
+  it("applies an organization policy to a project that configured nothing", async () => {
+    const { redaction } = await stamp({ organizationRedaction: { mode: "enforce" } })
+
+    expect(redaction?.[PRIMARY_PROJECT_ID]).toMatchObject({ entities: [...DEFAULT_REDACTION_ENTITIES] })
+  })
+
+  it("lets a project override an unlocked organization policy", async () => {
+    const { redaction } = await stamp({
+      organizationRedaction: { mode: "enforce" },
+      settingsBySlug: { primary: { redaction: { mode: "off" } } },
+    })
+
+    expect(redaction).toBeUndefined()
+  })
+
+  it("keeps a locked organization policy even when the project turns redaction off", async () => {
+    const { redaction } = await stamp({
+      organizationRedaction: { mode: "enforce", locked: true },
+      settingsBySlug: { primary: { redaction: { mode: "off" } } },
+    })
+
+    expect(redaction?.[PRIMARY_PROJECT_ID]).toMatchObject({ entities: [...DEFAULT_REDACTION_ENTITIES] })
+  })
+
+  it("stamps one entry per opted-in project in a multi-project batch", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+    const payload = new TextEncoder().encode(
+      JSON.stringify({
+        resourceSpans: [
+          {
+            resource: { attributes: [{ key: "service.name", value: { stringValue: "test" } }] },
+            scopeSpans: [
+              {
+                scope: { name: "test", version: "1.0.0" },
+                spans: [
+                  {
+                    traceId: "0af7651916cd43dd8448eb211c80319c",
+                    spanId: "b7ad6b7169203331",
+                    name: "a",
+                    kind: 3,
+                    startTimeUnixNano: "1710590400000000000",
+                    endTimeUnixNano: "1710590401000000000",
+                    attributes: [{ key: "latitude.project", value: { stringValue: "primary" } }],
+                  },
+                  {
+                    traceId: "0af7651916cd43dd8448eb211c80319c",
+                    spanId: "b7ad6b7169203332",
+                    name: "b",
+                    kind: 3,
+                    startTimeUnixNano: "1710590400000000000",
+                    endTimeUnixNano: "1710590401000000000",
+                    attributes: [{ key: "latitude.project", value: { stringValue: "secondary" } }],
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    )
+
+    await Effect.runPromise(
+      runUseCase(
+        makeInput(payload),
+        disk,
+        publisher,
+        { primary: PRIMARY_PROJECT_ID, secondary: SECONDARY_PROJECT_ID },
+        { primary: { redaction: { mode: "enforce" } }, secondary: { redaction: { mode: "off" } } },
+      ),
+    )
+
+    const redaction = publishedRedaction(published)
+    expect(Object.keys(redaction ?? {})).toEqual([PRIMARY_PROJECT_ID])
+  })
+
+  it("stamps custom rules alongside the entity set", async () => {
+    const rules: RedactionRule[] = [
+      { id: "rule-1", label: "ACCOUNT_NUMBER", kind: "terms", terms: ["ACME-1234"] },
+      { id: "rule-2", label: "STAFF_ID", kind: "attribute_key", keys: ["acme.staff.*"] },
+    ]
+    const { redaction } = await stamp({ settingsBySlug: { primary: { redaction: { mode: "enforce", rules } } } })
+
+    expect(redaction?.[PRIMARY_PROJECT_ID]?.rules).toEqual(rules)
+  })
+
+  it("omits the rules field for a project with none, keeping the payload as it was", async () => {
+    const { redaction } = await stamp({ settingsBySlug: { primary: { redaction: { mode: "enforce" } } } })
+
+    expect(redaction?.[PRIMARY_PROJECT_ID]).not.toHaveProperty("rules")
+  })
+
+  it("carries disabled rules through, since the engine decides what to compile", async () => {
+    const rules: RedactionRule[] = [
+      { id: "rule-1", label: "ACCOUNT_NUMBER", kind: "terms", terms: ["ACME-1234"], enabled: false },
+    ]
+    const { redaction } = await stamp({ settingsBySlug: { primary: { redaction: { mode: "enforce", rules } } } })
+
+    expect(redaction?.[PRIMARY_PROJECT_ID]?.rules).toEqual(rules)
+  })
+
+  /**
+   * A project whose whole policy is one key-drop rule has nothing to scan for, but it still has
+   * work to do. Treating an empty entity set as "nothing to redact" would silently ignore it.
+   */
+  it("stamps a policy whose only instruction is a key rule and no entities", async () => {
+    const rules: RedactionRule[] = [{ id: "rule-1", label: "STAFF_ID", kind: "attribute_key", keys: ["acme.staff.id"] }]
+    const { redaction } = await stamp({
+      settingsBySlug: { primary: { redaction: { mode: "enforce", entities: [], rules } } },
+    })
+
+    expect(redaction?.[PRIMARY_PROJECT_ID]).toEqual({
+      entities: [],
+      redactMetadata: false,
+      identities: "keep",
+      rules,
+    })
+  })
+
+  it("inherits organization rules when the project sets none", async () => {
+    const rules: RedactionRule[] = [{ id: "rule-1", label: "STAFF_ID", kind: "attribute_key", keys: ["acme.staff.id"] }]
+    const { redaction } = await stamp({ organizationRedaction: { mode: "enforce", rules } })
+
+    expect(redaction?.[PRIMARY_PROJECT_ID]?.rules).toEqual(rules)
+  })
+
+  it("lets a project replace the organization rule list rather than adding to it", async () => {
+    const orgRules: RedactionRule[] = [{ id: "org", label: "ORG_RULE", kind: "terms", terms: ["ORG-1"] }]
+    const projectRules: RedactionRule[] = [{ id: "proj", label: "PROJECT_RULE", kind: "terms", terms: ["PROJ-1"] }]
+    const { redaction } = await stamp({
+      organizationRedaction: { mode: "enforce", rules: orgRules },
+      settingsBySlug: { primary: { redaction: { rules: projectRules } } },
+    })
+
+    expect(redaction?.[PRIMARY_PROJECT_ID]?.rules).toEqual(projectRules)
+  })
+
+  it("keeps the locked organization rules when the project has its own", async () => {
+    const orgRules: RedactionRule[] = [{ id: "org", label: "ORG_RULE", kind: "terms", terms: ["ORG-1"] }]
+    const { redaction } = await stamp({
+      organizationRedaction: { mode: "enforce", locked: true, rules: orgRules },
+      settingsBySlug: {
+        primary: { redaction: { rules: [{ id: "proj", label: "PROJECT_RULE", kind: "terms", terms: ["PROJ-1"] }] } },
+      },
+    })
+
+    expect(redaction?.[PRIMARY_PROJECT_ID]?.rules).toEqual(orgRules)
+  })
+
+  it("does not enqueue anything, and so stamps nothing, when the batch is sampled out", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+
+    await Effect.runPromise(
+      runUseCase(
+        makeInput(singleSpanBatch(), { defaultProjectSlug: "primary" }),
+        disk,
+        publisher,
+        { primary: PRIMARY_PROJECT_ID },
+        { primary: { redaction: { mode: "enforce" }, sampling: { enabled: true, rate: 0 } } },
+      ),
+    )
+
+    expect(published).toHaveLength(0)
+  })
+})

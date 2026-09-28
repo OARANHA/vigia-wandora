@@ -1,0 +1,88 @@
+import { BadRequestError, EvaluationId, generateId, ProjectId, SignalId } from "@domain/shared"
+import { Effect } from "effect"
+import type { PersistEvaluationAlignmentResult } from "../../alignment/types.ts"
+import { type ConfusionMatrix, type EvaluationTrigger, evaluationSchema } from "../../entities/evaluation.ts"
+import { isDeletedEvaluation } from "../../helpers.ts"
+import { EvaluationRepository } from "../../ports/evaluation-repository.ts"
+import { EvaluationSignalRepository } from "../../ports/evaluation-signal-repository.ts"
+
+export const persistAlignmentResultUseCase = Effect.fn("evaluations.persistAlignmentResult")(function* (input: {
+  readonly organizationId: string
+  readonly projectId: string
+  readonly signalId: string
+  readonly evaluationId?: string | null
+  readonly script: string
+  readonly evaluationHash: string
+  readonly confusionMatrix: ConfusionMatrix
+  readonly trigger: EvaluationTrigger
+}) {
+  yield* Effect.annotateCurrentSpan("evaluation.projectId", input.projectId)
+  yield* Effect.annotateCurrentSpan("evaluation.signalId", input.signalId)
+  if (input.evaluationId) {
+    yield* Effect.annotateCurrentSpan("evaluation.id", input.evaluationId)
+  }
+
+  const evaluationRepository = yield* EvaluationRepository
+  const signalRepository = yield* EvaluationSignalRepository
+  const projectId = ProjectId(input.projectId)
+  const signalId = SignalId(input.signalId)
+  const existingEvaluation = input.evaluationId
+    ? yield* evaluationRepository
+        .findById(EvaluationId(input.evaluationId))
+        .pipe(Effect.catchTag("NotFoundError", () => Effect.succeed(null)))
+    : null
+
+  if (input.evaluationId && existingEvaluation === null) {
+    return yield* new BadRequestError({
+      message: `Evaluation ${input.evaluationId} was not found for alignment`,
+    })
+  }
+
+  if (existingEvaluation && isDeletedEvaluation(existingEvaluation)) {
+    return yield* new BadRequestError({
+      message: `Deleted evaluation ${existingEvaluation.id} cannot be realigned`,
+    })
+  }
+
+  if (existingEvaluation && (existingEvaluation.projectId !== projectId || existingEvaluation.signalId !== signalId)) {
+    return yield* new BadRequestError({
+      message: `Evaluation ${existingEvaluation.id} does not match the requested issue or project`,
+    })
+  }
+
+  const issue = yield* signalRepository.findById(signalId).pipe(
+    Effect.catchTag("NotFoundError", () =>
+      Effect.fail(
+        new BadRequestError({
+          message: `Signal ${input.signalId} was not found for alignment`,
+        }),
+      ),
+    ),
+  )
+
+  const now = new Date()
+  const evaluation = evaluationSchema.parse({
+    id: existingEvaluation?.id ?? input.evaluationId ?? generateId(),
+    organizationId: input.organizationId,
+    projectId: input.projectId,
+    signalId: input.signalId,
+    name: issue.name,
+    description: issue.description,
+    script: input.script,
+    scriptHash: input.evaluationHash,
+    trigger: input.trigger,
+    alignment: {
+      evaluationHash: input.evaluationHash,
+      confusionMatrix: input.confusionMatrix,
+    },
+    alignedAt: now,
+    archivedAt: existingEvaluation?.archivedAt ?? null,
+    deletedAt: existingEvaluation?.deletedAt ?? null,
+    createdAt: existingEvaluation?.createdAt ?? now,
+    updatedAt: now,
+  })
+
+  yield* evaluationRepository.save(evaluation)
+
+  return { evaluationId: evaluation.id } satisfies PersistEvaluationAlignmentResult
+})

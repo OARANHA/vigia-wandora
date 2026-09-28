@@ -1,0 +1,26 @@
+{
+  "name": "@domain/models",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": {
+      "browser": "./src/browser.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "scripts": {
+    "check": "biome check src",
+    "format": "biome format --write src && biome check --fix src",
+    "typecheck": "tsgo -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests --dir src",
+    "update:models-dev": "tsx scripts/update-models-dev-data.ts"
+  },
+  "dependencies": {
+    "@repo/utils": "workspace:*",
+    "tsx": "catalog:",
+    "zod": "catalog:"
+  }
+}

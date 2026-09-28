@@ -1,0 +1,71 @@
+import { WorkflowStarter, type WorkflowStarterShape } from "@domain/queue"
+import type { AnnotationScore } from "@domain/scores"
+import { ScoreRepository } from "@domain/scores"
+import { BadRequestError, type NotFoundError, type RepositoryError, type ScoreId } from "@domain/shared"
+import { Effect } from "effect"
+
+export interface PublishAnnotationInput {
+  readonly scoreId: ScoreId
+}
+
+export type PublishAnnotationError = RepositoryError | BadRequestError | NotFoundError
+
+export type PublishAnnotationResult =
+  | { readonly action: "already-published"; readonly score: AnnotationScore }
+  | { readonly action: "workflow-started"; readonly scoreId: ScoreId }
+
+const startPublishAnnotationWorkflow = (
+  workflowStarter: WorkflowStarterShape,
+  input: { readonly organizationId: string; readonly projectId: string; readonly scoreId: ScoreId },
+) =>
+  workflowStarter.start(
+    "publishAnnotationWorkflow",
+    {
+      organizationId: input.organizationId,
+      projectId: input.projectId,
+      scoreId: input.scoreId,
+    },
+    {
+      workflowId: `annotations:publish:${input.scoreId}`,
+    },
+  )
+
+export const publishHumanAnnotationUseCase = Effect.fn("annotations.publishHumanAnnotation")(function* (
+  input: PublishAnnotationInput,
+) {
+  yield* Effect.annotateCurrentSpan("annotation.scoreId", input.scoreId)
+  const workflowStarter = yield* WorkflowStarter
+  const scoreRepository = yield* ScoreRepository
+  const score = yield* scoreRepository.findById(input.scoreId)
+
+  if (score.draftedAt === null) {
+    return {
+      action: "already-published",
+      score: score as AnnotationScore,
+    } satisfies PublishAnnotationResult
+  }
+
+  if (score.sourceType !== "annotation") {
+    return yield* new BadRequestError({
+      message: `Score ${input.scoreId} is not an annotation (source: ${score.sourceType})`,
+    })
+  }
+
+  if (score.annotatorId === null) {
+    return {
+      action: "not-human",
+      score: score as AnnotationScore,
+    }
+  }
+
+  yield* startPublishAnnotationWorkflow(workflowStarter, {
+    organizationId: score.organizationId,
+    projectId: score.projectId,
+    scoreId: score.id,
+  })
+
+  return {
+    action: "workflow-started",
+    scoreId: score.id,
+  } satisfies PublishAnnotationResult
+})

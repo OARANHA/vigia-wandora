@@ -6,8 +6,8 @@ import { useMemo, useRef, useState } from "react"
 import { useApiKeysCollection } from "../../../../../domains/api-keys/api-keys.collection.ts"
 import { projectScopeData, projectScopeKey, useProjectScope } from "../../../../../domains/projects/project-scope.tsx"
 import { countTracesByProject } from "../../../../../domains/traces/traces.functions.ts"
-import { VigiaConnectionInstructions } from "./vigia-connection-instructions.tsx"
 import { DEFAULT_VIGIA_AGENT_STACK } from "./vigia-connection.ts"
+import { VigiaConnectionInstructions } from "./vigia-connection-instructions.tsx"
 
 /**
  * Empty state for a project that has never received a trace. Keeps the surface

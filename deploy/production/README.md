@@ -13,6 +13,10 @@ Este diretório contém o runtime reproduzível do primeiro deploy público do V
 - object storage usa o driver `fs` em volume compartilhado no host único, evitando SeaweedFS neste primeiro runtime;
 - retenção inicial de telemetria: 30 dias, deliberadamente conservadora porque o host de produção estava com 83% do disco raiz ocupado antes do deploy.
 
+## Registry
+
+As imagens `ghcr.io/oaranha/vigia-*` devem ser construídas com sucesso pelo workflow `Vigia container images` antes de qualquer deploy. Antes de criar ou atualizar a stack, confirme também que o host de produção consegue fazer pull das imagens do GHCR sem expor credenciais no Compose.
+
 ## Variáveis obrigatórias no Portainer
 
 - `VIGIA_IMAGE_TAG`

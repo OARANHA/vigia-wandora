@@ -63,7 +63,7 @@ services:
       start_period: 40s
     networks:
       - default
-      - wandora-edge
+      - vigia-edge
 
   api:
     <<: *app
@@ -79,7 +79,7 @@ services:
       start_period: 40s
     networks:
       - default
-      - wandora-edge
+      - vigia-edge
 
   ingest:
     <<: *app
@@ -95,7 +95,7 @@ services:
       start_period: 40s
     networks:
       - default
-      - wandora-edge
+      - vigia-edge
 
   workers:
     <<: *app
@@ -242,5 +242,6 @@ volumes:
   vigia_storage:
 
 networks:
-  wandora-edge:
+  vigia-edge:
     external: true
+    name: vigia-edge

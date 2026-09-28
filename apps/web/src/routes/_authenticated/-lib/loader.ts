@@ -37,7 +37,7 @@ export async function authenticatedLoader(deps: AuthenticatedLoaderDeps, locatio
 
   const projects = await deps.listProjects()
   if (projects.length === 0 && !deps.isProjectOnboardingPathname(location.pathname)) {
-    const created = await deps.createProject({ data: { name: "My project" } })
+    const created = await deps.createProject({ data: { name: "Meu agente" } })
     throw redirect({
       to: "/projects/$projectSlug/onboarding",
       params: { projectSlug: created.slug },

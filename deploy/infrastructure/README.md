@@ -8,7 +8,7 @@ Esta stack contém a borda própria do Vigia. Ela é implantada pelo Portainer d
 - rede externa `vigia-edge`, criada no bootstrap do Portainer;
 - armazenamento persistente do ACME/Let's Encrypt.
 
-O Traefik usa file provider e carrega o roteamento público do produto a partir de `deploy/production/traefik-vigia.yml`.
+O Traefik usa file provider, mas o arquivo dinâmico é materializado por um container auxiliar em volume Docker nomeado. Isso evita bind mounts relativos e mantém a stack Git compatível com Portainer CE.
 
 ## Variável obrigatória
 
@@ -23,3 +23,8 @@ O Portainer não é exposto publicamente durante o bootstrap. O hostname `ops.vi
 3. a proteção de acesso administrativo estiver definida.
 
 Não publicar a tela de inicialização do Portainer diretamente na internet.
+
+
+## Compatibilidade com Portainer CE
+
+Stacks Git do Portainer CE não devem depender de bind mounts relativos para arquivos do repositório. Por isso, a configuração dinâmica do Traefik é escrita em `vigia_traefik_dynamic` pelo serviço `traefik-config` antes do Traefik iniciar.

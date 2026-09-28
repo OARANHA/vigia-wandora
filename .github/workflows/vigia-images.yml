@@ -48,6 +48,18 @@ jobs:
       - name: Validate Compose
         run: docker compose -f deploy/production/compose.yml config --quiet
 
+  registry:
+    name: Pull published ${{ matrix.service }}
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [api, ingest, workers, workflows, web, migrations]
+    steps:
+      - name: Pull public main image without registry login
+        run: docker pull ghcr.io/oaranha/vigia-${{ matrix.service }}:main
+
   build:
     name: Build ${{ matrix.service }}
     runs-on: ubuntu-latest

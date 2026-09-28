@@ -54,3 +54,25 @@ Concluído em código e validado:
 - detecção do primeiro trace e estado de conexão.
 
 Próxima validação real: publicar a primeira stack executável, configurar o router dinâmico do Traefik e enviar um trace real pelo domínio público antes de marcar ingestão pública como concluída.
+
+
+## Checkpoint 2026-09-28 — preparação do runtime público
+
+Validado antes do deploy:
+
+- runtime canônico consolidado em `deploy/production/compose.yml`, `deploy/production/traefik-vigia.yml` e `.github/workflows/vigia-images.yml`;
+- `docker compose ... config --quiet`: sucesso;
+- builds Docker de `api`, `ingest`, `workers`, `workflows`, `web` e `migrations`: sucesso;
+- pull anônimo das seis imagens `ghcr.io/oaranha/vigia-*:main`: sucesso no PR #24;
+- Portainer acessível no endpoint `local` (ID 3);
+- Traefik segue saudável na rede `wandora-edge` com file provider;
+- capacidade observada antes do deploy: 12 GiB RAM total, cerca de 5,9 GiB disponíveis e 35 GB livres no disco raiz, que estava em 83% de uso.
+
+Estado de produção confirmado após essas validações:
+
+- ainda não existe stack `vigia` no Portainer;
+- ainda não existem containers Vigia no host;
+- ainda não existe a rota ativa `vigia.wandora.com.br` no file provider;
+- HTTPS válido e primeiro trace OTLP público continuam pendentes.
+
+A tentativa de criar a stack via automação foi interrompida pelo controle de segurança ao transportar os valores secretos exigidos pelo Compose. Nenhuma stack foi criada e nenhum segredo foi gravado. O próximo passo operacional é injetar esses segredos por um mecanismo seguro do operador/Portainer, criar a stack Git e só então ativar o Traefik.

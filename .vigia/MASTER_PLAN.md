@@ -382,3 +382,19 @@ O diferencial que merece código próprio é a combinação de:
 **Fazer o primeiro deploy executável do Vigia, publicar `vigia.wandora.com.br` pelo Traefik e validar um trace OTLP real ponta a ponta.**
 
 Depois do smoke test público, avançar para a definição de sucesso por agente e Business Events.
+
+
+### Checkpoint de preparação do primeiro runtime — 2026-09-28
+
+O empacotamento e o caminho de registry já foram comprovados antes de tocar produção:
+
+- runtime canônico: `deploy/production/compose.yml`;
+- configuração Traefik versionada: `deploy/production/traefik-vigia.yml`;
+- workflow canônico: `.github/workflows/vigia-images.yml`;
+- Compose validado pelo GitHub Actions;
+- seis targets Docker do Vigia compilados com sucesso;
+- seis imagens `ghcr.io/oaranha/vigia-*:main` puxadas anonimamente com sucesso no gate do PR #24.
+
+O Portainer de produção continua sem stack `vigia`, e o host continua sem containers Vigia. A rota do Traefik também não foi ativada.
+
+A automação disponível para criar a stack exige receber os segredos como variáveis. O controle de segurança bloqueou esse transporte antes da execução; portanto nenhum segredo foi persistido e nenhuma stack foi criada. O próximo passo é fornecer os segredos diretamente por um canal operacional seguro do Portainer/host, criar a stack Git, validar saúde e recursos, e somente depois instalar a configuração dinâmica do Traefik.

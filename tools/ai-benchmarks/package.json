@@ -31,7 +31,7 @@
     "@platform/ai": "workspace:*",
     "@platform/ai-vercel": "workspace:*",
     "@platform/op-gepa": "workspace:*",
-    "diff": "8.0.4",
+    "diff": "9.0.0",
     "effect": "catalog:",
     "esbuild": "0.28.1",
     "ink": "7.1.0",

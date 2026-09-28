@@ -28,6 +28,7 @@ jobs:
         run: |
           docker pull portainer/portainer-ce:2.45.0
           docker pull traefik:v3.7.13
+          docker pull alpine:3.22
 
       - name: Validate Portainer bootstrap
         run: docker compose -f deploy/bootstrap/portainer.yml config --quiet

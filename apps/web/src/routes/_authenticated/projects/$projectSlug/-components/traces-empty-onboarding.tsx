@@ -33,7 +33,7 @@ export function TracesEmptyOnboarding({
    * Explicit API-key token to display (sandbox passes its `lat_sandbox_` key).
    * When omitted, the card reads the live org's default key from the collection.
    */
-  readonly apiKeyToken?: string | null
+  readonly apiKeyToken?: string | null | undefined
 }) {
   const queryClient = useQueryClient()
   // When mounted under a sandbox scope, the poll + cache invalidation target the

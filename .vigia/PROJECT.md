@@ -19,6 +19,21 @@ Objetivo do produto:
 - O cliente não precisa conhecer Latitude.
 - Mudanças próprias devem ficar tão isoladas quanto possível para facilitar atualização do upstream.
 
+## Relação com a Wandora
+
+A Wandora terá papel duplo:
+
+- comercializa o **Vigia** como produto separado no site da Wandora;
+- consome o **Vigia** internamente como cliente real para monitorar seus próprios agentes.
+
+O Vigia continua sendo produto independente e fonte de verdade de observabilidade.
+
+A Wandora pode consumir uma API resumida do Vigia para exibir indicadores próprios em seu painel, enquanto investigação detalhada, configuração, traces, evals e operação especializada permanecem no Vigia.
+
+Evitar duplicar o frontend completo do Vigia dentro da Wandora. Preferir resumo na Wandora e navegação para o Vigia quando for necessária análise profunda.
+
+Futuramente, SSO pode conectar os dois produtos com um fluxo "Abrir no Vigia".
+
 ## Marca
 
 - Nome oficial: **Vigia**

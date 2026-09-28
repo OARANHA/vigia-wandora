@@ -112,3 +112,35 @@ Estado verificado em 2026-09-28:
 - `vigia.wandora.com.br` resolve pelo Cloudflare, porém ainda não possui router/certificado de origem no Traefik e atualmente retorna HTTP 526.
 
 O deploy do Vigia só será considerado completo quando houver serviço na `wandora-edge`, router dinâmico para `vigia.wandora.com.br`, TLS válido e smoke test HTTPS bem-sucedido.
+
+
+## Onboarding de agente e conexão OTLP
+
+Em 2026-09-28, o slice de onboarding do projeto/agente e conexão OTLP foi implementado na branch `feat/vigia-agent-otlp-onboarding`.
+
+O Vigia agora possui uma camada própria de produto para este fluxo:
+
+- criação de agente leva ao onboarding Vigia;
+- cliente escolhe a tecnologia/runtime do agente;
+- endpoint público apresentado como `https://vigia.wandora.com.br/v1/traces`;
+- autenticação continua usando a infraestrutura de API keys já existente;
+- projeto é identificado publicamente por `X-Vigia-Project`;
+- `X-Latitude-Project` permanece somente como alias interno de compatibilidade no ingest;
+- primeiro trace é detectado por polling e conclui o onboarding;
+- estado vazio de traces reutiliza as mesmas instruções Vigia;
+- fluxo legado de claim foi desacoplado dos tipos do onboarding novo para preservar compatibilidade.
+
+Não foi criado SDK próprio: o MVP usa OpenTelemetry/OTLP padrão e reaproveita o ingest existente do Latitude.
+
+Validação do slice no SHA `2389b307d675e1ae95e6507144d07bafa5b48841`:
+
+- check Biome dos arquivos alterados: sucesso;
+- build de `@app/web` e `@app/ingest`: sucesso;
+- typecheck completo do workspace: sucesso;
+- testes unitários: sucesso;
+- testes unitários pesados: sucesso;
+- testes de integração ClickHouse: sucesso.
+
+Observação: um `pnpm check` global anterior expôs diagnósticos preexistentes do baseline fora deste slice. Por isso a validação de estilo deste trabalho foi isolada aos arquivos alterados, sem tratar dívida upstream não relacionada como parte deste escopo.
+
+Ainda não houve deploy do Vigia nem smoke test público de ingestão em `vigia.wandora.com.br`. Esse teste depende da primeira stack executável e da rota dinâmica do Traefik.

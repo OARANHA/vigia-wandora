@@ -1,0 +1,51 @@
+name: Vigia Slice Validation
+
+on:
+  push:
+    branches:
+      - feat/vigia-agent-otlp-onboarding
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    uses: ./.github/workflows/check.yml
+    with:
+      ref: ${{ github.sha }}
+
+  typecheck:
+    uses: ./.github/workflows/typecheck.yml
+    with:
+      ref: ${{ github.sha }}
+
+  tests:
+    uses: ./.github/workflows/test.yml
+    with:
+      ref: ${{ github.sha }}
+
+  build:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 25
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create production environment
+        run: cp .env.example .env.production
+
+      - name: Build Vigia surfaces
+        run: pnpm turbo run build --filter=@app/web --filter=@app/ingest

@@ -18,7 +18,7 @@ export function VigiaConnectionInstructions({
 }: {
   readonly projectSlug: string
   readonly source: VigiaAgentStackId
-  readonly apiKeyToken?: string | null
+  readonly apiKeyToken?: string | null | undefined
 }) {
   const { toast } = useToast()
   const { data: apiKeysList = [] } = useApiKeysCollection()

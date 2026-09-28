@@ -8,12 +8,8 @@ import { completeProjectOnboarding, updateProject } from "../../../../../domains
 import { countTracesByProject } from "../../../../../domains/traces/traces.functions.ts"
 import { getQueryClient } from "../../../../../lib/data/query-client.tsx"
 import { toUserMessage } from "../../../../../lib/errors.ts"
+import { DEFAULT_VIGIA_AGENT_STACK, VIGIA_AGENT_STACKS, type VigiaAgentStackId } from "./vigia-connection.ts"
 import { VigiaConnectionInstructions } from "./vigia-connection-instructions.tsx"
-import {
-  DEFAULT_VIGIA_AGENT_STACK,
-  VIGIA_AGENT_STACKS,
-  type VigiaAgentStackId,
-} from "./vigia-connection.ts"
 
 export const ONBOARDING_STEPS = ["agent", "connect"] as const
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
@@ -102,40 +98,40 @@ export function OnboardingFlow({
       }
     }
 
+    const finishConnection = async () => {
+      setTraceReceived(true)
+      try {
+        await completeProjectOnboarding({ data: { projectId: projectIdRef.current } })
+        await getQueryClient().invalidateQueries({ queryKey: ["projects"] })
+      } catch (error) {
+        toastRef.current({
+          variant: "destructive",
+          description: toUserMessage(error),
+        })
+      }
+
+      if (cancelled) return
+      redirectTimeout = window.setTimeout(() => {
+        if (!cancelled) {
+          void onOpenProjectTracesRef.current(projectIdRef.current)
+        }
+      }, 1800)
+    }
+
     const poll = async () => {
       if (cancelled) return
 
-      try {
-        const count = await countTracesByProject({
-          data: { projectId: projectIdRef.current },
-        })
-        if (cancelled) return
+      const count = await countTracesByProject({
+        data: { projectId: projectIdRef.current },
+      }).catch(() => 0)
 
-        if (count > 0) {
-          setTraceReceived(true)
-          try {
-            await completeProjectOnboarding({ data: { projectId: projectIdRef.current } })
-            await getQueryClient().invalidateQueries({ queryKey: ["projects"] })
-          } catch (error) {
-            toastRef.current({
-              variant: "destructive",
-              description: toUserMessage(error),
-            })
-          }
-
-          if (cancelled) return
-          redirectTimeout = window.setTimeout(() => {
-            if (!cancelled) {
-              void onOpenProjectTracesRef.current(projectIdRef.current)
-            }
-          }, 1800)
-          return
-        }
-      } catch {
-        // A transient read failure should not interrupt onboarding; retry on the normal cadence.
+      if (cancelled) return
+      if (count < 1) {
+        schedulePoll()
+        return
       }
 
-      schedulePoll()
+      await finishConnection()
     }
 
     void poll()

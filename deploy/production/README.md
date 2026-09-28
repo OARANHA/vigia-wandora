@@ -2,7 +2,7 @@
 
 Este diretório contém o runtime reproduzível e canônico do primeiro deploy público do Vigia.
 
-Arquivos canônicos da aplicação: `deploy/production/compose.yml`, `deploy/production/traefik-vigia.yml` e `.github/workflows/vigia-images.yml`. A borda standalone fica em `deploy/infrastructure/compose.yml`; o bootstrap único do Portainer fica em `deploy/bootstrap/portainer.yml`.
+Arquivos canônicos da aplicação: `deploy/production/compose.yml` e `.github/workflows/vigia-images.yml`. A borda e o roteamento standalone ficam em `deploy/infrastructure/compose.yml`; o bootstrap único do Portainer fica em `deploy/bootstrap/portainer.yml`.
 
 ## Modelo
 
@@ -36,6 +36,11 @@ O primeiro runtime usa Mailpit somente como sink de e-mail de bootstrap, exposto
 
 ## Traefik
 
-O arquivo `traefik-vigia.yml` continuará como configuração versionada de roteamento, mas deve ser aplicado no Traefik da VPS Vigia. O runtime não deve depender do Traefik nem da rede Docker da VPS Wandora.
+O roteamento público fica versionado dentro da stack `deploy/infrastructure/compose.yml`, materializado em volume Docker antes do Traefik iniciar. O runtime não depende do Traefik nem da rede Docker da VPS Wandora.
 
 Hostname administrativo preferido: `ops.vigia.wandora.com.br` para Portainer/console operacional. Esse hostname não faz parte da API pública do produto.
+
+
+## Portainer CE e arquivos auxiliares
+
+O deploy Git não usa bind mounts relativos para arquivos do repositório. Os arquivos de inicialização de Postgres e ClickHouse são incorporados às imagens `vigia-postgres` e `vigia-clickhouse` durante o build no GitHub Actions.

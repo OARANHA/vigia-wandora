@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest"
-import {
-  getVigiaConnectionValues,
-  getVigiaOtelCurlVerifySnippet,
-  getVigiaOtelEnvBlock,
-} from "./vigia-connection.ts"
+import { getVigiaConnectionValues, getVigiaOtelCurlVerifySnippet, getVigiaOtelEnvBlock } from "./vigia-connection.ts"
 
 describe("Vigia OTLP connection config", () => {
   it("uses the Vigia public endpoint and customer-facing project header", () => {

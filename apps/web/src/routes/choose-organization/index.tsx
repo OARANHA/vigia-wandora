@@ -9,6 +9,7 @@ import { gtmHeadScripts, validateTrackingSearch } from "../../lib/analytics/gtm.
 import { authClient } from "../../lib/auth-client.ts"
 import { type Organization, resolveEntryDestination } from "../../lib/entry-destination.ts"
 import { toUserMessage } from "../../lib/errors.ts"
+import { ptBR } from "../../lib/i18n/pt-BR.ts"
 import { isLatitudeStaffEmail } from "../../lib/posthog/posthog-client.ts"
 import { chooseOrganizationLoader } from "./-lib/loader.ts"
 
@@ -42,8 +43,6 @@ function ChooseOrganizationPage() {
     setPendingOrgId(orgId)
     try {
       await authClient.organization.setActive({ organizationId: orgId })
-      // Hard reload (like nav-header's org switch) so the new active org's session
-      // is re-read and the React Query cache is flushed — no stale per-org data.
       window.location.href = "/"
     } catch (err) {
       toast({ variant: "destructive", description: toUserMessage(err) })
@@ -52,7 +51,7 @@ function ChooseOrganizationPage() {
   }
 
   return (
-    <AuthScreen title="Select your workspace" description="Choose which workspace to use">
+    <AuthScreen title={ptBR.organization.title} description={ptBR.organization.description}>
       <div className="flex flex-col rounded-xl overflow-hidden shadow-none border border-border">
         {organizations.map((org: Organization, index: number) => (
           <button

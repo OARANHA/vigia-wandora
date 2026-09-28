@@ -1,6 +1,7 @@
-import { LatitudeLogo, Text } from "@repo/ui"
+import { Text } from "@repo/ui"
 import type { ReactNode } from "react"
 import { GtmNoScript, SignupCompleteWatcher } from "../lib/analytics/signup-complete-watcher.tsx"
+import { VigiaBrand } from "./vigia-brand.tsx"
 
 export function AuthScreen({
   title,
@@ -17,7 +18,7 @@ export function AuthScreen({
       <SignupCompleteWatcher />
       <div className="flex flex-col gap-y-6 max-w-[22rem] w-full">
         <div className="flex flex-col items-center justify-center gap-y-6">
-          <LatitudeLogo />
+          <VigiaBrand />
           {title || description ? (
             <div className="flex flex-col items-center justify-center gap-y-2">
               {title ? <Text.H3 align="center">{title}</Text.H3> : null}

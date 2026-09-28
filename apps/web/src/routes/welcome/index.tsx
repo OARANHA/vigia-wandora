@@ -9,6 +9,7 @@ import { gtmHeadScripts, validateTrackingSearch } from "../../lib/analytics/gtm.
 import { resolveEntryDestination } from "../../lib/entry-destination.ts"
 import { toUserMessage } from "../../lib/errors.ts"
 import { createFormSubmitHandler, fieldErrorsAsStrings } from "../../lib/form-server-action.ts"
+import { ptBR } from "../../lib/i18n/pt-BR.ts"
 import { isLatitudeStaffEmail } from "../../lib/posthog/posthog-client.ts"
 import { welcomeLoader } from "./-lib/loader.ts"
 
@@ -35,7 +36,7 @@ function WelcomePage() {
   })
 
   return (
-    <AuthScreen title="Complete your profile" description="Tell us a bit about yourself">
+    <AuthScreen title={ptBR.onboarding.title} description={ptBR.onboarding.description}>
       <div className="flex flex-col gap-4 rounded-xl overflow-hidden shadow-none bg-muted/50 border border-border p-6">
         <form
           className="flex flex-col gap-4"
@@ -49,8 +50,8 @@ function WelcomePage() {
               <Input
                 type="text"
                 name={field.name}
-                label="Your name"
-                placeholder="Ex.: John Doe"
+                label={ptBR.onboarding.nameLabel}
+                placeholder={ptBR.onboarding.namePlaceholder}
                 autoComplete="name"
                 data-autofocus="true"
                 background="background"
@@ -66,8 +67,8 @@ function WelcomePage() {
               <Input
                 type="text"
                 name={field.name}
-                label="Organization name"
-                placeholder="Ex.: Acme Inc."
+                label={ptBR.onboarding.organizationLabel}
+                placeholder={ptBR.onboarding.organizationPlaceholder}
                 background="background"
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value)}
@@ -79,7 +80,7 @@ function WelcomePage() {
           <form.Subscribe selector={(state) => state.isSubmitting}>
             {(isFormSubmitting) => (
               <Button size="full" type="submit" variant="default" disabled={isFormSubmitting}>
-                {isFormSubmitting ? "Saving…" : "Continue"}
+                {isFormSubmitting ? ptBR.onboarding.saving : ptBR.onboarding.continue}
               </Button>
             )}
           </form.Subscribe>

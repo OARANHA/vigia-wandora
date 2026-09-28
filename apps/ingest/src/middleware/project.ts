@@ -5,8 +5,8 @@ export function resolveProjectSlugHeader({
   vigiaProject,
   latitudeProject,
 }: {
-  readonly vigiaProject?: string
-  readonly latitudeProject?: string
+  readonly vigiaProject?: string | undefined
+  readonly latitudeProject?: string | undefined
 }): string | undefined {
   const vigiaSlug = vigiaProject?.trim()
   if (vigiaSlug) return vigiaSlug

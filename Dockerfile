@@ -302,3 +302,18 @@ RUN --mount=type=cache,id=pnpm,target=/root/.local/share/pnpm/store \
 USER latitude
 
 CMD ["sh", "-c", "pnpm --filter @platform/db-postgres pg:migrate && pnpm --filter @platform/db-clickhouse ch:up"]
+
+
+# ---------------------------------------------------------------------------
+# Target: postgres — pgvector plus Vigia runtime-role bootstrap
+# ---------------------------------------------------------------------------
+FROM pgvector/pgvector:pg16 AS postgres
+
+COPY --chmod=755 docker/init-db.sh /docker-entrypoint-initdb.d/10-vigia-init-db.sh
+
+# ---------------------------------------------------------------------------
+# Target: clickhouse — ClickHouse with the versioned Vigia storage policy
+# ---------------------------------------------------------------------------
+FROM clickhouse/clickhouse-server:26.2 AS clickhouse
+
+COPY --chmod=644 docker/clickhouse/storage.xml /etc/clickhouse-server/config.d/storage.xml

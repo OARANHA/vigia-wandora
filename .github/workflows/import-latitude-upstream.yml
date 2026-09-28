@@ -1,0 +1,40 @@
+name: Import Latitude upstream
+
+on:
+  push:
+    branches:
+      - ops/import-latitude-upstream
+    paths:
+      - .github/workflows/import-latitude-upstream.yml
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Import exact Latitude baseline with Git history
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TARGET_REPOSITORY: ${{ github.repository }}
+          UPSTREAM_SHA: 93f0733dc7596005dcb061ca163a016d4d86e3e2
+        run: |
+          set -euo pipefail
+
+          git clone --bare --single-branch --branch development \
+            https://github.com/latitude-dev/latitude-llm.git latitude-upstream.git
+
+          cd latitude-upstream.git
+
+          git cat-file -e "${UPSTREAM_SHA}^{commit}"
+
+          git remote add vigia \
+            "https://x-access-token:${GH_TOKEN}@github.com/${TARGET_REPOSITORY}.git"
+
+          git push vigia "${UPSTREAM_SHA}:refs/heads/upstream/latitude"
+
+          test "$(git ls-remote vigia refs/heads/upstream/latitude | awk '{print $1}')" = "${UPSTREAM_SHA}"
+
+          echo "Imported Latitude baseline ${UPSTREAM_SHA} into upstream/latitude"

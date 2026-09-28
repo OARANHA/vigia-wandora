@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react"
-import type { LegacyOnboardingStep } from "./onboarding-legacy-types.ts"
 import { CarouselSlide, CarouselTrack } from "./carousel-track.tsx"
 import { OnboardingGallery } from "./onboarding-gallery.tsx"
+import type { LegacyOnboardingStep } from "./onboarding-legacy-types.ts"
 import * as FlaggersStep from "./steps/flaggers-step.tsx"
 import * as SlackStep from "./steps/slack-step.tsx"
 import * as TelemetryStep from "./steps/telemetry-step.tsx"

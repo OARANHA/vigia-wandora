@@ -238,7 +238,19 @@ Build/self-host do baseline foi validado em 2026-09-28 no GitHub Actions:
 
 Todos os passos concluíram com sucesso.
 
-O próximo passo técnico é criar a branch de integração do Vigia e iniciar branding/PT-BR sem contaminar `upstream/latitude`.
+O bootstrap integrado foi concluído no PR #2 e incorporado ao `main` em 2026-09-28.
+
+Checkpoint do merge:
+
+- PR: `#2 — feat: bootstrap executável do Vigia sobre Latitude`
+- merge/squash: `d13ba6d59174e1d2d57df6e2fbcb96e5d78df90b`
+- `upstream/latitude` permaneceu limpo e com tree SHA `993bb208505c49dfbd13cb04644fcf8a79a6cdcc`;
+- `pnpm check`, `pnpm typecheck` e build do web passaram no HEAD integrado;
+- marca textual, metadados, login, perfil inicial e seleção de empresa já usam Vigia/PT-BR.
+
+Ainda existem referências e copy do Latitude no onboarding profundo de projeto/agente e em outras áreas autenticadas. Isso é trabalho pendente, não concluído.
+
+O próximo passo técnico é adaptar o onboarding de projeto/agente e a conexão OTLP para que o cliente se conecte ao Vigia sem precisar conhecer Latitude.
 
 ## 10. Regra de customização
 
@@ -286,7 +298,7 @@ O controle da API do Portainer via Remote-Ops-MCP já foi configurado e validado
 
 1. [x] criar/importar `upstream/latitude`;
 2. [x] preservar licença e avisos;
-3. criar branch de integração;
+3. [x] criar branch de integração;
 4. [x] validar build/self-host do Latitude sem customização.
 
 ### Etapa B — primeiro Vigia executável
@@ -341,4 +353,4 @@ O diferencial que merece código próprio é a combinação de:
 
 ## 14. Próxima ação objetiva
 
-**Criar a branch de integração do Vigia a partir do baseline validado e iniciar branding, tradução e onboarding em PT-BR.**
+**Adaptar o onboarding de projeto/agente e a conexão OTLP para a experiência Vigia, sem expor Latitude ao cliente.**

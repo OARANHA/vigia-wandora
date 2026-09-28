@@ -59,3 +59,44 @@ Validações concluídas:
 - modelo self-host `docker-stack.yml`.
 
 A próxima fase é a integração visual e de produto do Vigia, mantendo `upstream/latitude` limpo.
+
+## Bootstrap integrado
+
+Em 2026-09-28, o PR #2 foi integrado ao `main` no commit `d13ba6d59174e1d2d57df6e2fbcb96e5d78df90b`.
+
+O `main` agora contém o código executável do baseline Latitude mais a primeira camada própria do Vigia:
+
+- `AGENTS.md` com regras de continuidade e arquitetura do Vigia;
+- configuração central `VIGIA_PRODUCT`;
+- base inicial de copy PT-BR;
+- marca textual Vigia by Wandora no fluxo de autenticação;
+- metadados do app em PT-BR;
+- login, perfil inicial e seleção de empresa em PT-BR.
+
+Validação no HEAD da feature antes do merge:
+
+- `pnpm check`: sucesso;
+- `pnpm typecheck`: sucesso;
+- build do web: sucesso.
+
+O onboarding profundo de projeto/agente, navegação autenticada e superfícies técnicas ainda contêm referências do Latitude e permanecem pendentes.
+
+## Dependências mínimas do baseline
+
+Desenvolvimento/build:
+
+- Node.js 25 ou superior;
+- pnpm 10.33.0;
+- Docker para a infraestrutura local/self-host.
+
+Self-host completo usa:
+
+- Postgres com pgvector;
+- ClickHouse;
+- Redis para cache;
+- Redis/BullMQ para filas;
+- Temporal;
+- armazenamento de objetos compatível com o modelo do Latitude (SeaweedFS no bundle padrão);
+- serviços web, api, ingest, workers, workflows e migrations.
+
+A observabilidade básica (ingestão e visualização de traces) funciona sem credenciais de provedor de IA. Recursos dependentes de geração, embeddings ou reranking exigem os provedores correspondentes.

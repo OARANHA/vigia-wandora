@@ -13,7 +13,9 @@
 ## Fase 1 — Vigia mínimo vendável
 
 - [ ] Branding global Vigia by Wandora
-- [ ] Login e onboarding em PT-BR
+- [x] Base centralizada de produto e copy PT-BR
+- [x] Login, perfil inicial e seleção de empresa em PT-BR
+- [ ] Onboarding do projeto/agente em PT-BR
 - [ ] Navegação principal em PT-BR
 - [ ] Configuração de URLs/subdomínios
 - [ ] Remover referências comerciais desnecessárias ao Latitude

@@ -1,0 +1,368 @@
+import { MembershipRepository } from "@domain/organizations"
+import type { Project } from "@domain/projects"
+import {
+  createProjectUseCase,
+  ProjectRepository,
+  updateProjectRedactionUseCase,
+  updateProjectUseCase,
+} from "@domain/projects"
+import {
+  BadRequestError,
+  ForbiddenError,
+  isValidId,
+  ProjectId,
+  projectSettingsSchema,
+  redactionRuleSchema,
+  redactionSettingSchema,
+  resolveRedactionPolicy,
+} from "@domain/shared"
+import {
+  previewRedactionUseCase,
+  type RedactionPreviewResult,
+  type RuleValidation,
+  validateRedactionRule,
+} from "@domain/spans"
+import { SpanRepositoryLive } from "@platform/db-clickhouse"
+import {
+  MembershipRepositoryLive,
+  OutboxEventWriterLive,
+  ProjectRepositoryLive,
+  SqlClientLive,
+  withPostgres,
+} from "@platform/db-postgres"
+import { withTracing } from "@repo/observability"
+import { createServerFn } from "@tanstack/react-start"
+import { getCookies, setCookie } from "@tanstack/react-start/server"
+import { Effect, Layer } from "effect"
+import { z } from "zod"
+import { rejectInvalidRedactionRules, rejectionMessage } from "../../lib/redaction-rules.ts"
+import { requireSession } from "../../server/auth.ts"
+import { getClickhouseClient, getOutboxWriter, getPostgresClient } from "../../server/clients.ts"
+import { resolveOrgScope } from "../../server/resolve-org-scope.ts"
+import { withScopedClickHouse } from "../../server/scoped-clickhouse.ts"
+
+const LAST_PROJECT_COOKIE_NAME = "latitude-last-project-slug"
+const LAST_PROJECT_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365
+
+/**
+ * Resolves the slug of the user's "current" project: the last-viewed slug
+ * from `LAST_PROJECT_COOKIE_NAME` if it still names a project the user has
+ * access to, else the first project in `listProjects()`, else `null` when
+ * the user has no projects at all.
+ *
+ * Used by `/_authenticated/` and by `/_authenticated/settings/$section` to
+ * land users on a project-scoped page without needing a slug in the URL.
+ */
+export const resolveDefaultProjectSlug = createServerFn({
+  method: "GET",
+}).handler(async (): Promise<string | null> => {
+  const cookieSlug = getCookies()[LAST_PROJECT_COOKIE_NAME]
+  const { organizationId } = await requireSession()
+  const client = getPostgresClient()
+
+  const projects = await Effect.runPromise(
+    Effect.gen(function* () {
+      const repo = yield* ProjectRepository
+      return yield* repo.list()
+    }).pipe(withPostgres(ProjectRepositoryLive, client, organizationId), withTracing),
+  )
+
+  const cookieMatch = cookieSlug ? projects.find((p) => p.slug === cookieSlug) : undefined
+  const target = cookieMatch ?? projects.find((project) => project.settings?.isSample !== true) ?? projects[0]
+  return target?.slug ?? null
+})
+
+// Persist the currently visited slug so `/_authenticated/` can redirect back
+// to it. Called from the project layout's mount effect — using a server fn
+// (rather than a loader side-effect) keeps the cookie in sync even when the
+// route's `staleTime: Infinity` serves a cached loader on revisits.
+export const rememberLastProjectSlug = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ slug: z.string().min(1) }))
+  .handler(async ({ data }): Promise<void> => {
+    setCookie(LAST_PROJECT_COOKIE_NAME, data.slug, {
+      path: "/",
+      sameSite: "lax",
+      maxAge: LAST_PROJECT_COOKIE_MAX_AGE_SECONDS,
+    })
+  })
+
+export const toRecord = (project: Project) => ({
+  id: project.id,
+  organizationId: project.organizationId,
+  name: project.name,
+  slug: project.slug,
+  settings: {
+    keepMonitoring: project.settings?.keepMonitoring,
+    notifications: project.settings?.notifications,
+    escalation: project.settings?.escalation,
+    onboardingType: project.settings?.onboardingType,
+    onboardingCompleted: project.settings?.onboardingCompleted,
+    isSample: project.settings?.isSample,
+    sampling: project.settings?.sampling,
+    redaction: project.settings?.redaction,
+  },
+  firstTraceAt: project.firstTraceAt ? project.firstTraceAt.toISOString() : null,
+  deletedAt: project.deletedAt ? project.deletedAt.toISOString() : null,
+  createdAt: project.createdAt.toISOString(),
+  updatedAt: project.updatedAt.toISOString(),
+  // The shared read-only Showcase row (merged client-side into the projects
+  // collection) sets this true; every org-owned project is false.
+  isShowcase: false,
+})
+
+export type ProjectRecord = ReturnType<typeof toRecord>
+
+export const listProjects = createServerFn({ method: "GET" }).handler(async (): Promise<ProjectRecord[]> => {
+  const { organizationId } = await requireSession()
+  const client = getPostgresClient()
+
+  const projects = await Effect.runPromise(
+    Effect.gen(function* () {
+      const repo = yield* ProjectRepository
+      return yield* repo.list()
+    }).pipe(withPostgres(ProjectRepositoryLive, client, organizationId), withTracing),
+  )
+
+  return projects.map(toRecord)
+})
+
+export const createProject = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      id: z
+        .string()
+        .optional()
+        .refine((value) => value === undefined || isValidId(value), {
+          message: "Invalid project id",
+        }),
+      name: z.string(),
+    }),
+  )
+  .handler(async ({ data }): Promise<ProjectRecord> => {
+    const { organizationId, userId } = await requireSession()
+    const client = getPostgresClient()
+
+    const project = await Effect.runPromise(
+      createProjectUseCase({
+        ...(data.id ? { id: ProjectId(data.id) } : {}),
+        name: data.name,
+        actorUserId: userId,
+      }).pipe(
+        withPostgres(Layer.mergeAll(ProjectRepositoryLive, OutboxEventWriterLive), client, organizationId),
+        withTracing,
+      ),
+    )
+
+    return toRecord(project)
+  })
+
+export const updateProject = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      id: z.string(),
+      name: z.string().min(1, { message: "Name is required" }).optional(),
+      slug: z.string().min(1, { message: "Slug is required" }).optional(),
+      settings: projectSettingsSchema.optional(),
+    }),
+  )
+  .handler(async ({ data }): Promise<ProjectRecord> => {
+    const { organizationId } = await requireSession()
+    const client = getPostgresClient()
+
+    const project = await Effect.runPromise(
+      updateProjectUseCase({
+        id: ProjectId(data.id),
+        name: data.name,
+        slug: data.slug,
+        // Patch, not replace: `toRecord` narrows `settings` to what the client needs,
+        // so a replace here would drop every key it omits.
+        settingsPatch: data.settings,
+      }).pipe(
+        Effect.catchTag("InvalidProjectSlugError", (e) =>
+          Effect.fail(new Error(JSON.stringify([{ path: ["slug"], message: e.reason ?? "Invalid project slug" }]))),
+        ),
+        Effect.catchTag("InvalidProjectNameError", (e) =>
+          Effect.fail(new Error(JSON.stringify([{ path: ["name"], message: e.reason ?? "Invalid project name" }]))),
+        ),
+        withPostgres(ProjectRepositoryLive, client, organizationId),
+        withTracing,
+      ),
+    )
+    return toRecord(project)
+  })
+
+/**
+ * Change a project's PII redaction policy. Separate from `updateProject` because it
+ * is the only project setting that needs a role gate, and gating `updateProject`
+ * itself would take renames and the sampling slider away from members who have them
+ * today. Owners and admins only; `null` clears the override so the organization
+ * policy applies.
+ */
+export const updateProjectRedaction = createServerFn({ method: "POST" })
+  .inputValidator(
+    z.object({
+      projectId: z.string(),
+      redaction: redactionSettingSchema.nullable(),
+    }),
+  )
+  .handler(async ({ data }): Promise<ProjectRecord> => {
+    const { organizationId, userId } = await requireSession()
+    const client = getPostgresClient()
+
+    const project = await Effect.runPromise(
+      Effect.gen(function* () {
+        const memberships = yield* MembershipRepository
+        const isAdmin = yield* memberships.isAdmin(organizationId, userId)
+        if (!isAdmin) {
+          return yield* new ForbiddenError({
+            message: "Only organization owners and admins can change the redaction policy",
+          })
+        }
+
+        const rejected = rejectInvalidRedactionRules(data.redaction)
+        if (rejected) {
+          return yield* new BadRequestError({ message: rejectionMessage(rejected) })
+        }
+
+        return yield* updateProjectRedactionUseCase({
+          projectId: ProjectId(data.projectId),
+          actorUserId: userId,
+          redaction: data.redaction,
+        })
+      }).pipe(
+        withPostgres(
+          Layer.mergeAll(ProjectRepositoryLive, MembershipRepositoryLive, OutboxEventWriterLive),
+          client,
+          organizationId,
+        ),
+        withTracing,
+      ),
+    )
+
+    return toRecord(project)
+  })
+
+/**
+ * Score a draft redaction rule without saving it.
+ *
+ * Runs the same `validateRedactionRule` the write path uses, so the editor can never show a
+ * verdict the save disagrees with. It lives on the server because the engine is in
+ * `@domain/spans`, which has no business in the browser bundle.
+ *
+ * Gated like the write it previews, even though it reads nothing: it runs a caller's pattern, and
+ * only the people who can save a rule have any reason to ask what a rule would do.
+ */
+export const validateRedactionRuleDraft = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ rule: redactionRuleSchema }))
+  .handler(async ({ data }): Promise<RuleValidation> => {
+    const { organizationId, userId } = await requireSession()
+
+    return Effect.runPromise(
+      Effect.gen(function* () {
+        const memberships = yield* MembershipRepository
+        const isAdmin = yield* memberships.isAdmin(organizationId, userId)
+        if (!isAdmin) {
+          return yield* new ForbiddenError({
+            message: "Only organization owners and admins can check redaction rules",
+          })
+        }
+
+        return validateRedactionRule(data.rule)
+      }).pipe(withPostgres(MembershipRepositoryLive, getPostgresClient(), organizationId), withTracing),
+    )
+  })
+
+/** Kept modest: a preview that scans a thousand spans buys no more confidence than one that scans fifty. */
+const PREVIEW_SAMPLE_SIZE = 50
+
+/**
+ * Run a redaction policy over spans already stored, without saving the policy or the result.
+ *
+ * The only honest answer to "will this eat my tool outputs" before the first enforce, because
+ * redaction is destructive and not retroactive. Gated like the policy write itself: this reads
+ * customer content, so a member who cannot change the policy cannot preview against it either.
+ *
+ * The rules are validated here too, and for a sharper reason than the write path's. This runs the
+ * caller's pattern over stored tool outputs, which are far longer than anything the validator's own
+ * probe uses, so a pattern the save would reject must not reach the engine by way of the preview.
+ */
+export const previewRedaction = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ projectId: z.string(), redaction: redactionSettingSchema }))
+  .handler(async ({ data, context }): Promise<RedactionPreviewResult> => {
+    const { organizationId, userId } = await requireSession()
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const memberships = yield* MembershipRepository
+        const isAdmin = yield* memberships.isAdmin(organizationId, userId)
+        if (!isAdmin) {
+          return yield* new ForbiddenError({ message: "Only organization owners and admins can preview redaction" })
+        }
+
+        const rejected = rejectInvalidRedactionRules(data.redaction)
+        if (rejected) {
+          return yield* new BadRequestError({ message: rejectionMessage(rejected) })
+        }
+      }).pipe(withPostgres(MembershipRepositoryLive, getPostgresClient(), organizationId), withTracing),
+    )
+
+    // Branded org id from `resolveOrgScope`, never the raw one: ClickHouse has no RLS, so this is
+    // the only thing keeping the read inside the tenant.
+    const orgId = await resolveOrgScope(context)
+
+    return Effect.runPromise(
+      previewRedactionUseCase({
+        organizationId: orgId,
+        projectId: ProjectId(data.projectId),
+        policy: resolveRedactionPolicy({ organization: null, project: { redaction: data.redaction } }),
+        sampleSize: PREVIEW_SAMPLE_SIZE,
+      }).pipe(withScopedClickHouse(SpanRepositoryLive, getClickhouseClient(), orgId), withTracing),
+    )
+  })
+
+export const completeProjectOnboarding = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ projectId: z.string() }))
+  .handler(async ({ data }): Promise<ProjectRecord> => {
+    const { organizationId } = await requireSession()
+    const client = getPostgresClient()
+
+    const project = await Effect.runPromise(
+      updateProjectUseCase({
+        id: ProjectId(data.projectId),
+        settingsPatch: { onboardingCompleted: true },
+      }).pipe(withPostgres(ProjectRepositoryLive, client, organizationId), withTracing),
+    )
+
+    return toRecord(project)
+  })
+
+export const deleteProject = createServerFn({ method: "POST" })
+  .inputValidator(z.object({ id: z.string() }))
+  .handler(async ({ data }): Promise<void> => {
+    const { organizationId, userId } = await requireSession()
+    const client = getPostgresClient()
+
+    await Effect.runPromise(
+      Effect.gen(function* () {
+        const repo = yield* ProjectRepository
+        return yield* repo.softDelete(ProjectId(data.id))
+      }).pipe(withPostgres(ProjectRepositoryLive, client, organizationId), withTracing),
+    )
+
+    const outboxWriter = getOutboxWriter()
+    await Effect.runPromise(
+      outboxWriter
+        .write({
+          eventName: "ProjectDeleted",
+          aggregateType: "project",
+          aggregateId: data.id,
+          organizationId,
+          payload: {
+            organizationId,
+            actorUserId: userId,
+            projectId: data.id,
+          },
+        })
+        .pipe(Effect.provide(SqlClientLive(client, organizationId)), withTracing),
+    )
+  })

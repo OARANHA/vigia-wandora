@@ -1,0 +1,431 @@
+import type { TraceMetrics } from "@domain/spans"
+import {
+  InfiniteTable,
+  type InfiniteTableColumn,
+  type InfiniteTableInfiniteScroll,
+  type InfiniteTableSelection,
+  type InfiniteTableSorting,
+  ProviderIcon,
+  TagList,
+  Tooltip,
+} from "@repo/ui"
+import { formatCount, formatDuration, formatPercentage, relativeTime } from "@repo/utils"
+import { Link } from "@tanstack/react-router"
+import { type MouseEvent, type ReactNode, type RefObject, useCallback, useMemo } from "react"
+import { rollupCostDisplay } from "../../../../../domains/spans/cost-display.ts"
+import type { TraceRecord } from "../../../../../domains/traces/traces.functions.ts"
+import { CacheHitRateSubheader } from "./table/cache-hit-rate-subheader.tsx"
+import { IndicatorsCell } from "./table/indicators-cell.tsx"
+import { TableMetricSubheader } from "./table/metric-subheader.tsx"
+import { TraceOutlierBadge } from "./trace-outlier-badge.tsx"
+import { RELEVANCE_SORT_COLUMN } from "./trace-page-state.ts"
+
+export const DEFAULT_TRACE_TABLE_SORTING: InfiniteTableSorting = { column: "startTime", direction: "desc" }
+
+export const TRACE_COLUMN_OPTIONS = [
+  { id: "indicators", label: "Indicators" },
+  { id: "startTime", label: "Start Time", required: true },
+  { id: "name", label: "Name" },
+  { id: "tags", label: "Tags" },
+  { id: "duration", label: "Duration" },
+  { id: "ttft", label: "Time To First Token", defaultHidden: true },
+  { id: "cost", label: "Cost" },
+  { id: "cacheHitRate", label: "Cache Hit Rate" },
+  { id: "sessionId", label: "Session ID" },
+  { id: "userId", label: "User ID" },
+  { id: "models", label: "Models" },
+  { id: "spans", label: "Spans" },
+] as const
+
+export type TraceColumnId = (typeof TRACE_COLUMN_OPTIONS)[number]["id"]
+
+export interface TraceAnnotationCounts {
+  readonly positiveCount: number
+  readonly negativeCount: number
+}
+
+interface ProjectTracesTableProps {
+  readonly projectId: string
+  readonly data: readonly TraceRecord[]
+  readonly isLoading?: boolean | undefined
+  readonly visibleColumnIds: readonly TraceColumnId[]
+  readonly blankSlate?: ReactNode | string
+  readonly infiniteScroll?: InfiniteTableInfiniteScroll
+  readonly activeTraceId?: string | undefined
+  readonly activeRowAutoScroll?: boolean | undefined
+  readonly selection?: InfiniteTableSelection
+  readonly sorting?: InfiniteTableSorting
+  readonly defaultSorting?: InfiniteTableSorting
+  readonly onSortChange?: (sorting: InfiniteTableSorting) => void
+  readonly onTraceClick?: (trace: TraceRecord) => void
+  readonly getTraceRowAriaLabel?: (trace: TraceRecord) => string
+  readonly rowInteractionRole?: "button" | "link"
+  /** When provided, renders the name column as a real link for accessibility (e.g., open in new tab). */
+  readonly getTraceHref?: (trace: TraceRecord) => string
+  /** Target for the name-column link. Defaults to same-tab; use "_blank" to open in a new tab. */
+  readonly linkTarget?: "_self" | "_blank"
+  readonly traceMetrics?: TraceMetrics | null | undefined
+  readonly metricsLoading?: boolean | undefined
+  readonly annotationCounts?: ReadonlyMap<string, TraceAnnotationCounts> | undefined
+  readonly annotationCountsPendingTraceIds?: ReadonlySet<string> | undefined
+  readonly scrollContainerClassName?: string
+  readonly onErrorClick?: (trace: TraceRecord) => void
+  readonly onAnnotationClick?: (trace: TraceRecord) => void
+}
+
+type ProjectTracesTableScrollProps =
+  | {
+      readonly scrollAreaLayout: "external"
+      readonly scrollContainerRef: RefObject<HTMLDivElement | null>
+    }
+  | {
+      readonly scrollAreaLayout?: "fill" | "intrinsic"
+      readonly scrollContainerRef?: RefObject<HTMLDivElement | null>
+    }
+
+export function ProjectTracesTable({
+  projectId,
+  data,
+  isLoading,
+  visibleColumnIds,
+  blankSlate,
+  infiniteScroll,
+  activeTraceId,
+  activeRowAutoScroll,
+  selection,
+  sorting,
+  defaultSorting,
+  onSortChange,
+  onTraceClick,
+  getTraceRowAriaLabel,
+  rowInteractionRole,
+  getTraceHref,
+  linkTarget,
+  traceMetrics,
+  metricsLoading,
+  annotationCounts,
+  annotationCountsPendingTraceIds,
+  scrollAreaLayout,
+  scrollContainerClassName,
+  scrollContainerRef,
+  onErrorClick,
+  onAnnotationClick,
+}: ProjectTracesTableProps & ProjectTracesTableScrollProps) {
+  const showMetricSubheaders = traceMetrics !== undefined || metricsLoading !== undefined
+  const isRelevanceSort = sorting?.column === RELEVANCE_SORT_COLUMN
+
+  const allColumns = useMemo((): InfiniteTableColumn<TraceRecord>[] => {
+    return [
+      {
+        key: "indicators",
+        header: "Indicators",
+        width: 88,
+        minWidth: 88,
+        maxWidth: 88,
+        resizable: false,
+        ellipsis: false,
+        cellClassName: "px-0",
+        render: (trace) => (
+          <IndicatorsCell
+            errorCount={trace.errorCount}
+            annotationCounts={annotationCounts?.get(trace.traceId)}
+            annotationCountsPending={annotationCountsPendingTraceIds?.has(trace.traceId) === true}
+            {...(onErrorClick
+              ? {
+                  onErrorClick: (e: MouseEvent) => {
+                    e.stopPropagation()
+                    onErrorClick(trace)
+                  },
+                }
+              : {})}
+            {...(onAnnotationClick
+              ? {
+                  onAnnotationClick: (e: MouseEvent) => {
+                    e.stopPropagation()
+                    onAnnotationClick(trace)
+                  },
+                }
+              : {})}
+          />
+        ),
+      },
+      {
+        key: "startTime",
+        header: "Start Time",
+        sortKey: "startTime",
+        width: 210,
+        render: (trace) => (
+          <Tooltip asChild trigger={<span className="truncate">{relativeTime(new Date(trace.startTime))}</span>}>
+            {new Date(trace.startTime).toLocaleString()}
+          </Tooltip>
+        ),
+        renderSubheader: () =>
+          isRelevanceSort ? (
+            <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
+              Sorted by relevance
+            </span>
+          ) : null,
+      },
+      {
+        key: "name",
+        header: "Name",
+        width: 180,
+        render: (trace) => {
+          const displayName = trace.rootSpanName || trace.traceId.slice(0, 8)
+          if (getTraceHref) {
+            return (
+              <Link
+                to={getTraceHref(trace)}
+                onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                className="hover:underline"
+                {...(linkTarget === "_blank" ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+              >
+                {displayName}
+              </Link>
+            )
+          }
+          return displayName
+        },
+      },
+      {
+        key: "tags",
+        header: "Tags",
+        width: 150,
+        render: (trace) => <TagList tags={trace.tags} />,
+      },
+      {
+        key: "duration",
+        header: "Duration",
+        align: "end",
+        sortKey: "duration",
+        width: 140,
+        render: (trace) => (
+          <span className="flex items-center justify-end gap-1">
+            <TraceOutlierBadge projectId={projectId} value={trace.durationNs} metric="durationNs" />
+            {trace.durationNs > 0 ? formatDuration(trace.durationNs) : "-"}
+          </span>
+        ),
+        ...(showMetricSubheaders
+          ? {
+              renderSubheader: () => (
+                <TableMetricSubheader
+                  rollup={traceMetrics?.durationNs}
+                  format="duration"
+                  {...(metricsLoading !== undefined ? { isLoading: metricsLoading } : {})}
+                />
+              ),
+            }
+          : {}),
+      },
+      {
+        key: "ttft",
+        header: "Time To First Token",
+        align: "end",
+        sortKey: "ttft",
+        width: 176,
+        render: (trace) => (
+          <span className="flex items-center justify-end gap-1">
+            <TraceOutlierBadge projectId={projectId} value={trace.timeToFirstTokenNs} metric="timeToFirstTokenNs" />
+            {trace.timeToFirstTokenNs > 0 ? formatDuration(trace.timeToFirstTokenNs) : "-"}
+          </span>
+        ),
+        ...(showMetricSubheaders
+          ? {
+              renderSubheader: () => (
+                <TableMetricSubheader
+                  rollup={
+                    traceMetrics && traceMetrics.timeToFirstTokenNs.max > 0
+                      ? traceMetrics.timeToFirstTokenNs
+                      : undefined
+                  }
+                  format="duration"
+                  {...(metricsLoading !== undefined ? { isLoading: metricsLoading } : {})}
+                />
+              ),
+            }
+          : {}),
+      },
+      {
+        key: "cost",
+        header: "Cost",
+        align: "end",
+        sortKey: "cost",
+        width: 146,
+        render: (trace) => {
+          const cost = rollupCostDisplay(trace)
+          const cell = (
+            <span className="flex items-center justify-end gap-1">
+              <TraceOutlierBadge projectId={projectId} value={trace.costTotalMicrocents} metric="costTotalMicrocents" />
+              {cost.label}
+            </span>
+          )
+          if (!cost.note) return cell
+          return (
+            <Tooltip trigger={cell} asChild>
+              {cost.note}
+            </Tooltip>
+          )
+        },
+        ...(showMetricSubheaders
+          ? {
+              renderSubheader: () => (
+                <TableMetricSubheader
+                  rollup={
+                    traceMetrics && traceMetrics.costTotalMicrocents.max > 0
+                      ? traceMetrics.costTotalMicrocents
+                      : undefined
+                  }
+                  format="price"
+                  {...(metricsLoading !== undefined ? { isLoading: metricsLoading } : {})}
+                />
+              ),
+            }
+          : {}),
+      },
+      {
+        key: "cacheHitRate",
+        header: "Cache Hit Rate",
+        align: "end",
+        width: 130,
+        render: (trace) => <span>{trace.cacheHitRate === null ? "-" : formatPercentage(trace.cacheHitRate)}</span>,
+        ...(showMetricSubheaders
+          ? {
+              renderSubheader: () => (
+                <CacheHitRateSubheader
+                  analytics={traceMetrics?.tokenAnalytics}
+                  {...(metricsLoading !== undefined ? { isLoading: metricsLoading } : {})}
+                />
+              ),
+            }
+          : {}),
+      },
+      {
+        key: "sessionId",
+        header: "Session ID",
+        width: 160,
+        render: (trace) => trace.sessionId,
+      },
+      {
+        key: "userId",
+        header: "User ID",
+        width: 160,
+        render: (trace) => trace.userId,
+      },
+      {
+        key: "models",
+        header: "Models",
+        width: 160,
+        render: (trace) => (
+          <div className="flex items-center gap-1.5">
+            {trace.providers.map((provider) => (
+              <Tooltip
+                asChild
+                key={provider}
+                trigger={
+                  <span>
+                    <ProviderIcon provider={provider} size="sm" />
+                  </span>
+                }
+              >
+                {provider}
+              </Tooltip>
+            ))}
+            <span className="truncate">{trace.models.join(", ")}</span>
+          </div>
+        ),
+      },
+      {
+        key: "spans",
+        header: "Spans",
+        align: "end",
+        sortKey: "spans",
+        width: 110,
+        // JSX wrap (vs plain string) avoids DataRow's `Text.H5` auto-wrap,
+        // which would force `text-left` and override the td's `text-right`.
+        render: (trace) => <span>{formatCount(trace.spanCount)}</span>,
+        ...(showMetricSubheaders
+          ? {
+              renderSubheader: () => (
+                <TableMetricSubheader
+                  rollup={traceMetrics?.spanCount}
+                  format="count"
+                  {...(metricsLoading !== undefined ? { isLoading: metricsLoading } : {})}
+                />
+              ),
+            }
+          : {}),
+      },
+    ]
+  }, [
+    showMetricSubheaders,
+    traceMetrics,
+    metricsLoading,
+    projectId,
+    getTraceHref,
+    linkTarget,
+    annotationCounts,
+    annotationCountsPendingTraceIds,
+    onErrorClick,
+    onAnnotationClick,
+    isRelevanceSort,
+  ])
+
+  const columns = useMemo(() => {
+    const columnsById = new Map(allColumns.map((column) => [column.key, column]))
+    return visibleColumnIds.flatMap((columnId) => {
+      const column = columnsById.get(columnId)
+      return column ? [column] : []
+    })
+  }, [allColumns, visibleColumnIds])
+
+  const handleTraceClick = useCallback(
+    (trace: TraceRecord) => {
+      const selectionText = window.getSelection()?.toString()
+      if (selectionText && selectionText.length > 0) {
+        return
+      }
+
+      onTraceClick?.(trace)
+    },
+    [onTraceClick],
+  )
+
+  const defaultGetTraceRowAriaLabel = useCallback((trace: TraceRecord) => {
+    const shortName = trace.rootSpanName || trace.traceId.slice(0, 8)
+    return `View trace ${shortName}`
+  }, [])
+
+  const scrollAreaProps =
+    scrollAreaLayout === "external"
+      ? ({ scrollAreaLayout: "external", scrollContainerRef } as const)
+      : {
+          ...(scrollAreaLayout !== undefined ? { scrollAreaLayout } : {}),
+          ...(scrollContainerRef !== undefined ? { scrollContainerRef } : {}),
+        }
+
+  return (
+    <InfiniteTable
+      data={data}
+      {...(isLoading !== undefined ? { isLoading } : {})}
+      {...scrollAreaProps}
+      {...(scrollContainerClassName !== undefined ? { className: scrollContainerClassName } : {})}
+      columns={columns}
+      getRowKey={(trace) => trace.traceId}
+      {...(onTraceClick
+        ? {
+            onRowClick: handleTraceClick,
+            getRowAriaLabel: getTraceRowAriaLabel ?? defaultGetTraceRowAriaLabel,
+            ...(rowInteractionRole ? { rowInteractionRole } : {}),
+          }
+        : {})}
+      {...(activeTraceId ? { activeRowKey: activeTraceId } : {})}
+      {...(activeRowAutoScroll ? { activeRowAutoScroll } : {})}
+      {...(selection ? { selection } : {})}
+      {...(infiniteScroll ? { infiniteScroll } : {})}
+      {...(sorting ? { sorting } : {})}
+      {...(defaultSorting ? { defaultSorting } : {})}
+      {...(onSortChange ? { onSortChange } : {})}
+      {...(blankSlate !== undefined ? { blankSlate } : {})}
+    />
+  )
+}

@@ -1,0 +1,917 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches: [development]
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy"
+        required: true
+        type: choice
+        options:
+          - staging
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  validate-target:
+    runs-on: ubuntu-latest
+    if: ${{ github.repository == 'latitude-dev/latitude-llm' }}
+    outputs:
+      target_sha: ${{ steps.target.outputs.target_sha }}
+      staging_should_deploy: ${{ steps.target.outputs.staging_should_deploy }}
+      production_should_deploy: ${{ steps.target.outputs.production_should_deploy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Resolve deployment target
+        id: target
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          BEFORE_SHA: ${{ github.event.before }}
+          CURRENT_SHA: ${{ github.sha }}
+          INPUT_ENVIRONMENT: ${{ inputs.environment }}
+        run: |
+          set -euo pipefail
+
+          staging_should_deploy=false
+          production_should_deploy=false
+          target_sha=""
+
+          git fetch origin development --quiet
+
+          if [ "${EVENT_NAME}" = "push" ]; then
+            if [ "${REF_TYPE}" = "tag" ]; then
+              target_sha=$(git rev-parse "${REF_NAME}^{commit}")
+              production_should_deploy=true
+
+              if ! echo "${REF_NAME}" | grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$'; then
+                echo "Production tags must look like v1.2.3. Got: ${REF_NAME}"
+                exit 1
+              fi
+            else
+              if [ "${REF_NAME}" != "development" ]; then
+                echo "Branch push deployments only run from development."
+                exit 1
+              fi
+
+              target_sha="${CURRENT_SHA}"
+              staging_should_deploy=true
+            fi
+          else
+            if [ "${REF_NAME}" != "development" ]; then
+              echo "Manual deployments must be dispatched from the development branch."
+              exit 1
+            fi
+
+            if [ "${INPUT_ENVIRONMENT}" = "production" ]; then
+              echo "Production deploys are triggered by release tag pushes only. Use scripts/release.sh to tag the latest origin/development commit."
+              exit 1
+            elif [ "${INPUT_ENVIRONMENT}" = "staging" ]; then
+              target_sha="${CURRENT_SHA}"
+              staging_should_deploy=true
+            else
+              echo "Unsupported environment: ${INPUT_ENVIRONMENT}"
+              exit 1
+            fi
+          fi
+
+          if ! echo "${target_sha}" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "Invalid deployment target SHA: ${target_sha}"
+            exit 1
+          fi
+
+          if ! git cat-file -e "${target_sha}^{commit}"; then
+            echo "Target SHA does not exist: ${target_sha}"
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "${target_sha}" origin/development; then
+            echo "Target SHA ${target_sha} is not reachable from origin/development."
+            exit 1
+          fi
+
+          if [ "${production_should_deploy}" = "true" ] && [ "${target_sha}" != "$(git rev-parse origin/development)" ]; then
+            echo "Production tags must point at the latest origin/development commit."
+            echo "Target SHA: ${target_sha}"
+            echo "Latest origin/development: $(git rev-parse origin/development)"
+            exit 1
+          fi
+
+          {
+            echo "target_sha=${target_sha}"
+            echo "staging_should_deploy=${staging_should_deploy}"
+            echo "production_should_deploy=${production_should_deploy}"
+          } >> "${GITHUB_OUTPUT}"
+
+  check:
+    needs: validate-target
+    if: needs.validate-target.outputs.production_should_deploy == 'true'
+    uses: ./.github/workflows/check.yml
+    with:
+      ref: ${{ needs.validate-target.outputs.target_sha }}
+
+  typecheck:
+    needs: validate-target
+    if: needs.validate-target.outputs.production_should_deploy == 'true'
+    uses: ./.github/workflows/typecheck.yml
+    with:
+      ref: ${{ needs.validate-target.outputs.target_sha }}
+
+  test:
+    needs: validate-target
+    if: needs.validate-target.outputs.production_should_deploy == 'true'
+    uses: ./.github/workflows/test.yml
+    with:
+      ref: ${{ needs.validate-target.outputs.target_sha }}
+
+  # ── Staging ──────────────────────────────────────────────
+
+  staging-build:
+    needs: validate-target
+    if: needs.validate-target.outputs.staging_should_deploy == 'true'
+    uses: ./.github/workflows/build-images.yml
+    with:
+      environment: staging
+      ref: ${{ needs.validate-target.outputs.target_sha }}
+      push: true
+    secrets: inherit
+
+  staging-apply:
+    needs: staging-build
+    runs-on: ubuntu-latest
+    # One end-to-end apply (migrate + ECS rollout) at a time per environment.
+    concurrency:
+      group: deploy-staging-apply
+      cancel-in-progress: false
+    environment: staging
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: eu-central-1
+
+      - name: Run migrations
+        env:
+          CLUSTER: latitude-staging-cluster
+          TASK_DEF: latitude-staging-migrations
+          LOG_GROUP: /ecs/latitude-staging/migrations
+        run: |
+          SERVICE_ARN=$(aws ecs list-services \
+            --cluster "${CLUSTER}" \
+            --query "serviceArns[?contains(@, 'web')]" \
+            --output text)
+
+          NETWORK=$(aws ecs describe-services \
+            --cluster "${CLUSTER}" \
+            --services "${SERVICE_ARN}" \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration' \
+            --output json)
+
+          SUBNETS=$(echo "$NETWORK" | jq -r '.subnets | join(",")')
+          SECURITY_GROUP=$(echo "$NETWORK" | jq -r '.securityGroups[0]')
+          PUBLIC_IP=$(echo "$NETWORK" | jq -r '.assignPublicIp')
+
+          TASK=$(aws ecs run-task \
+            --cluster "${CLUSTER}" \
+            --task-definition "${TASK_DEF}" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${SUBNETS}],securityGroups=[${SECURITY_GROUP}],assignPublicIp=${PUBLIC_IP}}" \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          TASK_ID=$(basename "${TASK}")
+
+          echo "Started migration task: ${TASK_ID}"
+          echo "Waiting for task to start..."
+
+          aws ecs wait tasks-running --cluster "${CLUSTER}" --tasks "${TASK}"
+
+          echo "Task is running, streaming logs..."
+
+          LAST_EVENT_TIME=0
+
+          while true; do
+            STATUS=$(aws ecs describe-tasks \
+              --cluster "${CLUSTER}" \
+              --tasks "${TASK}" \
+              --query 'tasks[0].lastStatus' \
+              --output text)
+
+            LOG_STREAM=$(aws logs describe-log-streams \
+              --log-group-name "${LOG_GROUP}" \
+              --log-stream-name-prefix "migrations/migrations/${TASK_ID}" \
+              --query 'logStreams[0].logStreamName' \
+              --output text 2>/dev/null || echo "")
+
+            if [ -n "${LOG_STREAM}" ] && [ "${LOG_STREAM}" != "None" ]; then
+              EVENTS=$(aws logs get-log-events \
+                --log-group-name "${LOG_GROUP}" \
+                --log-stream-name "${LOG_STREAM}" \
+                --start-time "${LAST_EVENT_TIME}" \
+                --query 'events' \
+                --output json)
+
+              echo "${EVENTS}" | jq -r '.[] | .message' 2>/dev/null
+
+              NEWEST_TIME=$(echo "${EVENTS}" | jq -r '.[-1].timestamp // empty' 2>/dev/null)
+              if [ -n "${NEWEST_TIME}" ]; then
+                LAST_EVENT_TIME=$((NEWEST_TIME + 1))
+              fi
+            fi
+
+            if [ "${STATUS}" = "STOPPED" ]; then
+              echo "Task stopped, fetching final logs..."
+
+              if [ -n "${LOG_STREAM}" ] && [ "${LOG_STREAM}" != "None" ]; then
+                EVENTS=$(aws logs get-log-events \
+                  --log-group-name "${LOG_GROUP}" \
+                  --log-stream-name "${LOG_STREAM}" \
+                  --start-time "${LAST_EVENT_TIME}" \
+                  --query 'events' \
+                  --output json)
+                echo "${EVENTS}" | jq -r '.[] | .message' 2>/dev/null
+              fi
+              break
+            fi
+
+            sleep 2
+          done
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster "${CLUSTER}" \
+            --tasks "${TASK}" \
+            --query 'tasks[0].containers[0].exitCode' \
+            --output text)
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migrations failed with exit code ${EXIT_CODE}"
+            exit 1
+          fi
+          echo "Migrations completed successfully"
+
+      - name: Deploy all services
+        env:
+          CLUSTER: latitude-staging-cluster
+          ENV_NAME: staging
+          IMAGE_TAG: ${{ needs.staging-build.outputs.image_tag }}
+          REGISTRY: ${{ needs.staging-build.outputs.registry }}
+        run: |
+          set -euo pipefail
+          poll_service_rollout() {
+            local SERVICE="$1"
+            local SERVICE_ARN="$2"
+            local MAX_ATTEMPTS=60
+            local SLEEP_SECONDS=10
+            local attempt=1
+            local last_event=""
+
+            while [ "${attempt}" -le "${MAX_ATTEMPTS}" ]; do
+              local service_json
+              service_json=$(aws ecs describe-services \
+                --cluster "${CLUSTER}" \
+                --services "${SERVICE_ARN}" \
+                --output json)
+
+              local progress_line
+              progress_line=$(echo "${service_json}" | jq -r '
+                .services[0] as $service |
+                [
+                  "desired=\($service.desiredCount // 0)",
+                  "running=\($service.runningCount // 0)",
+                  "pending=\($service.pendingCount // 0)",
+                  "deployments=" + ((
+                    $service.deployments // []
+                  ) | map("\(.status // "unknown")/\(.rolloutState // "n/a")@\(.taskDefinition | split("/")[-1])") | join(", "))
+                ] | join(" | ")
+              ')
+              echo "[${SERVICE}] Poll ${attempt}/${MAX_ATTEMPTS}: ${progress_line}"
+
+              local newest_event
+              newest_event=$(echo "${service_json}" | jq -r '
+                .services[0].events[0]? |
+                "\(.createdAt // "n/a")|\(.message // "")"
+              ')
+              if [ -n "${newest_event}" ] && [ "${newest_event}" != "null|null" ] && [ "${newest_event}" != "${last_event}" ]; then
+                echo "${service_json}" | jq -r --arg service "${SERVICE}" '
+                  .services[0].events[0:3][]? |
+                  "[" + $service + "] Event: " + (.message // "")
+                '
+                last_event="${newest_event}"
+              fi
+
+              local is_stable
+              is_stable=$(echo "${service_json}" | jq -r '
+                .services[0] as $service |
+                ($service.deployments | length == 1) and
+                (($service.deployments[0].rolloutState // "") == "COMPLETED") and
+                (($service.runningCount // 0) == ($service.desiredCount // 0)) and
+                (($service.pendingCount // 0) == 0)
+              ')
+
+              if [ "${is_stable}" = "true" ]; then
+                echo "[${SERVICE}] Service stabilized successfully"
+                return 0
+              fi
+
+              if [ "${attempt}" -lt "${MAX_ATTEMPTS}" ]; then
+                sleep "${SLEEP_SECONDS}"
+              fi
+              attempt=$((attempt + 1))
+            done
+
+            echo "[${SERVICE}] Timed out waiting for service to stabilize"
+            return 1
+          }
+
+          dump_service_debug() {
+            local SERVICE="$1"
+            local SERVICE_ARN="$2"
+
+            echo "[${SERVICE}] Final ECS service snapshot:"
+            aws ecs describe-services \
+              --cluster "${CLUSTER}" \
+              --services "${SERVICE_ARN}" \
+              --output json | jq -r --arg service "${SERVICE}" '
+                .services[0] as $service |
+                "[" + $service + "] desired=\($service.desiredCount // 0) running=\($service.runningCount // 0) pending=\($service.pendingCount // 0)",
+                (
+                  $service.deployments[]? |
+                  "[" + $service + "] deployment status=\(.status // "unknown") rollout=\(.rolloutState // "n/a") taskDef=\(.taskDefinition | split("/")[-1]) running=\(.runningCount // 0) pending=\(.pendingCount // 0) created=\(.createdAt // "n/a") updated=\(.updatedAt // "n/a")"
+                ),
+                (
+                  $service.events[0:10][]? |
+                  "[" + $service + "] event: \(.createdAt // "n/a") \(.message // "")"
+                )
+              '
+
+            local stopped_tasks
+            stopped_tasks=$(aws ecs list-tasks \
+              --cluster "${CLUSTER}" \
+              --service-name "latitude-${ENV_NAME}-${SERVICE}" \
+              --desired-status STOPPED \
+              --output json | jq -r '.taskArns[:5] | join(" ")')
+
+            if [ -n "${stopped_tasks}" ]; then
+              echo "[${SERVICE}] Recent stopped tasks:"
+              aws ecs describe-tasks \
+                --cluster "${CLUSTER}" \
+                --tasks ${stopped_tasks} \
+                --output json | jq -r --arg service "${SERVICE}" '
+                  .tasks[]? as $task |
+                  "[" + $service + "] task=" + ($task.taskArn | split("/")[-1]) +
+                  " lastStatus=" + ($task.lastStatus // "unknown") +
+                  " stopCode=" + ($task.stopCode // "n/a") +
+                  " stoppedReason=" + ($task.stoppedReason // "n/a"),
+                  (
+                    $task.containers[]? |
+                    "[" + $service + "]   container=" + (.name // "unknown") +
+                    " exitCode=" + ((.exitCode // "n/a") | tostring) +
+                    " reason=" + (.reason // "n/a")
+                  )
+                '
+            else
+              echo "[${SERVICE}] No stopped tasks found for debugging"
+            fi
+          }
+
+          deploy_service() {
+            local SERVICE="$1"
+            set -euo pipefail
+            echo "::group::Deploy ${SERVICE}"
+            FAMILY="latitude-${ENV_NAME}-${SERVICE}"
+            IMAGE="${REGISTRY}/latitude-${ENV_NAME}-${SERVICE}:${IMAGE_TAG}"
+            SERVICE_ARN=$(aws ecs list-services \
+              --cluster "${CLUSTER}" \
+              --query "serviceArns[?contains(@, 'latitude-${ENV_NAME}-${SERVICE}')]" \
+              --output text)
+            echo "[${SERVICE}] Using service ARN ${SERVICE_ARN}"
+            aws ecs register-task-definition \
+              --family "${FAMILY}" \
+              --cli-input-json "$(aws ecs describe-task-definition \
+                --task-definition "${FAMILY}" \
+                --query 'taskDefinition' \
+                --output json | jq \
+                  --arg image "${IMAGE}" \
+                  --arg name "${SERVICE}" \
+                  --arg logLevel "warn" '
+                  .containerDefinitions |= map(
+                    if .name == $name then
+                      .image = $image |
+                      .environment = (
+                        (.environment // []) |
+                        map(if .name == "LAT_LOG_LEVEL" then .value = $logLevel else . end) |
+                        if any(.[]; .name == "LAT_LOG_LEVEL") then . else . + [{ name: "LAT_LOG_LEVEL", value: $logLevel }] end
+                      )
+                    elif .name == "datadog-agent" then
+                      .environment = (
+                        (.environment // []) |
+                        map(if .name == "DD_LOG_LEVEL" then .value = "error" else . end) |
+                        if any(.[]; .name == "DD_LOG_LEVEL") then . else . + [{ name: "DD_LOG_LEVEL", value: "error" }] end
+                      ) |
+                      del(.logConfiguration)
+                    else . end
+                  ) |
+                  del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+                ')" > /dev/null
+            local update_response
+            update_response=$(aws ecs update-service \
+              --cluster "${CLUSTER}" \
+              --service "${SERVICE_ARN}" \
+              --task-definition "${FAMILY}")
+            echo "${update_response}" | jq -r --arg service "${SERVICE}" '
+              .service as $serviceData |
+              "[" + $service + "] Updated service to taskDef=" + ($serviceData.taskDefinition | split("/")[-1]),
+              (
+                $serviceData.deployments[]? |
+                "[" + $service + "] deployment status=\(.status // "unknown") rollout=\(.rolloutState // "n/a") running=\(.runningCount // 0) pending=\(.pendingCount // 0)"
+              )
+            '
+
+            if ! poll_service_rollout "${SERVICE}" "${SERVICE_ARN}"; then
+              dump_service_debug "${SERVICE}" "${SERVICE_ARN}"
+              echo "::endgroup::"
+              return 1
+            fi
+            echo "::endgroup::"
+          }
+          export -f deploy_service
+          export -f poll_service_rollout
+          export -f dump_service_debug
+          export CLUSTER ENV_NAME IMAGE_TAG REGISTRY
+
+          pids=()
+          for SERVICE in web api ingest workers workflows; do
+            ( deploy_service "${SERVICE}" ) &
+            pids+=($!)
+          done
+          ec=0
+          for pid in "${pids[@]}"; do
+            wait "${pid}" || ec=1
+          done
+          exit "${ec}"
+
+  staging-upload-sourcemaps:
+    needs: staging-build
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      deployment: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.staging-build.outputs.git_commit_sha }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 25
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build all apps
+        run: pnpm turbo run build --filter "@app/*"
+        env:
+          NODE_ENV: production
+          VITE_LAT_TURNSTILE_SITE_KEY: ${{ vars.VITE_LAT_TURNSTILE_SITE_KEY }}
+          VITE_LAT_POSTHOG_KEY: ${{ vars.VITE_LAT_POSTHOG_KEY }}
+          VITE_LAT_POSTHOG_HOST: ${{ vars.VITE_LAT_POSTHOG_HOST }}
+          VITE_LAT_GTM_CONTAINER_ID: ${{ vars.VITE_LAT_GTM_CONTAINER_ID }}
+          VITE_LAT_CLARITY_PROJECT_ID: ${{ vars.VITE_LAT_CLARITY_PROJECT_ID }}
+
+      - name: Upload sourcemaps to Datadog
+        run: |
+          # Full git SHA matches DD_VERSION / DD_GIT_COMMIT_SHA in container images (Datadog requires a long release id).
+          RELEASE="${{ needs.staging-build.outputs.git_commit_sha }}"
+          pnpm dlx @datadog/datadog-ci sourcemaps upload apps/web/.output/public \
+            --service web \
+            --release-version "$RELEASE" \
+            --minified-path-prefix "${{ vars.DD_SOURCEMAP_URL_PREFIX }}"
+          pnpm dlx @datadog/datadog-ci sourcemaps upload apps/web/.output/server \
+            --service web \
+            --release-version "$RELEASE" \
+            --minified-path-prefix "/app/apps/web/.output/server"
+          # datadog-ci only globs **/*.js, but nitro emits .mjs and node loads
+          # those at runtime. Mirror the upload for .mjs.map so Datadog can
+          # symbolicate frames keyed at .mjs paths too.
+          node apps/web/scripts/upload-mjs-sourcemaps.mjs \
+            apps/web/.output/server web "$RELEASE" "/app/apps/web/.output/server"
+          for SERVICE in api ingest workers workflows; do
+            pnpm dlx @datadog/datadog-ci sourcemaps upload "apps/${SERVICE}/dist" \
+              --service "$SERVICE" \
+              --release-version "$RELEASE" \
+              --minified-path-prefix "/app/apps/${SERVICE}/dist"
+          done
+        env:
+          DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+          DATADOG_SITE: ${{ vars.DATADOG_SITE }}
+
+  # ── Production ───────────────────────────────────────────
+
+  production-build:
+    needs: [validate-target, check, typecheck, test]
+    if: needs.validate-target.outputs.production_should_deploy == 'true'
+    uses: ./.github/workflows/build-images.yml
+    with:
+      environment: production
+      ref: ${{ needs.validate-target.outputs.target_sha }}
+      push: true
+    secrets: inherit
+
+  production-apply:
+    needs: production-build
+    runs-on: ubuntu-latest
+    # One end-to-end apply (migrate + ECS rollout) at a time per environment.
+    concurrency:
+      group: deploy-production-apply
+      cancel-in-progress: false
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.2.4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: eu-central-1
+
+      - name: Run migrations
+        env:
+          CLUSTER: latitude-production-cluster
+          TASK_DEF: latitude-production-migrations
+          LOG_GROUP: /ecs/latitude-production/migrations
+        run: |
+          SERVICE_ARN=$(aws ecs list-services \
+            --cluster "${CLUSTER}" \
+            --query "serviceArns[?contains(@, 'web')]" \
+            --output text)
+
+          NETWORK=$(aws ecs describe-services \
+            --cluster "${CLUSTER}" \
+            --services "${SERVICE_ARN}" \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration' \
+            --output json)
+
+          SUBNETS=$(echo "$NETWORK" | jq -r '.subnets | join(",")')
+          SECURITY_GROUP=$(echo "$NETWORK" | jq -r '.securityGroups[0]')
+          PUBLIC_IP=$(echo "$NETWORK" | jq -r '.assignPublicIp')
+
+          TASK=$(aws ecs run-task \
+            --cluster "${CLUSTER}" \
+            --task-definition "${TASK_DEF}" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${SUBNETS}],securityGroups=[${SECURITY_GROUP}],assignPublicIp=${PUBLIC_IP}}" \
+            --query 'tasks[0].taskArn' \
+            --output text)
+
+          TASK_ID=$(basename "${TASK}")
+
+          echo "Started migration task: ${TASK_ID}"
+          echo "Waiting for task to start..."
+
+          aws ecs wait tasks-running --cluster "${CLUSTER}" --tasks "${TASK}"
+
+          echo "Task is running, streaming logs..."
+
+          LAST_EVENT_TIME=0
+
+          while true; do
+            STATUS=$(aws ecs describe-tasks \
+              --cluster "${CLUSTER}" \
+              --tasks "${TASK}" \
+              --query 'tasks[0].lastStatus' \
+              --output text)
+
+            LOG_STREAM=$(aws logs describe-log-streams \
+              --log-group-name "${LOG_GROUP}" \
+              --log-stream-name-prefix "migrations/migrations/${TASK_ID}" \
+              --query 'logStreams[0].logStreamName' \
+              --output text 2>/dev/null || echo "")
+
+            if [ -n "${LOG_STREAM}" ] && [ "${LOG_STREAM}" != "None" ]; then
+              EVENTS=$(aws logs get-log-events \
+                --log-group-name "${LOG_GROUP}" \
+                --log-stream-name "${LOG_STREAM}" \
+                --start-time "${LAST_EVENT_TIME}" \
+                --query 'events' \
+                --output json)
+
+              echo "${EVENTS}" | jq -r '.[] | .message' 2>/dev/null
+
+              NEWEST_TIME=$(echo "${EVENTS}" | jq -r '.[-1].timestamp // empty' 2>/dev/null)
+              if [ -n "${NEWEST_TIME}" ]; then
+                LAST_EVENT_TIME=$((NEWEST_TIME + 1))
+              fi
+            fi
+
+            if [ "${STATUS}" = "STOPPED" ]; then
+              echo "Task stopped, fetching final logs..."
+
+              if [ -n "${LOG_STREAM}" ] && [ "${LOG_STREAM}" != "None" ]; then
+                EVENTS=$(aws logs get-log-events \
+                  --log-group-name "${LOG_GROUP}" \
+                  --log-stream-name "${LOG_STREAM}" \
+                  --start-time "${LAST_EVENT_TIME}" \
+                  --query 'events' \
+                  --output json)
+                echo "${EVENTS}" | jq -r '.[] | .message' 2>/dev/null
+              fi
+              break
+            fi
+
+            sleep 2
+          done
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster "${CLUSTER}" \
+            --tasks "${TASK}" \
+            --query 'tasks[0].containers[0].exitCode' \
+            --output text)
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migrations failed with exit code ${EXIT_CODE}"
+            exit 1
+          fi
+          echo "Migrations completed successfully"
+
+      - name: Deploy all services
+        env:
+          CLUSTER: latitude-production-cluster
+          ENV_NAME: production
+          IMAGE_TAG: ${{ needs.production-build.outputs.image_tag }}
+          REGISTRY: ${{ needs.production-build.outputs.registry }}
+        run: |
+          set -euo pipefail
+          poll_service_rollout() {
+            local SERVICE="$1"
+            local SERVICE_ARN="$2"
+            local MAX_ATTEMPTS=60
+            local SLEEP_SECONDS=10
+            local attempt=1
+            local last_event=""
+
+            while [ "${attempt}" -le "${MAX_ATTEMPTS}" ]; do
+              local service_json
+              service_json=$(aws ecs describe-services \
+                --cluster "${CLUSTER}" \
+                --services "${SERVICE_ARN}" \
+                --output json)
+
+              local progress_line
+              progress_line=$(echo "${service_json}" | jq -r '
+                .services[0] as $service |
+                [
+                  "desired=\($service.desiredCount // 0)",
+                  "running=\($service.runningCount // 0)",
+                  "pending=\($service.pendingCount // 0)",
+                  "deployments=" + ((
+                    $service.deployments // []
+                  ) | map("\(.status // "unknown")/\(.rolloutState // "n/a")@\(.taskDefinition | split("/")[-1])") | join(", "))
+                ] | join(" | ")
+              ')
+              echo "[${SERVICE}] Poll ${attempt}/${MAX_ATTEMPTS}: ${progress_line}"
+
+              local newest_event
+              newest_event=$(echo "${service_json}" | jq -r '
+                .services[0].events[0]? |
+                "\(.createdAt // "n/a")|\(.message // "")"
+              ')
+              if [ -n "${newest_event}" ] && [ "${newest_event}" != "null|null" ] && [ "${newest_event}" != "${last_event}" ]; then
+                echo "${service_json}" | jq -r --arg service "${SERVICE}" '
+                  .services[0].events[0:3][]? |
+                  "[" + $service + "] Event: " + (.message // "")
+                '
+                last_event="${newest_event}"
+              fi
+
+              local is_stable
+              is_stable=$(echo "${service_json}" | jq -r '
+                .services[0] as $service |
+                ($service.deployments | length == 1) and
+                (($service.deployments[0].rolloutState // "") == "COMPLETED") and
+                (($service.runningCount // 0) == ($service.desiredCount // 0)) and
+                (($service.pendingCount // 0) == 0)
+              ')
+
+              if [ "${is_stable}" = "true" ]; then
+                echo "[${SERVICE}] Service stabilized successfully"
+                return 0
+              fi
+
+              if [ "${attempt}" -lt "${MAX_ATTEMPTS}" ]; then
+                sleep "${SLEEP_SECONDS}"
+              fi
+              attempt=$((attempt + 1))
+            done
+
+            echo "[${SERVICE}] Timed out waiting for service to stabilize"
+            return 1
+          }
+
+          dump_service_debug() {
+            local SERVICE="$1"
+            local SERVICE_ARN="$2"
+
+            echo "[${SERVICE}] Final ECS service snapshot:"
+            aws ecs describe-services \
+              --cluster "${CLUSTER}" \
+              --services "${SERVICE_ARN}" \
+              --output json | jq -r --arg service "${SERVICE}" '
+                .services[0] as $service |
+                "[" + $service + "] desired=\($service.desiredCount // 0) running=\($service.runningCount // 0) pending=\($service.pendingCount // 0)",
+                (
+                  $service.deployments[]? |
+                  "[" + $service + "] deployment status=\(.status // "unknown") rollout=\(.rolloutState // "n/a") taskDef=\(.taskDefinition | split("/")[-1]) running=\(.runningCount // 0) pending=\(.pendingCount // 0) created=\(.createdAt // "n/a") updated=\(.updatedAt // "n/a")"
+                ),
+                (
+                  $service.events[0:10][]? |
+                  "[" + $service + "] event: \(.createdAt // "n/a") \(.message // "")"
+                )
+              '
+
+            local stopped_tasks
+            stopped_tasks=$(aws ecs list-tasks \
+              --cluster "${CLUSTER}" \
+              --service-name "latitude-${ENV_NAME}-${SERVICE}" \
+              --desired-status STOPPED \
+              --output json | jq -r '.taskArns[:5] | join(" ")')
+
+            if [ -n "${stopped_tasks}" ]; then
+              echo "[${SERVICE}] Recent stopped tasks:"
+              aws ecs describe-tasks \
+                --cluster "${CLUSTER}" \
+                --tasks ${stopped_tasks} \
+                --output json | jq -r --arg service "${SERVICE}" '
+                  .tasks[]? as $task |
+                  "[" + $service + "] task=" + ($task.taskArn | split("/")[-1]) +
+                  " lastStatus=" + ($task.lastStatus // "unknown") +
+                  " stopCode=" + ($task.stopCode // "n/a") +
+                  " stoppedReason=" + ($task.stoppedReason // "n/a"),
+                  (
+                    $task.containers[]? |
+                    "[" + $service + "]   container=" + (.name // "unknown") +
+                    " exitCode=" + ((.exitCode // "n/a") | tostring) +
+                    " reason=" + (.reason // "n/a")
+                  )
+                '
+            else
+              echo "[${SERVICE}] No stopped tasks found for debugging"
+            fi
+          }
+
+          deploy_service() {
+            local SERVICE="$1"
+            set -euo pipefail
+            echo "::group::Deploy ${SERVICE}"
+            FAMILY="latitude-${ENV_NAME}-${SERVICE}"
+            IMAGE="${REGISTRY}/latitude-${ENV_NAME}-${SERVICE}:${IMAGE_TAG}"
+            SERVICE_ARN=$(aws ecs list-services \
+              --cluster "${CLUSTER}" \
+              --query "serviceArns[?contains(@, 'latitude-${ENV_NAME}-${SERVICE}')]" \
+              --output text)
+            echo "[${SERVICE}] Using service ARN ${SERVICE_ARN}"
+            aws ecs register-task-definition \
+              --family "${FAMILY}" \
+              --cli-input-json "$(aws ecs describe-task-definition \
+                --task-definition "${FAMILY}" \
+                --query 'taskDefinition' \
+                --output json | jq \
+                  --arg image "${IMAGE}" \
+                  --arg name "${SERVICE}" \
+                  --arg logLevel "warn" '
+                  .containerDefinitions |= map(
+                    if .name == $name then
+                      .image = $image |
+                      .environment = (
+                        (.environment // []) |
+                        map(if .name == "LAT_LOG_LEVEL" then .value = $logLevel else . end) |
+                        if any(.[]; .name == "LAT_LOG_LEVEL") then . else . + [{ name: "LAT_LOG_LEVEL", value: $logLevel }] end
+                      )
+                    elif .name == "datadog-agent" then
+                      .environment = (
+                        (.environment // []) |
+                        map(if .name == "DD_LOG_LEVEL" then .value = "error" else . end) |
+                        if any(.[]; .name == "DD_LOG_LEVEL") then . else . + [{ name: "DD_LOG_LEVEL", value: "error" }] end
+                      ) |
+                      del(.logConfiguration)
+                    else . end
+                  ) |
+                  del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)
+                ')" > /dev/null
+            local update_response
+            update_response=$(aws ecs update-service \
+              --cluster "${CLUSTER}" \
+              --service "${SERVICE_ARN}" \
+              --task-definition "${FAMILY}")
+            echo "${update_response}" | jq -r --arg service "${SERVICE}" '
+              .service as $serviceData |
+              "[" + $service + "] Updated service to taskDef=" + ($serviceData.taskDefinition | split("/")[-1]),
+              (
+                $serviceData.deployments[]? |
+                "[" + $service + "] deployment status=\(.status // "unknown") rollout=\(.rolloutState // "n/a") running=\(.runningCount // 0) pending=\(.pendingCount // 0)"
+              )
+            '
+
+            if ! poll_service_rollout "${SERVICE}" "${SERVICE_ARN}"; then
+              dump_service_debug "${SERVICE}" "${SERVICE_ARN}"
+              echo "::endgroup::"
+              return 1
+            fi
+            echo "::endgroup::"
+          }
+          export -f deploy_service
+          export -f poll_service_rollout
+          export -f dump_service_debug
+          export CLUSTER ENV_NAME IMAGE_TAG REGISTRY
+
+          pids=()
+          for SERVICE in web api ingest workers workflows; do
+            ( deploy_service "${SERVICE}" ) &
+            pids+=($!)
+          done
+          ec=0
+          for pid in "${pids[@]}"; do
+            wait "${pid}" || ec=1
+          done
+          exit "${ec}"
+
+  production-upload-sourcemaps:
+    needs: production-build
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      deployment: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ needs.production-build.outputs.git_commit_sha }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 25
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Build all apps
+        run: pnpm turbo run build --filter "@app/*"
+        env:
+          NODE_ENV: production
+          VITE_LAT_TURNSTILE_SITE_KEY: ${{ vars.VITE_LAT_TURNSTILE_SITE_KEY }}
+          VITE_LAT_POSTHOG_KEY: ${{ vars.VITE_LAT_POSTHOG_KEY }}
+          VITE_LAT_POSTHOG_HOST: ${{ vars.VITE_LAT_POSTHOG_HOST }}
+          VITE_LAT_GTM_CONTAINER_ID: ${{ vars.VITE_LAT_GTM_CONTAINER_ID }}
+          VITE_LAT_CLARITY_PROJECT_ID: ${{ vars.VITE_LAT_CLARITY_PROJECT_ID }}
+
+      - name: Upload sourcemaps to Datadog
+        run: |
+          RELEASE="${{ needs.production-build.outputs.git_commit_sha }}"
+          pnpm dlx @datadog/datadog-ci sourcemaps upload apps/web/.output/public \
+            --service web \
+            --release-version "$RELEASE" \
+            --minified-path-prefix "${{ vars.DD_SOURCEMAP_URL_PREFIX }}"
+          pnpm dlx @datadog/datadog-ci sourcemaps upload apps/web/.output/server \
+            --service web \
+            --release-version "$RELEASE" \
+            --minified-path-prefix "/app/apps/web/.output/server"
+          # datadog-ci only globs **/*.js, but nitro emits .mjs and node loads
+          # those at runtime. Mirror the upload for .mjs.map so Datadog can
+          # symbolicate frames keyed at .mjs paths too.
+          node apps/web/scripts/upload-mjs-sourcemaps.mjs \
+            apps/web/.output/server web "$RELEASE" "/app/apps/web/.output/server"
+          for SERVICE in api ingest workers workflows; do
+            pnpm dlx @datadog/datadog-ci sourcemaps upload "apps/${SERVICE}/dist" \
+              --service "$SERVICE" \
+              --release-version "$RELEASE" \
+              --minified-path-prefix "/app/apps/${SERVICE}/dist"
+          done
+        env:
+          DATADOG_API_KEY: ${{ secrets.DATADOG_API_KEY }}
+          DATADOG_SITE: ${{ vars.DATADOG_SITE }}

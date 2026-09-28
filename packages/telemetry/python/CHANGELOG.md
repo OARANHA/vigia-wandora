@@ -1,0 +1,253 @@
+# Changelog
+
+All notable changes to the Python Telemetry SDK will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Changed
+
+- Dev extra now pins `openai` 3.3.1. `openai-agents` is 0.21.0 so the graph can resolve
+  (`0.15.1` required `openai<3`). LiteLLM is no longer co-installed: every published
+  `litellm` still requires `openai<3`. Install it separately for the LiteLLM examples.
+- `openinference-semantic-conventions` is 0.1.33, which `openinference-instrumentation-openai`
+  0.1.56 requires.
+
+### Fixed
+
+- Smart filter now promotes ancestors of kept spans (including already-ended parents held briefly
+  after a drop) so exported traces stay connected when only a descendant independently passed the
+  filter — e.g. a stamped `tcp.connect` no longer ships without its parent.
+
+## [3.7.0] - 2026-07-20
+
+### Added
+
+- `create_memory_telemetry()` emits OpenTelemetry GenAI memory-operation spans (`create_memory`, `update_memory`, `upsert_memory`, `delete_memory`, `search_memory`, `create_memory_store`, `delete_memory_store`). Each operation optionally wraps a sync or async `execute` callable — capturing latency, errors, and status — or emits a completed span. It sets `gen_ai.operation.name` and the `gen_ai.memory.*` attributes, stamps Latitude context, and maps a `search` result to the records it returned.
+- Content is opt-in via `capture_content` (off by default) and covers both record bodies (`gen_ai.memory.records`) and the search query (`gen_ai.memory.query.text`), with a `redact` hook to scrub records before they are sent.
+- `MEMORY_ATTRIBUTES` and `MEMORY_OPERATIONS` constants are exported for raw OpenTelemetry instrumentation.
+
+## [3.6.0] - 2026-06-29
+
+### Added
+
+- `Latitude.get_tracer(scope, context=None)` returns a tracer from the provider Latitude is exporting
+  from, prefixing scopes with `so.latitude.instrumentation.` when needed. Pass the optional context
+  to stamp spans with the same Latitude context accepted by `capture()` (`user_id`, `session_id`,
+  `tags`, `metadata`, and `project`).
+
+## [3.5.0] - 2026-06-29
+
+### Added
+
+- `capture.start()` and `capture.end()` support lifecycle capture boundaries for flows that cannot
+  wrap their work in a callback. `CaptureScope` can be ended directly, or `capture.end()` can end the
+  currently active lifecycle capture.
+
+### Fixed
+
+- Capture root spans now record exceptions and set `ERROR` status when captured work raises or a
+  lifecycle capture ends with an error.
+- `capture()` now keeps context isolated when a synchronous callable returns a coroutine, so
+  concurrent wrapper-mode captures such as `asyncio.gather(capture("a", lambda: task_a()), ...)`
+  do not leak the last capture context into every task.
+
+## [3.4.0] - 2026-06-26
+
+### Changed
+
+- **Bumped OpenTelemetry core to 1.42.1** (`opentelemetry-{api,sdk,exporter-otlp-proto-http}` 1.38.0 → 1.42.1, `opentelemetry-instrumentation-threading` 0.59b0 → 0.63b1, pulling `opentelemetry-semantic-conventions` 0.59b0 → 0.63b1). `opentelemetry-instrumentation-bedrock` references `GenAIAttributes.GEN_AI_TOOL_DEFINITIONS`, which only exists in semconv ≥0.60b0; with the previous pin (0.59b0) any Bedrock **Converse** call carrying a `toolConfig` raised `AttributeError` inside the instrumentor — silently swallowed by its `@dont_throw`, dropping the entire conversation, token usage, and cost for tool-enabled turns (plain chat/stream were unaffected). Bedrock tool conversations now capture the full exchange, usage, cost, and tool definitions.
+
+## [3.3.0] - 2026-06-19
+
+### Changed
+
+- **Haystack, LlamaIndex, and CrewAI now use the OpenInference instrumentors** instead of the OpenLLMetry/Traceloop ones (`opentelemetry-instrumentation-{haystack,llamaindex,crewai}`). The OpenLLMetry instrumentors produced no/incomplete conversations and no model/token/cost (Haystack emitted dict-key "content", LlamaIndex emitted no LLM span at all, CrewAI dumped agent-config templates and leaked the provider API key). The OpenInference instrumentors capture the real exchange: Haystack and LlamaIndex now resolve provider/model and full tool-call conversations; CrewAI captures the whole conversation (incl. tool calls/results) and no longer leaks the API key. Instrumenting is unchanged (`{"haystack": haystack}`, `{"llamaindex": llama_index}`, `{"crewai": crewai}`). New deps: `openinference-instrumentation-haystack==0.1.34`, `openinference-instrumentation-llama-index==4.4.2`, `openinference-instrumentation-crewai==1.1.9`.
+- **DSPy is now instrumented through litellm** instead of the OpenInference DSPy instrumentor, which emitted no token usage (Arize/phoenix#3119, closed "not planned") and duplicated the conversation. DSPy runs every LM call through litellm, so `instrumentations={"litellm": litellm}` captures the model call with provider/model/tokens/cost and the full conversation. **Breaking:** the `dspy` instrumentation key is removed — passing `{"dspy": ...}` now raises (use `{"litellm": litellm}`). (Note: DSPy's response cache is on by default; cached calls don't hit litellm, so set `cache=False` on `dspy.LM` to record usage on repeated runs.)
+- **LiteLLM now uses LiteLLM's native OpenTelemetry callback** instead of the OpenInference `openinference-instrumentation-litellm`. The native callback emits standard `gen_ai.*` semantic-convention spans, so LiteLLM traces now resolve **provider, cost, and token usage** (previously no provider was emitted → cost was always 0). Instrumenting is unchanged — still `instrumentations={"litellm": litellm}`. The SDK configures the callback through env-backed settings, set with `os.environ.setdefault` so you can override any of them: `OTEL_SEMCONV_STABILITY_OPT_IN=gen_ai_latest_experimental` (structured `gen_ai.{input,output}.messages`), `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=SPAN_ONLY` (record prompt/response content), and `USE_OTEL_LITELLM_REQUEST_SPAN=true` (emit one child span per completion, so multiple calls in a capture no longer collapse onto the parent). **Requires `litellm >= 1.88`** for the structured semconv + per-call spans; older versions still export but fall back to legacy attributes (no provider/cost).
+- **OpenAI now uses the OpenInference `openai` instrumentor** (`openinference-instrumentation-openai`) instead of OpenLLMetry's `opentelemetry-instrumentation-openai`. The OpenLLMetry instrumentor emitted no `llm.request.type` on Responses API spans (so they resolved `operation=unspecified` and dropped out of the token/cost/conversation rollup) and flattened Responses tool turns into plain text. OpenInference resolves the operation natively for both Chat Completions and the Responses API, captures the full `tool_call`/`tool_call_response` turns, and records streaming token usage — provider/model/cost preserved. Instrumenting is unchanged (`{"openai": openai}`); Azure OpenAI (same key) benefits too.
+- **Google Gemini now uses the OpenInference `google-genai` instrumentor** (`openinference-instrumentation-google-genai`) instead of the OpenLLMetry `opentelemetry-instrumentation-google-generativeai`. The OpenLLMetry instrumentor only `str()`-ified the current `google-genai` SDK's `Part` objects, so tool calls and a binary `thought_signature` leaked into message text as unreadable Python reprs. The OpenInference instrumentor structures tool calls (`tool_call` parts) and additionally captures reasoning-token usage. Instrumenting is unchanged — still `instrumentations={"google_generativeai": genai}` with `from google import genai`; install the `google-genai` SDK.
+
+### Removed
+
+- Dropped the OpenLLMetry instrumentor deps `opentelemetry-instrumentation-haystack`, `opentelemetry-instrumentation-llamaindex`, and `opentelemetry-instrumentation-crewai` (replaced by the OpenInference instrumentors).
+- Dropped the `opentelemetry-instrumentation-google-generativeai` dependency (replaced by `openinference-instrumentation-google-genai`).
+- Dropped the `opentelemetry-instrumentation-openai` dependency (replaced by `openinference-instrumentation-openai`).
+- Moved `openai-agents` out of runtime dependencies into the dev group — it's the host SDK for the `openai-agents` integration (the user installs it when they use it), not something the SDK imports, so it no longer bloats every install.
+- Dropped the `openinference-instrumentation-dspy` dependency and the `dspy` instrumentation key (DSPy is observed via litellm — see above).
+- Dropped the `openinference-instrumentation-litellm` dependency (replaced by LiteLLM's built-in OpenTelemetry callback).
+
+## [3.2.0] - 2026-06-16
+
+### Added
+
+- **Google ADK (Agent Development Kit) auto-instrumentation** — new `"google_adk"` instrumentation key wires `openinference-instrumentation-google-adk` (Arize OpenInference) into the SDK. Spans cover agent runs, model generations, and tool calls. Pass `instrumentations={"google_adk": google.adk}` to `Latitude(...)` and install the `google-adk` package in your project.
+
+### Changed
+
+- Bumped `openinference-semantic-conventions` `0.1.25` → `0.1.30` (required by the Google ADK instrumentor), which transitively bumps the shared `openinference-instrumentation` `0.1.43` → `0.1.53` used by the dspy, litellm, and openai-agents instrumentations.
+
+## [3.1.0] - 2026-06-12
+
+### Added
+
+- `user_email` option on `capture()` (`ContextOptions`), emitted as the `user.email` span attribute alongside the existing `user_id` → `user.id`. Both follow the same context-merging rules as `session_id`: last-write-wins, with nested captures overriding the parent.
+
+## [3.0.1] - 2026-06-10
+
+### Changed
+
+- **First stable release of the 3.x line.** No code changes since `3.0.0a8` — this promotes the alpha channel to stable, so a plain `pip install latitude-telemetry` now resolves to the new `Latitude` API instead of the legacy `2.0.4` (`Telemetry` / `Instrumentors`). The `--pre` flag is no longer needed.
+- Version `3.0.0` is skipped on purpose: it was published in February for the deprecated pre-rewrite line and later yanked, and PyPI does not allow reusing yanked version numbers.
+
+## [3.0.0a8] - 2026-05-16
+
+### Changed
+
+- **Renamed `project_slug` → `project` on the `Latitude` constructor, `init_latitude()`, and `capture()` options.** The `Slug` suffix leaked an internal database concept into the SDK surface. Affects:
+  - `Latitude(api_key=..., project=...)`
+  - `init_latitude(api_key=..., project=...)`
+  - `capture("name", fn, {"project": ...})`
+
+### Deprecated
+
+- `project_slug` on both the constructor and `capture()` options still works but logs a one-time `logging.warning` and will be removed in a future release. When both `project` and `project_slug` are passed, `project` wins.
+
+### Migration
+
+```diff
+- Latitude(api_key=..., project_slug="my-project")
++ Latitude(api_key=..., project="my-project")
+
+- capture("run", fn, {"project_slug": "evaluations"})
++ capture("run", fn, {"project": "evaluations"})
+```
+
+The `X-Latitude-Project` HTTP header name, the `latitude.project` span attribute, and the `LATITUDE_PROJECT_SLUG` environment variable convention are all unchanged — they're independent of the SDK option name.
+
+## [3.0.0a7] - 2026-05-15
+
+### Breaking Changes
+
+- **`instrumentations` is now a dict mapping integration name → LLM SDK module.** Replaces the list-of-strings form. Example: `instrumentations={"openai": openai, "anthropic": anthropic}`. The caller passes the module they already imported in app code, so the patch lands on the same module instance the app actually uses. Mirrors the TypeScript SDK's object-form API for full feature parity.
+- **The list-of-strings form (`instrumentations=["openai"]`) is removed with no fallback.** Anything other than a plain dict — including the old list — raises `TypeError` at register time with a migration hint. See the README's "Migrating from `instrumentations=[\"openai\"]`" section.
+- **Unknown integration keys raise `TypeError`.** Previously a typo in an integration name silently no-op'd with a `logging.warning`. Now the bootstrap fails loudly, naming the supported keys.
+
+### Added
+
+- New `InstrumentationName` literal type and `InstrumentationsInput` alias exported from `latitude_telemetry`.
+- **13 additional integrations** wired into the registry (the PyPI deps were already pinned in `pyproject.toml` but the registry only registered 10): `aleph_alpha`, `crewai`, `dspy`, `google_generativeai`, `groq`, `haystack`, `litellm`, `mistralai`, `ollama`, `replicate`, `sagemaker`, `transformers`, `watsonx`. Each takes the corresponding user-imported module.
+
+### Removed
+
+- The internal `INSTRUMENTATION_MAP` lookup with its `module/class/package/manual` fields, replaced by the typed `IntegrationDef` dataclass + a flat `INTEGRATIONS` dict.
+- Internal `__import__` of the user's SDK module — the user now passes it directly.
+
+## [3.0.0a6] - 2026-05-14
+
+### Added
+
+- **Per-span project scoping** — `capture({"project_slug": ...})` routes the wrapping function (and its OTel children) to a specific Latitude project by stamping `latitude.project` on the span. Useful when one process emits to multiple projects (e.g. multiple agents sharing a runtime). Server-side precedence: span attribute `latitude.project` → OTEL resource attribute `latitude.project` → `X-Latitude-Project` header.
+- **Optional ctor `project_slug`** — `Latitude(api_key=...)` is now valid without a default project. When omitted the SDK sends no `X-Latitude-Project` header, and each `capture()` must set its own `project_slug` (or rely on a resource/span attribute). Existing callers passing `project_slug` in the ctor see no behavior change.
+
+## [3.0.0a5] - 2026-05-13
+
+### Added
+
+- **Class-based bootstrap API** — `Latitude(...)` is now the primary entry point, matching the TypeScript SDK. It exposes `.provider`, `.flush()`, and `.shutdown()`, attaches to an existing OpenTelemetry provider when one is registered, and keeps `init_latitude()` as a backwards-compatible wrapper.
+
+### Changed
+
+- **Existing OpenTelemetry provider coexistence** — `Latitude(...)` attaches the Latitude span processor to a registered or explicitly passed provider when possible instead of replacing the application's provider or propagator setup.
+- **`service_name` ownership is provider-aware** — when Latitude creates its own provider, `service_name` is applied to the provider resource as `service.name`; when Latitude attaches to an existing provider, the host SDK remains the source of truth for `service.name`.
+
+### Fixed
+
+- **Provider detection no longer depends on private OpenTelemetry globals** — the SDK now uses the public tracer provider API and treats proxy/no-op providers as unregistered providers.
+
+## [3.0.0a4] - 2026-05-08
+
+### Changed
+
+- **Default exporter URL is now `https://ingest.latitude.so`** — previously the SDK fell back to `http://localhost:3002` whenever `LATITUDE_TELEMETRY_URL` was unset, which silently dropped traces for any consumer who didn't read the docs and explicitly export the env var. Production ingest is now the only default; point at a different ingest by setting `LATITUDE_TELEMETRY_URL` explicitly (e.g. `LATITUDE_TELEMETRY_URL=http://localhost:3002` for local development).
+
+## [3.0.0a3] - 2026-05-06
+
+### Added
+
+- **OpenAI Agents SDK auto-instrumentation** — new `"openai-agents"` instrumentation type wires `openinference-instrumentation-openai-agents` (Arize OpenInference) into the SDK. Spans cover agent runs, generations, responses, function calls, handoffs, and guardrails. Pass `instrumentations=["openai-agents"]` to `Latitude(...)` and install the `openai-agents` package in your project.
+
+
+
+### Fixed
+
+- `capture()` now starts a new Latitude root trace when called under an active non-Latitude span, so wrapper spans such as workflow-level capture names are preserved instead of being absorbed into foreign traces.
+- Nested Latitude `capture()` calls still reuse the existing Latitude-owned trace and merge context as before.
+
+## [3.0.0a1] - 2026-04-01
+
+### Breaking Changes
+
+- **Complete SDK re-architecture** — monolithic `Telemetry` class replaced with modular, composable API
+- **New bootstrap API** — `init_latitude()` replaces `Telemetry()` as primary entry point
+- **`capture()` no longer creates spans** — now only attaches context to spans created by auto-instrumentation
+- **Context propagation changed** — uses OpenTelemetry's native Context API instead of baggage
+- Removed `Telemetry` class and `TelemetryOptions` — use `init_latitude()` or `LatitudeSpanProcessor`
+- Removed `Instrumentors` enum — now use string literals via `register_latitude_instrumentations()`
+- Removed `CaptureOptions` — now `ContextOptions` with slightly different structure
+- Removed `BaggageSpanProcessor` — replaced with context-based approach in `LatitudeSpanProcessor`
+
+### Added
+
+- `init_latitude()` — one-call bootstrap for complete OTel + LLM instrumentation setup
+- `LatitudeSpanProcessor` — composable span processor for shared-provider setups
+- `register_latitude_instrumentations()` — register LLM auto-instrumentations (OpenAI, Anthropic, etc.)
+- Smart span filtering — only LLM-relevant spans exported by default (gen_ai.*, llm.*, openinference.*, ai.* attributes)
+- `disable_smart_filter` option — export all spans instead of just LLM spans
+- `should_export_span` callback — custom span filtering
+- `blocked_instrumentation_scopes` option — filter out unwanted instrumentation scopes
+- `capture()` now supports nested calls with proper context merging (tags dedupe, metadata shallow merge, last-write-wins for user_id/session_id)
+- `RedactSpanProcessorOptions` for configurable PII redaction
+- New SDK module structure: `sdk/init.py`, `sdk/context.py`, `sdk/instrumentations.py`, `sdk/types.py`
+
+### Changed
+
+- SDK is now OpenTelemetry-first — designed for composability with existing OTel setups
+- `capture()` uses OTel's `context.attach()`/`context.detach()` for reliable async context propagation
+- `LatitudeSpanProcessor` is now a proper OTel SpanProcessor that reads context and stamps attributes
+
+## [3.0.0a0] - 2026-04-01
+
+### Breaking Changes
+
+- Constructor now requires `project_slug` as second argument
+- `capture()` no longer takes `path`/`project_id` — takes `tags`/`metadata`/`session_id`/`user_id` instead
+- Removed opinionated span methods (`span.completion()`, `span.tool()`, etc.) — use `telemetry.tracer` directly
+- Removed `GatewayOptions` and `InternalOptions` — SDK reads `LATITUDE_TELEMETRY_URL` env var directly
+- Removed `SpanType`, `LogSources`, `SpanKind`, `SpanStatus`, `SPAN_SPECIFICATIONS`
+
+### Added
+
+- `telemetry.tracer` exposes raw OTel Tracer for custom span creation
+- `capture()` creates a root span when no active span exists, grouping child spans under one trace
+- `service_name` option in constructor
+- `RedactSpanProcessor` for masking sensitive HTTP headers
+- Auto-instrumentation for 21 AI providers
+
+### Changed
+
+- `capture()` sets trace-wide baggage (`latitude.tags`, `latitude.metadata`, `session.id`, `user.id`) propagated via BaggageSpanProcessor
+
+## [2.0.4] - 2026-02-26
+
+### Changed
+
+- `capture()` now writes prompt reference fields into baggage so child spans inherit `path`, `project`, `commit`, and `conversation` metadata.
+
+## [2.0.3] - 2026-01-29
+
+### Fixed
+
+- Fixed `@telemetry.capture()` decorator not working correctly with generator functions. The span now stays open until all items are yielded, enabling proper tracing for streaming LLM responses.

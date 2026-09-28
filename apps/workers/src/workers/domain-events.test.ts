@@ -1,0 +1,1014 @@
+import { BILLING_OVERAGE_SYNC_THROTTLE_MS } from "@domain/billing"
+import type { EventEnvelope } from "@domain/events"
+import { createFakeQueuePublisher } from "@domain/queue/testing"
+import { SCORE_PUBLICATION_DEBOUNCE } from "@domain/scores"
+import {
+  CONSOLIDATION_THROTTLE_MS,
+  ESCALATION_CHECK_THROTTLE_MS,
+  SIGNAL_FEEDBACK_THROTTLE_MS,
+  SIGNAL_PROMOTION_THROTTLE_MS,
+  SIGNAL_RECONCILE_CONSOLIDATION_THROTTLE_MS,
+  SIGNAL_REFRESH_THROTTLE_MS,
+} from "@domain/signals"
+import { TRACE_END_DEBOUNCE_MS } from "@domain/spans"
+
+import { hash } from "@repo/utils"
+import { Effect } from "effect"
+import { describe, expect, it } from "vitest"
+import { TestQueueConsumer } from "../testing/index.ts"
+import { createDomainEventsWorker } from "./domain-events.ts"
+
+const makeEnvelope = (name: string, payload: Record<string, unknown>, organizationId = "org-1"): EventEnvelope => ({
+  id: `evt-${Date.now()}`,
+  event: { name, organizationId, payload },
+  occurredAt: new Date(),
+})
+
+const envelopeToDispatchPayload = (envelope: EventEnvelope) => ({
+  id: envelope.id,
+  event: envelope.event,
+  occurredAt: envelope.occurredAt.toISOString(),
+})
+
+const setupDispatcher = () => {
+  const consumer = new TestQueueConsumer()
+  const queue = createFakeQueuePublisher()
+  const { publisher, published } = queue
+
+  createDomainEventsWorker({ consumer, publisher })
+
+  return { consumer, published, queue }
+}
+
+describe("domain-events dispatcher", () => {
+  it("routes MagicLinkEmailRequested to magic-link-email:send", async () => {
+    const { consumer, published } = setupDispatcher()
+    const magicLinkHash = await Effect.runPromise(hash("https://x"))
+
+    const envelope = makeEnvelope("MagicLinkEmailRequested", {
+      email: "a@b.com",
+      magicLinkUrl: "https://x",
+      organizationId: "org-1",
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published).toHaveLength(1)
+    expect(published[0]?.queue).toBe("magic-link-email")
+    expect(published[0]?.task).toBe("send")
+    expect(published[0]?.payload).toEqual({
+      email: "a@b.com",
+      magicLinkUrl: "https://x",
+      organizationId: "org-1",
+    })
+    expect(published[0]?.options?.dedupeKey).toBe(`emails:magic-link:${magicLinkHash}`)
+  })
+
+  it("keeps OrganizationCreated as a no-op primary handler while still fanning out to PostHog", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope(
+      "OrganizationCreated",
+      { organizationId: "org-new", name: "Acme", slug: "acme" },
+      "org-new",
+    )
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published).toHaveLength(1)
+    expect(published[0]?.queue).toBe("posthog-analytics")
+    expect(published[0]?.task).toBe("track")
+  })
+
+  it("routes UserDeletionRequested to user-deletion:delete", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("UserDeletionRequested", {
+      organizationId: "org-1",
+      userId: "u-1",
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published).toHaveLength(1)
+    expect(published[0]?.queue).toBe("user-deletion")
+    expect(published[0]?.task).toBe("delete")
+    expect(published[0]?.payload).toEqual({
+      organizationId: "org-1",
+      userId: "u-1",
+    })
+    expect(published[0]?.options?.dedupeKey).toBe("users:deletion:u-1")
+  })
+
+  it("routes TracesIngested to per-trace debounced trace-end work and firstTrace check", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("TracesIngested", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      traceIds: ["trace-abc"],
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    // signals:match is no longer fanned out here — trace-end publishes it once the trace settles.
+    expect(published.map((p) => `${p.queue}:${p.task}`).sort()).toEqual(["projects:checkFirstTrace", "trace-end:run"])
+
+    const traceEnd = published.find((p) => p.queue === "trace-end")
+    const firstTrace = published.find((p) => p.task === "checkFirstTrace")
+
+    expect(traceEnd?.payload).toEqual({
+      organizationId: "org-1",
+      projectId: "proj-1",
+      traceId: "trace-abc",
+      isSandbox: false,
+    })
+    expect(traceEnd?.options).toEqual({
+      dedupeKey: "trace-end:run:org-1:proj-1:trace-abc",
+      debounceMs: TRACE_END_DEBOUNCE_MS,
+      attempts: 10,
+      backoff: { type: "exponential", delayMs: 1_000 },
+    })
+    expect(published.some((p) => p.queue === "signals")).toBe(false)
+    expect(firstTrace?.options?.dedupeKey).toBe("projects:first-trace:proj-1")
+  })
+
+  it("dispatches the full fan-out and carries the sandbox bit into the task payloads", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    // The dispatcher does NOT gatekeep: it fans out unconditionally and stamps
+    // `isSandbox` onto each task payload. The leaf workers (trace-end, billing)
+    // own the skip — see their own tests.
+    const envelope = makeEnvelope("TracesIngested", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      traceIds: ["trace-abc"],
+      isSandbox: true,
+      billing: {
+        planSlug: "free",
+        planSource: "free-fallback",
+        periodStart: "2026-06-01T00:00:00.000Z",
+        periodEnd: "2026-07-01T00:00:00.000Z",
+        includedCredits: 20_000,
+        overageAllowed: false,
+      },
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    const traceEnd = published.find((p) => p.queue === "trace-end")
+    const billing = published.find((p) => p.queue === "billing")
+    expect((traceEnd?.payload as { isSandbox?: boolean }).isSandbox).toBe(true)
+    expect((billing?.payload as { isSandbox?: boolean }).isSandbox).toBe(true)
+    expect(published.map((p) => `${p.queue}:${p.task}`)).toContain("projects:checkFirstTrace")
+    // signals:match is not fanned out here anymore; trace-end publishes it (and skips sandbox itself).
+    expect(published.some((p) => p.queue === "signals")).toBe(false)
+  })
+
+  it("routes TracesIngested billing snapshots to billing:recordTraceUsageBatch", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("TracesIngested", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      traceIds: ["trace-abc", "trace-def"],
+      billing: {
+        planSlug: "free",
+        planSource: "free-fallback",
+        periodStart: "2026-01-01T00:00:00.000Z",
+        periodEnd: "2026-02-01T00:00:00.000Z",
+        includedCredits: 20_000,
+        overageAllowed: false,
+      },
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    const billing = published.find((p) => p.queue === "billing" && p.task === "recordTraceUsageBatch")
+    expect(billing).toMatchObject({
+      payload: {
+        organizationId: "org-1",
+        projectId: "proj-1",
+        traceIds: ["trace-abc", "trace-def"],
+        planSlug: "free",
+        planSource: "free-fallback",
+        periodStart: "2026-01-01T00:00:00.000Z",
+        periodEnd: "2026-02-01T00:00:00.000Z",
+        includedCredits: 20_000,
+        overageAllowed: false,
+      },
+      options: {
+        attempts: 10,
+        backoff: { type: "exponential", delayMs: 1_000 },
+      },
+    })
+  })
+
+  it("routes ProjectCreated to projects:provision", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope(
+      "ProjectCreated",
+      { organizationId: "org-1", projectId: "proj-1", name: "Project", slug: "project" },
+      "org-1",
+    )
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    const projectsPublish = published.find((p) => p.queue === "projects")
+    expect(projectsPublish?.task).toBe("provision")
+    expect(projectsPublish?.payload).toEqual({
+      organizationId: "org-1",
+      projectId: "proj-1",
+      name: "Project",
+      slug: "project",
+    })
+    expect(projectsPublish?.options?.dedupeKey).toBe("projects:provision:proj-1")
+    // ProjectCreated is whitelisted for PostHog.
+    expect(published.some((p) => p.queue === "posthog-analytics")).toBe(true)
+  })
+
+  it("fails on unhandled events", async () => {
+    const { consumer } = setupDispatcher()
+
+    const envelope = makeEnvelope("UnknownEvent", { foo: "bar" })
+    const effect = consumer.dispatchTaskEffect("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    const result = await Effect.runPromise(
+      effect.pipe(
+        Effect.match({
+          onFailure: (error) => ({
+            ok: false as const,
+            error: error as { _tag: string; name: string },
+          }),
+          onSuccess: () => ({ ok: true as const, error: null }),
+        }),
+      ),
+    )
+
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error._tag).toBe("UnhandledEventError")
+      expect(result.error.name).toBe("UnknownEvent")
+    }
+  })
+
+  it("fans ScoreAssignedToSignal out to refresh + throttled and debounced escalation checks", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("ScoreAssignedToSignal", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      signalId: "issue-42",
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published).toHaveLength(2)
+
+    const refresh = published.find((p) => p.task === "refresh")
+    expect(refresh?.queue).toBe("issues")
+    expect(refresh?.payload).toEqual({
+      organizationId: "org-1",
+      projectId: "proj-1",
+      signalId: "issue-42",
+    })
+    expect(refresh?.options?.dedupeKey).toBe("issues:refresh:issue-42")
+    expect(refresh?.options?.throttleMs).toBe(SIGNAL_REFRESH_THROTTLE_MS)
+    expect(refresh?.options?.debounceMs).toBeUndefined()
+
+    const escalationChecks = published.filter((p) => p.task === "checkEscalation")
+    expect(escalationChecks).toHaveLength(1)
+
+    const throttled = escalationChecks[0]
+    expect(throttled?.options?.dedupeKey).toBe("issues:check-escalation:issue-42")
+    expect(throttled?.options?.throttleMs).toBe(ESCALATION_CHECK_THROTTLE_MS)
+    expect(throttled?.options?.debounceMs).toBeUndefined()
+    // A promoted signal's assignment schedules no consolidation pass: only a
+    // candidate can be merged, and at volume this is almost every assignment.
+    expect(published.some((p) => p.task === "consolidate")).toBe(false)
+  })
+
+  it("schedules a consolidation pass when the score landed on a candidate", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("ScoreAssignedToSignal", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      signalId: "issue-42",
+      unpromoted: true,
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    const consolidate = published.find((p) => p.task === "consolidate")
+    expect(consolidate?.queue).toBe("issues")
+    expect(consolidate?.payload).toEqual({
+      organizationId: "org-1",
+      projectId: "proj-1",
+      signalId: "issue-42",
+    })
+    expect(consolidate?.options?.dedupeKey).toBe("org:org-1:issues:consolidate:issue-42")
+    expect(consolidate?.options?.throttleMs).toBe(CONSOLIDATION_THROTTLE_MS)
+  })
+
+  it("announces nothing when discovery creates the signal row, but does look for fragments to merge", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("SignalCreated", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      signalId: "signal-1",
+      createdAt: "2026-05-07T10:00:00.000Z",
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    // A brand-new row is always a candidate, and nothing about it is announced:
+    // the one publish is the consolidation pass its new centroid earns.
+    expect(published).toHaveLength(1)
+    expect(published[0]?.task).toBe("consolidate")
+    expect(published[0]?.options?.throttleMs).toBe(CONSOLIDATION_THROTTLE_MS)
+  })
+
+  it("routes SignalsConsolidated to the ClickHouse reconciliation under a per-merge key", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("SignalsConsolidated", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      survivorId: "signal-1",
+      loserIds: ["signal-2", "signal-3"],
+      consolidatedAt: "2026-05-21T10:00:00.000Z",
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published).toHaveLength(1)
+    const reconcile = published[0]
+    expect(reconcile?.queue).toBe("issues")
+    expect(reconcile?.task).toBe("reconcileConsolidation")
+    // Identity only: the consumer resolves the sweep set from Postgres, so a
+    // chained merge sweeps what an earlier merge absorbed too.
+    expect(reconcile?.payload).toEqual({
+      organizationId: "org-1",
+      projectId: "proj-1",
+      survivorId: "signal-1",
+    })
+    // Keyed to this merge, so redelivery of the same event is idempotent while a
+    // later merge on the same survivor is never shadowed. A leading throttle rather
+    // than a bare dedupe key, or a permanently failed reconciliation would keep its
+    // retained jobId and shadow outbox redelivery.
+    expect(reconcile?.options?.dedupeKey).toBe(
+      "org:org-1:issues:reconcile-consolidation:signal-1:2026-05-21T10:00:00.000Z",
+    )
+    expect(reconcile?.options?.leadingThrottleMs).toBe(SIGNAL_RECONCILE_CONSOLIDATION_THROTTLE_MS)
+  })
+
+  it("routes SignalQualifiedForPromotion to promotion, announcing nothing yet", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("SignalQualifiedForPromotion", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      signalId: "signal-1",
+      qualifiedAt: "2026-05-21T10:00:00.000Z",
+      triggerScoreId: "score-1",
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    // Passing the gate announces nothing: the signal is not promoted yet and
+    // still carries the placeholder it was created from.
+    expect(published).toHaveLength(1)
+
+    const promotion = published[0]
+    expect(promotion?.queue).toBe("issues")
+    expect(promotion?.task).toBe("promoteSignal")
+    expect(promotion?.payload).toEqual({
+      organizationId: "org-1",
+      projectId: "proj-1",
+      signalId: "signal-1",
+    })
+    expect(promotion?.options?.dedupeKey).toBe("org:org-1:issues:promote-signal:signal-1")
+    // A leading throttle rather than a bare dedupe key, or a permanently failed
+    // promotion would keep its retained jobId and shadow every later publish.
+    expect(promotion?.options?.leadingThrottleMs).toBe(SIGNAL_PROMOTION_THROTTLE_MS)
+  })
+
+  it("routes SignalPromoted to the discovery notification and agent dispatch", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("SignalPromoted", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      signalId: "signal-1",
+      promotedAt: "2026-05-21T10:00:00.000Z",
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    // By now the signal is stamped and named, so both consumers can read it.
+    expect(published).toHaveLength(2)
+
+    const notifications = published.find((p) => p.queue === "notifications")
+    expect(notifications?.task).toBe("request-signal-discovered-notifications")
+    expect(notifications?.payload).toEqual({
+      organizationId: "org-1",
+      projectId: "proj-1",
+      signalId: "signal-1",
+      // Promotion time, so the notification does not announce a signal as
+      // discovered weeks ago.
+      discoveredAt: "2026-05-21T10:00:00.000Z",
+    })
+    expect(notifications?.options?.dedupeKey).toBe("notifications:request-signal-discovered:signal-1")
+
+    const agentDispatch = published.find((p) => p.queue === "agent-dispatch")
+    expect(agentDispatch?.task).toBe("request")
+    expect(agentDispatch?.payload).toEqual({
+      organizationId: "org-1",
+      projectId: "proj-1",
+      signalId: "signal-1",
+      source: "signal",
+    })
+    expect(agentDispatch?.options?.dedupeKey).toBe("agent-dispatch:request-signal:signal-1")
+  })
+
+  it("routes IncidentCreated to notifications:request-incident-notifications with stable dedupe key", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("IncidentCreated", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      alertIncidentId: "ai-1",
+      kind: "signal.discovered",
+      sourceType: "signal",
+      sourceId: "issue-1",
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published).toHaveLength(2)
+
+    const notifications = published.find((p) => p.queue === "notifications")
+    expect(notifications?.task).toBe("request-incident-notifications")
+    expect(notifications?.payload).toEqual({ organizationId: "org-1", alertIncidentId: "ai-1", transition: "created" })
+    expect(notifications?.options?.dedupeKey).toBe("notifications:request-incident-created:ai-1")
+
+    const agentDispatch = published.find((p) => p.queue === "agent-dispatch")
+    expect(agentDispatch?.task).toBe("request")
+    expect(agentDispatch?.payload).toEqual({
+      organizationId: "org-1",
+      alertIncidentId: "ai-1",
+      source: "incident",
+    })
+    expect(agentDispatch?.options?.dedupeKey).toBe("agent-dispatch:request-incident:ai-1")
+  })
+
+  it("routes IncidentClosed to notifications:request-incident-notifications with stable dedupe key", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("IncidentClosed", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      alertIncidentId: "ai-1",
+      kind: "signal.escalating",
+      sourceType: "signal",
+      sourceId: "issue-1",
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published).toHaveLength(1)
+    const job = published[0]
+    expect(job?.queue).toBe("notifications")
+    expect(job?.task).toBe("request-incident-notifications")
+    expect(job?.payload).toEqual({ organizationId: "org-1", alertIncidentId: "ai-1", transition: "closed" })
+    expect(job?.options?.dedupeKey).toBe("notifications:request-incident-closed:ai-1")
+  })
+
+  it("routes SignalAssigneeChanged to notifications:request-signal-assigned-notifications", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("SignalAssigneeChanged", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      signalId: "issue-1",
+      assigneeId: "user-b",
+      previousAssigneeId: "user-a",
+      actorUserId: "user-a",
+      assignedAt: "2026-05-07T10:00:00.000Z",
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published).toHaveLength(1)
+    const job = published[0]
+    expect(job?.queue).toBe("notifications")
+    expect(job?.task).toBe("request-signal-assigned-notifications")
+    expect(job?.payload).toEqual({
+      organizationId: "org-1",
+      signalId: "issue-1",
+      assigneeId: "user-b",
+      actorUserId: "user-a",
+      assignedAt: "2026-05-07T10:00:00.000Z",
+    })
+    expect(job?.options?.dedupeKey).toBe("notifications:request-signal-assigned:issue-1:2026-05-07T10:00:00.000Z")
+  })
+
+  it("routes SignalReprioritized to notifications:request-signal-reprioritized-notifications", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("SignalReprioritized", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      signalId: "issue-1",
+      priority: "urgent",
+      previousPriority: "medium",
+      actorUserId: "user-a",
+      reprioritizedAt: "2026-05-07T10:00:00.000Z",
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published).toHaveLength(1)
+    const job = published[0]
+    expect(job?.queue).toBe("notifications")
+    expect(job?.task).toBe("request-signal-reprioritized-notifications")
+    expect(job?.payload).toEqual({
+      organizationId: "org-1",
+      projectId: "proj-1",
+      signalId: "issue-1",
+      priority: "urgent",
+      previousPriority: "medium",
+      actorUserId: "user-a",
+      reprioritizedAt: "2026-05-07T10:00:00.000Z",
+    })
+    expect(job?.options?.dedupeKey).toBe("notifications:request-signal-reprioritized:issue-1:2026-05-07T10:00:00.000Z")
+  })
+
+  it("forwards a first-priority increase, which carries a null previousPriority", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    await consumer.dispatchTask(
+      "domain-events",
+      "dispatch",
+      envelopeToDispatchPayload(
+        makeEnvelope("SignalReprioritized", {
+          organizationId: "org-1",
+          projectId: "proj-1",
+          signalId: "issue-1",
+          priority: "low",
+          previousPriority: null,
+          actorUserId: "user-a",
+          reprioritizedAt: "2026-05-07T10:00:00.000Z",
+        }),
+      ),
+    )
+
+    expect(published).toHaveLength(1)
+    expect(published[0]?.payload).toMatchObject({ priority: "low", previousPriority: null })
+  })
+
+  it("routes SignalFeedbackSubmitted to the flagger-occurrence review fan-out", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("SignalFeedbackSubmitted", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      signalId: "issue-1",
+      value: 0,
+      passed: false,
+      feedback: "Never a problem",
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published).toHaveLength(1)
+    const job = published[0]
+    expect(job?.queue).toBe("issues")
+    expect(job?.task).toBe("reviewFlaggerOccurrences")
+    // The event is forwarded whole; the selection pass reads the verdict off the
+    // signal row, so the payload's copy of it is never the source of truth.
+    expect(job?.payload).toMatchObject({ organizationId: "org-1", projectId: "proj-1", signalId: "issue-1" })
+    expect(job?.options?.dedupeKey).toBe("org:org-1:issues:feedback-review:issue-1")
+    expect(job?.options?.leadingThrottleMs).toBe(SIGNAL_FEEDBACK_THROTTLE_MS)
+  })
+
+  it("skips SignalAssigneeChanged for cleared assignments and self-assignments", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    await consumer.dispatchTask(
+      "domain-events",
+      "dispatch",
+      envelopeToDispatchPayload(
+        makeEnvelope("SignalAssigneeChanged", {
+          organizationId: "org-1",
+          projectId: "proj-1",
+          signalId: "issue-1",
+          assigneeId: null,
+          previousAssigneeId: "user-a",
+          actorUserId: "user-b",
+          assignedAt: "2026-05-07T10:00:00.000Z",
+        }),
+      ),
+    )
+    await consumer.dispatchTask(
+      "domain-events",
+      "dispatch",
+      envelopeToDispatchPayload(
+        makeEnvelope("SignalAssigneeChanged", {
+          organizationId: "org-1",
+          projectId: "proj-1",
+          signalId: "issue-1",
+          assigneeId: "user-a",
+          previousAssigneeId: null,
+          actorUserId: "user-a",
+          assignedAt: "2026-05-07T11:00:00.000Z",
+        }),
+      ),
+    )
+
+    expect(published).toHaveLength(0)
+  })
+
+  it("still notifies on an organic IncidentClosed (reason=threshold)", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("IncidentClosed", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      alertIncidentId: "ai-1",
+      kind: "signal.escalating",
+      sourceType: "signal",
+      sourceId: "issue-1",
+      reason: "threshold",
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published).toHaveLength(1)
+    expect(published[0]?.task).toBe("request-incident-notifications")
+  })
+
+  it.each([
+    "resolved",
+    "ignored",
+  ] as const)("suppresses the recovery notification on a manual IncidentClosed (reason=%s)", async (reason) => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("IncidentClosed", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      alertIncidentId: "ai-1",
+      kind: "signal.escalating",
+      sourceType: "signal",
+      sourceId: "issue-1",
+      reason,
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published).toEqual([])
+  })
+
+  it("routes ProjectDeleted to every delete-by-project cascade", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("ProjectDeleted", {
+      organizationId: "org-1",
+      projectId: "proj-x",
+      actorUserId: "user-1",
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    const notif = published.find((p) => p.queue === "notifications" && p.task === "delete-by-project")
+    expect(notif?.payload).toEqual({ organizationId: "org-1", projectId: "proj-x" })
+    expect(notif?.options?.dedupeKey).toBe("notifications:delete-by-project:proj-x")
+
+    const dest = published.find((p) => p.queue === "destinations" && p.task === "delete-by-project")
+    expect(dest?.payload).toEqual({ organizationId: "org-1", projectId: "proj-x" })
+    expect(dest?.options?.dedupeKey).toBe("destinations:delete-by-project:proj-x")
+
+    // A queued or running import would otherwise keep paging its source into a
+    // deleted project and hold the org's single import slot.
+    const imports = published.find((p) => p.queue === "imports" && p.task === "delete-by-project")
+    expect(imports?.payload).toEqual({ organizationId: "org-1", projectId: "proj-x" })
+    expect(imports?.options?.dedupeKey).toBe("imports:delete-by-project:proj-x")
+  })
+
+  it("fans out whitelisted events to posthog-analytics:track in addition to the primary handler", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("OrganizationCreated", { organizationId: "org-ph", name: "PH", slug: "ph" }, "org-ph")
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    const byQueue = published.map((p) => `${p.queue}:${p.task}`).sort()
+    expect(byQueue).toEqual(["posthog-analytics:track"])
+
+    const ph = published.find((p) => p.queue === "posthog-analytics")
+    expect(ph?.payload).toMatchObject({
+      eventName: "OrganizationCreated",
+      organizationId: "org-ph",
+      payload: { organizationId: "org-ph", name: "PH", slug: "ph" },
+    })
+    expect(ph?.options?.dedupeKey).toBe(`posthog:${envelope.id}`)
+  })
+
+  it("fans out UserOnboardingCompleted to posthog-analytics:track so the worker can set onboardingType as a person property", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope(
+      "UserOnboardingCompleted",
+      { userId: "user-1", stackChoice: "coding-agent-machine" },
+      "system",
+    )
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published.some((p) => p.queue === "posthog-analytics")).toBe(true)
+  })
+
+  it("does NOT fan out non-whitelisted events to posthog-analytics", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    // TracesIngested is handled but deliberately excluded from the PostHog whitelist.
+    const envelope = makeEnvelope("TracesIngested", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      traceIds: ["trace-x"],
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published.some((p) => p.queue === "posthog-analytics")).toBe(false)
+  })
+
+  it("routes ScoreCreated to issues:discovery and annotation-scores publish with status-aware dedupe", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("ScoreCreated", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      scoreId: "score-3",
+      signalId: null,
+      status: "published",
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published.map((p) => `${p.queue}:${p.task}`).sort()).toEqual([
+      "annotation-scores:publishHumanAnnotation",
+      "issues:discovery",
+    ])
+
+    const discovery = published.find((p) => p.task === "discovery")
+    expect(discovery?.options?.dedupeKey).toBe("issues:discovery:score-3:published")
+
+    const publish = published.find((p) => p.task === "publishHumanAnnotation")
+    expect(publish?.options).toEqual({
+      dedupeKey: "annotation-scores:publish-human:score-3",
+      debounceMs: SCORE_PUBLICATION_DEBOUNCE,
+    })
+  })
+
+  it("reprocesses signal and publication side effects after an annotation update", async () => {
+    const { consumer, published } = setupDispatcher()
+    const revision = "2026-09-21T12:00:00.000Z"
+    const envelope = makeEnvelope("AnnotationUpdated", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      scoreId: "score-3",
+      previousSignalId: "signal-1",
+      previousFeedback: "Old feedback",
+      source: "annotation",
+      createdAt: "2026-09-20T12:00:00.000Z",
+      revision,
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          queue: "issues",
+          task: "removeScore",
+          payload: expect.objectContaining({ signalId: "signal-1", feedback: "Old feedback" }),
+          options: expect.objectContaining({ dedupeKey: `issues:remove-score:score-3:${revision}` }),
+        }),
+        expect.objectContaining({
+          queue: "issues",
+          task: "discovery",
+          payload: expect.objectContaining({ scoreId: "score-3", signalId: null, status: "published" }),
+          options: expect.objectContaining({ dedupeKey: `issues:discovery:score-3:published:${revision}` }),
+        }),
+        expect.objectContaining({
+          queue: "annotation-scores",
+          task: "publishHumanAnnotation",
+          options: expect.objectContaining({ dedupeKey: `annotation-scores:publish-human:score-3:${revision}` }),
+        }),
+      ]),
+    )
+  })
+
+  it("uses distinct discovery dedupe keys for draft vs published scores", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const draftEnvelope = makeEnvelope("ScoreCreated", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      scoreId: "score-3",
+      signalId: null,
+      status: "draft",
+    })
+
+    const publishedEnvelope = makeEnvelope("ScoreCreated", {
+      organizationId: "org-1",
+      projectId: "proj-1",
+      scoreId: "score-3",
+      signalId: null,
+      status: "published",
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(draftEnvelope))
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(publishedEnvelope))
+
+    const discoveryPublishes = published.filter((p) => p.task === "discovery")
+    const dedupeKeys = discoveryPublishes.map((p) => p.options?.dedupeKey)
+    expect(dedupeKeys).toContain("issues:discovery:score-3:draft")
+    expect(dedupeKeys).toContain("issues:discovery:score-3:published")
+  })
+
+  it("routes BillingUsagePeriodUpdated to billing-overage:reportOverage when subscription overage is pending", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("BillingUsagePeriodUpdated", {
+      organizationId: "org-1",
+      periodStart: "2026-01-01T00:00:00.000Z",
+      periodEnd: "2026-02-01T00:00:00.000Z",
+      planSource: "subscription",
+      overageAllowed: true,
+      includedCredits: 100_000,
+      consumedCredits: 100_030,
+      overageCredits: 30,
+      reportedOverageCredits: 0,
+      limitsCrossed: [],
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published[0]).toMatchObject({
+      queue: "billing-overage",
+      task: "reportOverage",
+      payload: {
+        organizationId: "org-1",
+        periodStart: "2026-01-01T00:00:00.000Z",
+        periodEnd: "2026-02-01T00:00:00.000Z",
+        snapshotOverageCredits: 30,
+      },
+      options: {
+        latestThrottleMs: BILLING_OVERAGE_SYNC_THROTTLE_MS,
+        attempts: 10,
+        backoff: { type: "exponential", delayMs: 1_000 },
+      },
+    })
+  })
+
+  it("routes BillingUsagePeriodUpdated to request-billing-limit-notifications when a limit is crossed", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("BillingUsagePeriodUpdated", {
+      organizationId: "org-1",
+      periodStart: "2026-01-01T00:00:00.000Z",
+      periodEnd: "2026-02-01T00:00:00.000Z",
+      planSource: "free-fallback",
+      overageAllowed: false,
+      includedCredits: 20_000,
+      consumedCredits: 20_000,
+      overageCredits: 0,
+      reportedOverageCredits: 0,
+      limitsCrossed: ["included-credits"],
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published).toEqual([
+      expect.objectContaining({
+        queue: "notifications",
+        task: "request-billing-limit-notifications",
+        payload: {
+          organizationId: "org-1",
+          periodStart: "2026-01-01T00:00:00.000Z",
+          periodEnd: "2026-02-01T00:00:00.000Z",
+          limitKind: "included-credits",
+          includedCredits: 20_000,
+          consumedCredits: 20_000,
+          overageCredits: 0,
+        },
+        options: {
+          dedupeKey: "notifications:request-billing-limit:org-1:2026-01-01T00:00:00.000Z:included-credits",
+        },
+      }),
+    ])
+  })
+
+  it("publishes one billing-limit notification request per crossed threshold", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("BillingUsagePeriodUpdated", {
+      organizationId: "org-1",
+      periodStart: "2026-01-01T00:00:00.000Z",
+      periodEnd: "2026-02-01T00:00:00.000Z",
+      planSource: "subscription",
+      overageAllowed: true,
+      includedCredits: 100_000,
+      consumedCredits: 100_000,
+      overageCredits: 0,
+      reportedOverageCredits: 0,
+      limitsCrossed: ["overage-started", "spend-cap"],
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published).toEqual([
+      expect.objectContaining({
+        queue: "notifications",
+        task: "request-billing-limit-notifications",
+        payload: expect.objectContaining({ limitKind: "overage-started" }),
+        options: {
+          dedupeKey: "notifications:request-billing-limit:org-1:2026-01-01T00:00:00.000Z:overage-started",
+        },
+      }),
+      expect.objectContaining({
+        queue: "notifications",
+        task: "request-billing-limit-notifications",
+        payload: expect.objectContaining({ limitKind: "spend-cap" }),
+        options: {
+          dedupeKey: "notifications:request-billing-limit:org-1:2026-01-01T00:00:00.000Z:spend-cap",
+        },
+      }),
+    ])
+  })
+
+  it("does not request billing-limit notifications when limitsCrossed is empty", async () => {
+    const { consumer, published } = setupDispatcher()
+
+    const envelope = makeEnvelope("BillingUsagePeriodUpdated", {
+      organizationId: "org-1",
+      periodStart: "2026-01-01T00:00:00.000Z",
+      periodEnd: "2026-02-01T00:00:00.000Z",
+      planSource: "free-fallback",
+      overageAllowed: false,
+      includedCredits: 20_000,
+      consumedCredits: 20_001,
+      overageCredits: 0,
+      reportedOverageCredits: 0,
+      limitsCrossed: [],
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(envelope))
+
+    expect(published).toEqual([])
+  })
+
+  it("coalesces BillingUsagePeriodUpdated overage reports to the latest snapshot without sliding the window", async () => {
+    const { consumer, queue } = setupDispatcher()
+
+    const firstEnvelope = makeEnvelope("BillingUsagePeriodUpdated", {
+      organizationId: "org-1",
+      periodStart: "2026-01-01T00:00:00.000Z",
+      periodEnd: "2026-02-01T00:00:00.000Z",
+      planSource: "subscription",
+      overageAllowed: true,
+      includedCredits: 100_000,
+      consumedCredits: 100_030,
+      overageCredits: 30,
+      reportedOverageCredits: 0,
+      limitsCrossed: [],
+    })
+    const secondEnvelope = makeEnvelope("BillingUsagePeriodUpdated", {
+      organizationId: "org-1",
+      periodStart: "2026-01-01T00:00:00.000Z",
+      periodEnd: "2026-02-01T00:00:00.000Z",
+      planSource: "subscription",
+      overageAllowed: true,
+      includedCredits: 100_000,
+      consumedCredits: 105_000,
+      overageCredits: 5_000,
+      reportedOverageCredits: 0,
+      limitsCrossed: [],
+    })
+
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(firstEnvelope))
+    await consumer.dispatchTask("domain-events", "dispatch", envelopeToDispatchPayload(secondEnvelope))
+
+    const pending = queue.getPublishedByDedupeKey(
+      "billing-overage",
+      "billing:reportOverage:org-1:2026-01-01T00:00:00.000Z:2026-02-01T00:00:00.000Z",
+    )
+    expect(pending?.options?.latestThrottleMs).toBe(BILLING_OVERAGE_SYNC_THROTTLE_MS)
+    expect((pending?.payload as { snapshotOverageCredits: number }).snapshotOverageCredits).toBe(5_000)
+  })
+})

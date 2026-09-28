@@ -1,0 +1,399 @@
+import { cva, type VariantProps } from "class-variance-authority"
+import { type KeyboardEvent, type ReactNode, useCallback, useLayoutEffect, useRef, useState } from "react"
+import { useMountEffect } from "../../hooks/use-mount-effect.ts"
+import { cn } from "../../utils/cn.ts"
+import { Text } from "../text/text.tsx"
+import { Tooltip } from "../tooltip/tooltip.tsx"
+
+const tabsListVariants = cva("relative flex flex-row", {
+  variants: {
+    variant: {
+      secondary: "",
+      bordered: "w-fit bg-muted",
+    },
+    size: {
+      md: "gap-2",
+      sm: "gap-1",
+    },
+    // Lets tabs flow onto a second row instead of overflowing a narrow
+    // container (e.g. the session detail drawer). The sliding indicator already
+    // tracks the active tab's x/y, so it animates to the wrapped row correctly.
+    wrap: {
+      true: "flex-wrap",
+      false: "",
+    },
+  },
+  compoundVariants: [
+    { variant: "bordered", size: "md", className: "rounded-lg p-1" },
+    { variant: "bordered", size: "sm", className: "items-center rounded-md p-1" },
+  ],
+  defaultVariants: {
+    variant: "secondary",
+    size: "md",
+    wrap: false,
+  },
+})
+
+const tabTriggerVariants = cva(
+  "relative z-10 inline-flex items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background cursor-pointer",
+  {
+    variants: {
+      variant: {
+        secondary: "text-xs leading-4 font-medium",
+        bordered: "bg-transparent",
+      },
+      hideLabels: {
+        true: "",
+        false: "",
+      },
+      size: {
+        md: "",
+        sm: "",
+      },
+      active: {
+        true: "",
+        false: "",
+      },
+    },
+    compoundVariants: [
+      { variant: "bordered", className: "rounded" },
+      { size: "md", hideLabels: true, className: "h-8 w-8" },
+      { size: "md", hideLabels: false, className: "h-8 gap-1 px-2" },
+      { size: "sm", variant: "secondary", hideLabels: true, className: "h-8 w-8" },
+      { size: "sm", variant: "secondary", hideLabels: false, className: "h-8 gap-1 px-2" },
+      { size: "sm", variant: "bordered", hideLabels: true, className: "h-6.5 w-6.5" },
+      { size: "sm", variant: "bordered", hideLabels: false, className: "h-6.5 gap-1 px-1.5" },
+      {
+        variant: "secondary",
+        hideLabels: true,
+        active: false,
+        className: "text-muted-foreground hover:bg-muted",
+      },
+      {
+        variant: "secondary",
+        hideLabels: false,
+        active: true,
+        className: "text-foreground",
+      },
+      {
+        variant: "secondary",
+        hideLabels: false,
+        active: false,
+        className: "text-muted-foreground hover:bg-muted",
+      },
+      {
+        variant: "bordered",
+        hideLabels: true,
+        active: true,
+        className: "text-foreground",
+      },
+      {
+        variant: "bordered",
+        hideLabels: true,
+        active: false,
+        className: "text-muted-foreground hover:bg-background/60",
+      },
+      {
+        variant: "bordered",
+        hideLabels: false,
+        active: true,
+        className: "text-foreground",
+      },
+      {
+        variant: "bordered",
+        hideLabels: false,
+        active: false,
+        className: "text-muted-foreground hover:bg-background/60",
+      },
+    ],
+    defaultVariants: {
+      variant: "secondary",
+      hideLabels: false,
+      size: "md",
+      active: false,
+    },
+  },
+)
+
+const tabIndicatorVariants = cva("pointer-events-none absolute left-0 top-0", {
+  variants: {
+    variant: {
+      secondary: "rounded-md bg-muted",
+      bordered: "rounded bg-background",
+    },
+  },
+  defaultVariants: {
+    variant: "secondary",
+  },
+})
+
+export type TabOption<T extends string = string> = {
+  readonly id: T
+  readonly label: string
+  readonly icon?: ReactNode
+  /** Renders after the label (e.g. a count pill). */
+  readonly suffix?: ReactNode
+  /** Extra content appended to the tab's tooltip (e.g. a HotkeyBadge). When hideLabels is true the label is automatically prepended. */
+  readonly tooltip?: ReactNode
+}
+
+export type TabsProps<T extends string = string> = {
+  readonly options: readonly TabOption<T>[]
+  readonly active: T
+  readonly onSelect: (id: T) => void
+  readonly hideLabels?: boolean
+  readonly disabled?: boolean
+  readonly className?: string
+  /** Extra classes merged onto the sliding active-tab indicator. */
+  readonly indicatorClassName?: string
+} & VariantProps<typeof tabsListVariants>
+
+type SlidingIndicatorParams<T extends string> = {
+  readonly active: T
+  readonly options: readonly TabOption<T>[]
+  readonly variant: Exclude<TabsProps<T>["variant"], null | undefined>
+  readonly size: Exclude<TabsProps<T>["size"], null | undefined>
+}
+
+function useSlidingIndicator<T extends string>({ active, options, variant, size }: SlidingIndicatorParams<T>) {
+  const listRef = useRef<HTMLDivElement>(null)
+  const tabRefs = useRef<Map<T, HTMLButtonElement>>(new Map())
+  const indicatorRef = useRef<HTMLDivElement>(null)
+  const resizeObserverRef = useRef<ResizeObserver | null>(null)
+  const [isIndicatorVisible, setIsIndicatorVisible] = useState(false)
+  const [isIndicatorAnimated, setIsIndicatorAnimated] = useState(false)
+
+  const setTabRef = useCallback((id: T, element: HTMLButtonElement | null) => {
+    if (element) {
+      tabRefs.current.set(id, element)
+      return
+    }
+
+    tabRefs.current.delete(id)
+  }, [])
+
+  const updateIndicator = useCallback(() => {
+    const listElement = listRef.current
+    const indicatorElement = indicatorRef.current
+    const activeTabElement = tabRefs.current.get(active)
+
+    if (!listElement || !indicatorElement || !activeTabElement) {
+      setIsIndicatorVisible(false)
+      return
+    }
+
+    // offset* are layout values, immune to ancestor CSS transforms — measuring
+    // with getBoundingClientRect during a dialog's zoom-in animation captured
+    // ~95%-scaled sizes that ResizeObserver (border-box only) never corrected.
+    const x = activeTabElement.offsetLeft
+    const y = activeTabElement.offsetTop
+
+    indicatorElement.style.transform = `translate(${x}px, ${y}px)`
+    indicatorElement.style.width = `${activeTabElement.offsetWidth}px`
+    indicatorElement.style.height = `${activeTabElement.offsetHeight}px`
+
+    setIsIndicatorVisible(true)
+  }, [active])
+
+  useLayoutEffect(() => {
+    updateIndicator()
+
+    resizeObserverRef.current?.disconnect()
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateIndicator()
+    })
+
+    resizeObserverRef.current = resizeObserver
+
+    const listElement = listRef.current
+    if (listElement) {
+      resizeObserver.observe(listElement)
+    }
+
+    for (const option of options) {
+      const tabElement = tabRefs.current.get(option.id)
+      if (tabElement) {
+        resizeObserver.observe(tabElement)
+      }
+    }
+
+    return () => {
+      resizeObserver.disconnect()
+      resizeObserverRef.current = null
+    }
+  }, [options, updateIndicator, variant, size])
+
+  // Enable the slide transition one frame after the first paint: the indicator
+  // snaps to the initial tab (no animation), then animates subsequent moves.
+  // Scheduling it in a mount effect (whose setup re-runs on remount) keeps it
+  // working if the Tabs are re-mounted in dev (Fast Refresh / StrictMode) — a
+  // one-shot frame guarded by a persistent ref would be cancelled on the first
+  // unmount and never rescheduled, leaving the animation silently off.
+  useMountEffect(() => {
+    const frame = requestAnimationFrame(() => setIsIndicatorAnimated(true))
+    return () => {
+      cancelAnimationFrame(frame)
+      resizeObserverRef.current?.disconnect()
+    }
+  })
+
+  return {
+    indicatorRef,
+    isIndicatorAnimated,
+    isIndicatorVisible,
+    listRef,
+    setTabRef,
+    tabRefs,
+  }
+}
+
+export function Tabs<T extends string>({
+  options,
+  active,
+  onSelect,
+  hideLabels = false,
+  disabled = false,
+  variant = "secondary",
+  size = "md",
+  wrap = false,
+  className,
+  indicatorClassName,
+}: TabsProps<T>) {
+  const resolvedVariant = variant ?? "secondary"
+  const resolvedSize = size ?? "md"
+  const { indicatorRef, isIndicatorAnimated, isIndicatorVisible, listRef, setTabRef, tabRefs } = useSlidingIndicator({
+    active,
+    options,
+    variant: resolvedVariant,
+    size: resolvedSize,
+  })
+
+  const onKeyDown = useCallback(
+    (e: KeyboardEvent) => {
+      if (disabled) return
+      const currentIndex = options.findIndex((o) => o.id === active)
+      let nextIndex: number | undefined
+
+      switch (e.key) {
+        case "ArrowLeft":
+          nextIndex = (currentIndex - 1 + options.length) % options.length
+          break
+        case "ArrowRight":
+          nextIndex = (currentIndex + 1) % options.length
+          break
+        case "Home":
+          nextIndex = 0
+          break
+        case "End":
+          nextIndex = options.length - 1
+          break
+        default:
+          return
+      }
+
+      e.preventDefault()
+      const next = options[nextIndex]
+      if (!next) return
+      onSelect(next.id)
+      tabRefs.current.get(next.id)?.focus()
+    },
+    [options, active, onSelect, disabled],
+  )
+
+  return (
+    <div
+      className={cn(
+        tabsListVariants({ variant: resolvedVariant, size: resolvedSize, wrap }),
+        { "cursor-not-allowed opacity-60": disabled },
+        className,
+      )}
+      role="tablist"
+      onKeyDown={onKeyDown}
+      ref={listRef}
+    >
+      <div
+        aria-hidden="true"
+        className={cn(
+          tabIndicatorVariants({ variant: resolvedVariant }),
+          {
+            hidden: !isIndicatorVisible,
+            "transition-[transform,width,height] duration-200 ease-in-out": isIndicatorAnimated,
+          },
+          indicatorClassName,
+        )}
+        ref={indicatorRef}
+      />
+      {options.map((option) => {
+        const isActive = active === option.id
+        const trigger = (
+          <button
+            key={option.id}
+            ref={(el) => setTabRef(option.id, el)}
+            role="tab"
+            type="button"
+            disabled={disabled}
+            aria-selected={isActive}
+            aria-label={hideLabels ? option.label : undefined}
+            tabIndex={isActive ? 0 : -1}
+            className={cn(
+              tabTriggerVariants({
+                variant: resolvedVariant,
+                size: resolvedSize,
+                active: isActive,
+                hideLabels,
+              }),
+              disabled && "pointer-events-none",
+            )}
+            onClick={() => {
+              if (!disabled) onSelect(option.id)
+            }}
+          >
+            {hideLabels ? (
+              <>
+                <span className="sr-only">{option.label}</span>
+                {option.icon}
+              </>
+            ) : (
+              <>
+                {option.icon}
+                {option.suffix ? (
+                  <span className="inline-flex items-baseline gap-1">
+                    <Text.H5 color={isActive ? "foreground" : "foregroundMuted"}>{option.label}</Text.H5>
+                    {option.suffix}
+                  </span>
+                ) : (
+                  <Text.H5 color={isActive ? "foreground" : "foregroundMuted"}>{option.label}</Text.H5>
+                )}
+              </>
+            )}
+          </button>
+        )
+
+        if (hideLabels) {
+          return (
+            <Tooltip key={option.id} trigger={trigger} asChild>
+              {option.tooltip ? (
+                <>
+                  {option.label} {option.tooltip}
+                </>
+              ) : (
+                <Text.H6>{option.label}</Text.H6>
+              )}
+            </Tooltip>
+          )
+        }
+
+        if (option.tooltip) {
+          return (
+            <Tooltip key={option.id} trigger={trigger} asChild>
+              {option.tooltip}
+            </Tooltip>
+          )
+        }
+
+        return trigger
+      })}
+    </div>
+  )
+}

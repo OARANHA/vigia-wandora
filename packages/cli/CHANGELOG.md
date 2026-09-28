@@ -1,0 +1,204 @@
+# Changelog
+
+All notable changes to the Latitude CLI will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [7.16.0] - 2026-09-23
+
+### Added
+
+- Named profiles, each with its own API key in the OS keyring, so a production key and a sandbox key can live side by side. Pick one per command with `--profile` / `-p`, per shell with `LATITUDE_PROFILE`, or as the default with `latitude profiles use`. Manage them with `latitude profiles create`, `list`, `current`, `show`, `set`, `use`, and `remove`. `latitude auth login --with-token -p <profile>` stores a key in that profile, and `latitude auth status` reports which profile is in use.
+- A profile can carry a default project (`latitude profiles create <name> --project-slug <slug>`). It wins over `LATITUDE_PROJECT_SLUG` and `--global-project-slug`; `--project-slug` still wins over it.
+
+### Notes
+
+- A `LATITUDE_API_KEY` set in the shell or in `.env` still wins over the default profile and `LATITUDE_PROFILE`; only `-p` overrides it. With no profile selected, the CLI behaves as before and keeps using the key stored by `latitude auth login`.
+
+## [7.15.0] - 2026-09-22
+
+### Added
+
+- `LATITUDE_PROJECT_SLUG`, or the global `--global-project-slug` flag, supplies the project for project-scoped commands so `--project-slug` can be dropped from each one. `--project-slug` still wins where it is passed, and commands that aren't project-scoped are untouched.
+- New global flags from the generator upgrade: `--human` (force table output when piped), `--user-agent-suffix`, `--no-extract`, `--no-retry`, `--spec` / `--spec-raw` (print the effective / embedded OpenAPI spec). Paginated operations also gain `--page-delay` and `--no-pager`; streaming operations gain `--no-stream`.
+
+### Changed
+
+- Regenerated on `fern-cli-generator` `0.21.0` → `0.41.2` and Fern CLI `5.58.0` → `5.122.0`. The TLS backend is now selected per target by the generated `Cargo.toml` (musl → rustls, everything else → native-tls) instead of by a crate-level default feature.
+- The Linux release binaries now use native-tls with OpenSSL vendored into the binary, rather than rustls. They keep the same runtime profile as before — glibc only, no `libssl`/`libcrypto` — and the same Secret Service keyring support, at the cost of roughly 6 MB of binary size. macOS and Windows are unchanged.
+
+## [7.14.0] - 2026-09-21
+
+### Added
+
+- `latitude annotations get`, `latitude annotations update`, and `latitude annotations delete` manage API-created annotations using their Latitude-generated IDs.
+
+## [7.13.0] - 2026-09-13
+
+### Added
+
+- `latitude agent-score get` — read today's published Agent Score and its five dimensions for a project.
+- `latitude agent-score history` — list a project's published Agent Scores over a date range.
+- `latitude agent-score causes` — inspect the ranked evidence explaining a project's current Agent Score.
+
+## [7.12.0] - 2026-09-08
+
+### Added
+
+- `latitude usage get` — the organization's credit usage for the current billing period: plan, period bounds, included/consumed/remaining/overage credits, and the split by product area (traces, flaggers, signals, behaviors, annotations) and by project.
+- `latitude projects usage --project-slug <slug>` — one project's credits for the current billing period, split by product area.
+- `latitude sessions get-assessment` — inspect a session's five Agent Score dimensions, reader coverage, and cursor-paginated evidence without embedding raw telemetry content.
+## [7.11.0] - 2026-09-02
+
+### Added
+
+- Signal responses from `latitude signals list`, `latitude signals get`, `latitude sessions list-signals`, and `latitude sessions get-signal` include a required `scoreEvidence` list. Each entry identifies an Agent Score dimension and the role the signal plays in it. An empty list marks a diagnostic signal.
+
+## [7.10.0] - 2026-08-17
+
+### Added
+
+- `latitude signals submit-feedback` — record a one-time verdict on whether a flagger-detected signal is a real problem, with an optional reason, and optionally archive it in the same call.
+
+## [7.9.0] - 2026-08-06
+
+### Changed
+
+- Severity gained an `urgent` tier, on top of `low`, `medium` and `high`. `latitude monitors` accepts it for a monitor's rule, and incidents can print as `urgent`.
+
+## [7.8.0] - 2026-08-05
+
+### Added
+
+- `latitude imports` — import historical traces from Langfuse, LangSmith, or Braintrust into a project: `list`, `create`, `get`, `cancel`, and `retry`. An import runs in the background, newest traces first; `retry` resumes a failed, cancelled, or capped import from where it stopped.
+
+## [7.7.1] - 2026-08-03
+
+### Changed
+
+- `latitude traces export` now surfaces the server's HTTP 429 rate-limit response instead of a generic error. The endpoint is now throttled to match `latitude datasets export-rows` and `latitude signals export`.
+
+## [7.7.0] - 2026-07-28
+
+### Added
+
+- `latitude projects update` accepts `settings.redaction`, configuring server-side PII redaction for spans ingested from then on.
+
+### Changed
+
+- `latitude projects update` now patches `settings` instead of replacing it, so omitted fields keep their stored values.
+
+## [7.6.1] - 2026-07-24
+
+### Changed
+
+- `latitude datasets export-rows` and `latitude signals export` now surface the server's HTTP 429 rate-limit response instead of a generic error.
+
+## [7.6.0] - 2026-07-21
+
+### Added
+
+- `latitude memory` commands for reading memory observability: `list-stores` (cursor-paginated store roll-up), `get-store` (current snapshot, optional point-in-time `at`), `get-store-diff` (per-record diff between two timestamps), `list-store-users`, `get-record` (body + version history), `get-record-change` (one change's before/after diff), `list-record-reads`, and `list-record-users`. Stores and records are addressed by opaque id query params, so the unattributed (`""`) store and the unnamed record are reachable.
+- `latitude sessions get-memory` / `get-memory-changes` and `latitude traces get-memory` / `get-memory-changes` — a session's or trace's memory footprint (per-record read/added/removed token metrics and totals) and its per-record before/after write diffs.
+- `latitude users memory-stores` — the memory stores an end-user accessed.
+
+## [7.5.0] - 2026-07-21
+
+### Added
+
+- `latitude signals resolve` / `unresolve` / `ignore` / `unignore` lifecycle commands. Resolving archives a signal while its evaluations keep watching for regressions (`--keep-monitoring` controls this); ignoring archives it, stops monitoring, and mutes notifications.
+- Signal responses now carry `resolvedAt`, `ignoredAt`, and `regressedAt`, and `states` can include `resolved`, `regressed`, and `ignored`.
+- Signal analytics now include `resolved` and `ignored` counts.
+
+### Changed
+
+- Muting a signal is now a pure notification toggle: incidents keep opening while muted.
+
+## [7.4.0] - 2026-07-20
+
+### Added
+
+- `latitude sessions` commands for reading sessions (the traces of one conversation, grouped by session id): `list` (cursor-paginated, with `filters` + free-text `query`), `analytics` (per-metric totals/medians and a 12-hour bucket series over whole sessions), `get` (session detail with its GenAI conversation and latest trace id), `list-traces` (cursor-paginated traces of the session), `list-signals` (signals recorded across the session's traces), and `get-signal` (one session-scoped signal by slug).
+
+## [7.3.0] - 2026-07-16
+
+### Added
+
+- `latitude projects update --flaggers` accepts two new slugs: `bluffing` (the assistant proceeds past a failed tool call as if it succeeded) and `pii-leakage` (the assistant's output exposes personal data it should not have surfaced).
+
+## [7.2.0] - 2026-07-16
+
+### Added
+
+- `latitude traces list` documents a dedicated `TraceFilterSet` (including `endTime`). Unknown filter fields and `gtePercentile` on `startTime`/`endTime` are rejected with 400 instead of being silently ignored or failing as 500.
+
+## [7.1.0] - 2026-07-14
+
+### Added
+
+- `latitude experiments list/get/create/update/delete` — manage project experiments that compare two or more variants (a filter set + search query + time range) against a baseline. `get` returns the full comparison: per-variant metrics across sessions, users, tools, signals, and behaviours, each with its signed change versus the baseline.
+
+## [7.0.0] - 2026-07-10
+
+### Changed (breaking)
+
+- `latitude monitors update` no longer accepts `--target`, `--trigger`, `--metric`, or `--condition`. Monitor target, trigger, metric, and incident-launching conditions are fixed after creation; use this command for `name`, `description`, and `severity` only.
+
+## [6.1.0] - 2026-07-08
+
+### Added
+
+- `latitude signals get` can now return a `failed` `monitoringState`, surfaced when the signal's most recent evaluation generation or realignment workflow ended in failure. It includes `phase` (`generate` or `realign`), an optional `evaluationId` (for `realign`), and a nullable `reason`. A later successful workflow supersedes an older failure.
+
+## [6.0.0] - 2026-07-06
+
+### Changed
+
+- `latitude traces get` now returns a single `conversation` field — the full trace conversation in OpenTelemetry GenAI format: the system instructions, then the running message history sent into the trace's last LLM-completion span, followed by that span's generated output. The previous `systemInstructions`, `inputMessages`, and `outputMessages` fields are removed; `conversation` supersedes them and additionally includes every intermediate turn and tool call they dropped.
+
+## [5.0.0] - 2026-07-06
+
+### Changed
+
+- **Version realigned to `5.0.0`** (from `0.4.0`), a deliberate jump with no functional change. A retired, unrelated 2025 CLI published `cli-*` GitHub releases up to `cli-4.0.0` under this same name; those tags carry no platform binaries. Leaping past them makes this crate the unambiguous newest `cli-*` release by semver, so agents and release-discovery tooling that pick the highest/newest tag resolve to a real, asset-bearing release. **Only `cli-5.0.0` and later are the real Latitude CLI; `cli-4.0.0` and below must be ignored.**
+
+## [0.4.0] - 2026-07-03
+
+### Added
+
+- `latitude spans query` gains sort control (`order-by` on `startTime` / `duration` / `cost`, ascending or descending) and a `status` span filter (`error` / `ok` / `unset`) — enabling "top-N slowest/costliest spans" and error-only drill-downs.
+- `latitude analytics query` breakdown results now include a `label` — the human name for opaque `signalId` / `cluster` keys (the signal name / behavior-cluster name), so by-signal and by-behavior series are self-describing.
+
+### Changed
+
+- `latitude analytics query` percentile metric is now an arbitrary `{kind:"percentile", field, p}` (`p` in [1,99]) instead of the fixed `p95`. Use `p: 95` for the previous `p95` behavior.
+
+### Fixed
+
+- `latitude spans query` pagination no longer skips or duplicates spans that share a `startTime` (common in batch ingest). Paging now uses a stable keyset cursor over `(sort key, spanId)` instead of an offset, so results stay consistent even as new spans arrive mid-pagination. The `--cursor` value stays opaque — no usage change.
+
+## [0.3.0] - 2026-07-02
+
+### Added
+
+- `latitude account bootstrap` — create a temporary organization (with an API key and a project) and get a link to claim ownership of it. Unauthenticated; the terminal entry point for the agentic zero-account onboarding flow.
+
+## [0.2.0] - 2026-07-02
+
+### Added
+
+- `latitude spans query` — list spans across all traces in a project, filtered by a span-field filter set and an optional time range. The row-level, span-grain complement to `latitude analytics query` with `stream=spans`.
+
+## [0.1.0] - 2026-07-01
+
+Initial release of the `latitude` CLI — a single, statically linked binary generated from the Latitude OpenAPI spec by [Fern](https://buildwithfern.com/).
+
+### Added
+
+- A command surface mapping every public API resource to a typed subcommand (`latitude projects list`, `latitude traces get`, `latitude analytics query`, …), with `--help` and a machine-readable `--schema` for each scope.
+- Organization API-key auth: reads `LATITUDE_API_KEY`, or store a key in the OS keyring with `latitude auth login` (`auth status` / `auth logout`).
+- Output formats for humans and agents: `--format json|table|yaml|csv|jsonl|raw|http`, a `--query` JMESPath filter, shell completions (`latitude completion`), and a man page (`latitude man`).
+- Prebuilt binaries for macOS (arm64/x86_64), Linux (arm64/x86_64), and Windows (x86_64), attached to each GitHub release.

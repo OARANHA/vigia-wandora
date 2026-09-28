@@ -1,0 +1,355 @@
+import { generateId } from "@domain/shared"
+import { and, eq } from "@platform/db-postgres"
+import { flaggers as flaggersTable } from "@platform/db-postgres/schema/flaggers"
+import { outboxEvents } from "@platform/db-postgres/schema/outbox-events"
+import { projects } from "@platform/db-postgres/schema/projects"
+import { createApiKeyAuthHeaders, type InMemoryPostgres } from "@platform/testkit"
+import { describe, expect, it } from "vitest"
+import { type ApiTestContext, createTenantSetup, setupTestApi } from "../test-utils/create-test-app.ts"
+
+interface ProjectRow {
+  readonly id: string
+  readonly organizationId: string
+  readonly name: string
+  readonly slug: string
+  readonly settings: { keepMonitoring?: boolean } | null
+  readonly firstTraceAt: string | null
+  readonly deletedAt: string | null
+  readonly lastEditedAt: string
+  readonly createdAt: string
+  readonly updatedAt: string
+}
+
+interface PaginatedProjects {
+  readonly items: ReadonlyArray<ProjectRow>
+  readonly nextCursor: string | null
+  readonly hasMore: boolean
+}
+
+const createProjectRecord = async (database: InMemoryPostgres, organizationId: string, name: string) => {
+  const id = generateId()
+  const slug = `${name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${id.slice(0, 6)}`
+
+  await database.db.insert(projects).values({
+    id,
+    organizationId,
+    name,
+    slug,
+  })
+
+  return { id, slug }
+}
+
+describe("Projects Routes Integration", () => {
+  setupTestApi()
+
+  it<ApiTestContext>("GET /v1/projects isolates organization projects by API key", async ({ app, database }) => {
+    const tenantA = await createTenantSetup(database)
+    const tenantB = await createTenantSetup(database)
+
+    const tenantAProject = await createProjectRecord(database, tenantA.organizationId, "Tenant A Project")
+    const tenantBProject = await createProjectRecord(database, tenantB.organizationId, "Tenant B Project")
+
+    const response = await app.fetch(
+      new Request(`http://localhost/v1/projects`, {
+        headers: createApiKeyAuthHeaders(tenantA.apiKeyToken),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as PaginatedProjects
+    const ids = body.items.map((project) => project.id)
+
+    expect(ids).toContain(tenantAProject.id)
+    expect(ids).not.toContain(tenantBProject.id)
+    expect(body.nextCursor).toBeNull()
+    expect(body.hasMore).toBe(false)
+  })
+
+  it<ApiTestContext>("GET /v1/projects returns the full project shape including new fields", async ({
+    app,
+    database,
+  }) => {
+    const tenant = await createTenantSetup(database)
+    await createProjectRecord(database, tenant.organizationId, "Shape Project")
+
+    const response = await app.fetch(
+      new Request(`http://localhost/v1/projects`, {
+        headers: createApiKeyAuthHeaders(tenant.apiKeyToken),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as PaginatedProjects
+    const project = body.items[0]
+    expect(project).toBeDefined()
+    expect(project).toHaveProperty("settings")
+    expect(project).toHaveProperty("firstTraceAt")
+    expect(project).toHaveProperty("lastEditedAt")
+  })
+
+  it<ApiTestContext>("GET /v1/projects excludes soft-deleted projects", async ({ app, database }) => {
+    const tenant = await createTenantSetup(database)
+    const live = await createProjectRecord(database, tenant.organizationId, "Live")
+
+    const deleteResponse = await app.fetch(
+      new Request(`http://localhost/v1/projects/${live.slug}`, {
+        method: "DELETE",
+        headers: createApiKeyAuthHeaders(tenant.apiKeyToken),
+      }),
+    )
+    expect(deleteResponse.status).toBe(204)
+
+    const listResponse = await app.fetch(
+      new Request(`http://localhost/v1/projects`, {
+        headers: createApiKeyAuthHeaders(tenant.apiKeyToken),
+      }),
+    )
+    const body = (await listResponse.json()) as PaginatedProjects
+    expect(body.items.find((p) => p.id === live.id)).toBeUndefined()
+  })
+
+  it<ApiTestContext>("GET /v1/projects strips internal-only settings fields from the response", async ({
+    app,
+    database,
+  }) => {
+    const tenant = await createTenantSetup(database)
+    const project = await createProjectRecord(database, tenant.organizationId, "Internal Settings")
+
+    await database.db
+      .update(projects)
+      .set({
+        settings: {
+          keepMonitoring: false,
+          isSample: true,
+          onboardingType: "prod-traces",
+          onboardingCompleted: true,
+        },
+      })
+      .where(eq(projects.id, project.id))
+
+    const response = await app.fetch(
+      new Request(`http://localhost/v1/projects`, {
+        headers: createApiKeyAuthHeaders(tenant.apiKeyToken),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as PaginatedProjects
+    const listed = body.items.find((row) => row.id === project.id)
+    expect(listed).toBeDefined()
+    expect(listed?.settings).toEqual({ keepMonitoring: false })
+  })
+
+  it<ApiTestContext>("PATCH /v1/projects/:projectSlug updates settings and keeps the slug stable on rename", async ({
+    app,
+    database,
+  }) => {
+    const tenant = await createTenantSetup(database)
+    const project = await createProjectRecord(database, tenant.organizationId, "Old Name")
+
+    const response = await app.fetch(
+      new Request(`http://localhost/v1/projects/${project.slug}`, {
+        method: "PATCH",
+        headers: { ...createApiKeyAuthHeaders(tenant.apiKeyToken), "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Completely Different", settings: { keepMonitoring: true } }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+    const body = (await response.json()) as ProjectRow
+    expect(body.name).toBe("Completely Different")
+    expect(body.slug).toBe(project.slug)
+    expect(body.settings).toEqual({ keepMonitoring: true })
+  })
+
+  // Redaction is irreversible, so an API-driven change has to leave the same audit trail a
+  // dashboard change does. The generic settings path emits no event, hence the separate route.
+  it<ApiTestContext>("PATCH /v1/projects/:projectSlug records an audit event when it changes redaction", async ({
+    app,
+    database,
+  }) => {
+    const tenant = await createTenantSetup(database)
+    const project = await createProjectRecord(database, tenant.organizationId, "Audited Redaction")
+
+    const response = await app.fetch(
+      new Request(`http://localhost/v1/projects/${project.slug}`, {
+        method: "PATCH",
+        headers: { ...createApiKeyAuthHeaders(tenant.apiKeyToken), "Content-Type": "application/json" },
+        body: JSON.stringify({ settings: { redaction: { mode: "enforce", entities: ["email"] } } }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+
+    const [stored] = await database.db.select().from(projects).where(eq(projects.id, project.id))
+    expect(stored?.settings?.redaction).toEqual({ mode: "enforce", entities: ["email"] })
+
+    const events = await database.db.select().from(outboxEvents)
+    const redactionEvent = events.find((row) => row.eventName === "ProjectRedactionPolicyChanged")
+    expect(redactionEvent).toBeDefined()
+    expect(redactionEvent?.payload).toMatchObject({
+      projectId: project.id,
+      fromRedaction: null,
+      toRedaction: { mode: "enforce", entities: ["email"] },
+    })
+  })
+
+  /**
+   * `RedactionSettingSchema` does not expose `rules`, and the redaction use case replaces the whole
+   * object, so this documented call deleted every dashboard-created rule and the next spans kept
+   * the identifiers those rules existed to remove.
+   */
+  it<ApiTestContext>("PATCH /v1/projects/:projectSlug keeps custom redaction rules it cannot express", async ({
+    app,
+    database,
+  }) => {
+    const tenant = await createTenantSetup(database)
+    const project = await createProjectRecord(database, tenant.organizationId, "Rules Preserved")
+    const rules = [{ id: "rule-1", label: "ACCOUNT_NUMBER", kind: "terms" as const, terms: ["ACME-1234"] }]
+    await database.db
+      .update(projects)
+      .set({ settings: { redaction: { mode: "enforce", entities: ["email"], rules } } })
+      .where(eq(projects.id, project.id))
+
+    const response = await app.fetch(
+      new Request(`http://localhost/v1/projects/${project.slug}`, {
+        method: "PATCH",
+        headers: { ...createApiKeyAuthHeaders(tenant.apiKeyToken), "Content-Type": "application/json" },
+        body: JSON.stringify({ settings: { redaction: { mode: "off" } } }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+
+    const [stored] = await database.db.select().from(projects).where(eq(projects.id, project.id))
+    expect(stored?.settings?.redaction).toEqual({ mode: "off", rules })
+  })
+
+  // `ProjectSettingsSchema` exposes a subset of what's stored, so a replace here would let
+  // a caller patching one field silently clear a compliance control it cannot even see.
+  it<ApiTestContext>("PATCH /v1/projects/:projectSlug patches settings without clearing fields it does not expose", async ({
+    app,
+    database,
+  }) => {
+    const tenant = await createTenantSetup(database)
+    const project = await createProjectRecord(database, tenant.organizationId, "Patch Settings")
+
+    await database.db
+      .update(projects)
+      .set({
+        settings: {
+          redaction: { mode: "enforce", entities: ["email"] },
+          sampling: { enabled: true, rate: 0.25 },
+          onboardingCompleted: true,
+        },
+      })
+      .where(eq(projects.id, project.id))
+
+    const response = await app.fetch(
+      new Request(`http://localhost/v1/projects/${project.slug}`, {
+        method: "PATCH",
+        headers: { ...createApiKeyAuthHeaders(tenant.apiKeyToken), "Content-Type": "application/json" },
+        body: JSON.stringify({ settings: { keepMonitoring: true } }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+
+    const [stored] = await database.db.select().from(projects).where(eq(projects.id, project.id))
+    expect(stored?.settings).toEqual({
+      keepMonitoring: true,
+      redaction: { mode: "enforce", entities: ["email"] },
+      sampling: { enabled: true, rate: 0.25 },
+      onboardingCompleted: true,
+    })
+  })
+
+  it<ApiTestContext>("PATCH /v1/projects/:projectSlug toggles flaggers when the body includes them", async ({
+    app,
+    database,
+  }) => {
+    const tenant = await createTenantSetup(database)
+    const project = await createProjectRecord(database, tenant.organizationId, "Flagger Host")
+
+    // Seed two flaggers for the project so the toggle has a row to update.
+    await database.db.insert(flaggersTable).values([
+      {
+        id: generateId(),
+        organizationId: tenant.organizationId,
+        projectId: project.id,
+        slug: "frustration",
+        enabled: true,
+        sampling: 10,
+      },
+      {
+        id: generateId(),
+        organizationId: tenant.organizationId,
+        projectId: project.id,
+        slug: "refusal",
+        enabled: true,
+        sampling: 10,
+      },
+    ])
+
+    const response = await app.fetch(
+      new Request(`http://localhost/v1/projects/${project.slug}`, {
+        method: "PATCH",
+        headers: { ...createApiKeyAuthHeaders(tenant.apiKeyToken), "Content-Type": "application/json" },
+        body: JSON.stringify({ flaggers: { frustration: false } }),
+      }),
+    )
+
+    expect(response.status).toBe(200)
+
+    const frustration = await database.db
+      .select({ enabled: flaggersTable.enabled })
+      .from(flaggersTable)
+      .where(and(eq(flaggersTable.projectId, project.id), eq(flaggersTable.slug, "frustration")))
+    expect(frustration[0]?.enabled).toBe(false)
+
+    // Untouched slug stays enabled.
+    const refusal = await database.db
+      .select({ enabled: flaggersTable.enabled })
+      .from(flaggersTable)
+      .where(and(eq(flaggersTable.projectId, project.id), eq(flaggersTable.slug, "refusal")))
+    expect(refusal[0]?.enabled).toBe(true)
+  })
+
+  it<ApiTestContext>("PATCH /v1/projects/:projectSlug rejects unknown flagger slugs", async ({ app, database }) => {
+    const tenant = await createTenantSetup(database)
+    const project = await createProjectRecord(database, tenant.organizationId, "Slug Guard")
+
+    const response = await app.fetch(
+      new Request(`http://localhost/v1/projects/${project.slug}`, {
+        method: "PATCH",
+        headers: { ...createApiKeyAuthHeaders(tenant.apiKeyToken), "Content-Type": "application/json" },
+        body: JSON.stringify({ flaggers: { "not-a-real-flagger": false } }),
+      }),
+    )
+
+    expect(response.status).toBe(400)
+  })
+
+  it<ApiTestContext>("DELETE /v1/projects/:projectSlug does not delete cross-tenant project", async ({
+    app,
+    database,
+  }) => {
+    const tenantA = await createTenantSetup(database)
+    const tenantB = await createTenantSetup(database)
+    const tenantBProject = await createProjectRecord(database, tenantB.organizationId, "Tenant B Project")
+
+    // Tenant A uses their own key against tenant B's project slug. Without the
+    // `:organizationId` path param, cross-tenant isolation is enforced purely
+    // by the API key's resolved org — the project lookup is scoped to that
+    // org, and tenant B's slug does not belong to it.
+    const response = await app.fetch(
+      new Request(`http://localhost/v1/projects/${tenantBProject.slug}`, {
+        method: "DELETE",
+        headers: createApiKeyAuthHeaders(tenantA.apiKeyToken),
+      }),
+    )
+
+    expect(response.status).toBe(404)
+  })
+})

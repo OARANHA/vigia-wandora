@@ -1,0 +1,292 @@
+import type { Evaluation, EvaluationAlignment, EvaluationListOptions, EvaluationTrigger } from "@domain/evaluations"
+import { EvaluationRepository, evaluationSchema } from "@domain/evaluations"
+import {
+  type EvaluationId,
+  NotFoundError,
+  type ProjectId,
+  type SignalId,
+  SqlClient,
+  type SqlClientShape,
+} from "@domain/shared"
+import { and, desc, eq, inArray, isNotNull, isNull, type SQL } from "drizzle-orm"
+import { Effect, Layer } from "effect"
+import type { Operator } from "../client.ts"
+import { evaluations } from "../schema/evaluations.ts"
+
+const toDomainEvaluation = (row: typeof evaluations.$inferSelect): Evaluation =>
+  evaluationSchema.parse({
+    id: row.id,
+    organizationId: row.organizationId,
+    projectId: row.projectId,
+    signalId: row.signalId,
+    name: row.name,
+    description: row.description,
+    settings: row.settings ?? null,
+    script: row.script,
+    // script_hash is backfilled for every row; the alignment fallback covers the brief
+    // migration→deploy window where old code inserted a row before script_hash existed.
+    scriptHash: row.scriptHash ?? row.alignment?.evaluationHash ?? undefined,
+    trigger: row.trigger as EvaluationTrigger,
+    alignment: (row.alignment as EvaluationAlignment | null) ?? null,
+    alignedAt: row.alignedAt,
+    archivedAt: row.archivedAt,
+    deletedAt: row.deletedAt,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  })
+
+const toInsertRow = (evaluation: Evaluation): typeof evaluations.$inferInsert => ({
+  id: evaluation.id,
+  organizationId: evaluation.organizationId,
+  projectId: evaluation.projectId,
+  signalId: evaluation.signalId,
+  name: evaluation.name,
+  description: evaluation.description,
+  settings: evaluation.settings ?? null,
+  script: evaluation.script,
+  scriptHash: evaluation.scriptHash ?? null,
+  trigger: evaluation.trigger,
+  alignment: evaluation.alignment,
+  alignedAt: evaluation.alignedAt,
+  archivedAt: evaluation.archivedAt,
+  deletedAt: evaluation.deletedAt,
+  createdAt: evaluation.createdAt,
+  updatedAt: evaluation.updatedAt,
+})
+
+const applyLifecycleFilter = (options: EvaluationListOptions | undefined): SQL<unknown> => {
+  switch (options?.lifecycle) {
+    case "archived":
+      return and(isNull(evaluations.deletedAt), isNotNull(evaluations.archivedAt)) ?? isNull(evaluations.deletedAt)
+    case "all":
+      return isNull(evaluations.deletedAt)
+    default:
+      return and(isNull(evaluations.deletedAt), isNull(evaluations.archivedAt)) ?? isNull(evaluations.deletedAt)
+  }
+}
+
+export const EvaluationRepositoryLive = Layer.effect(
+  EvaluationRepository,
+  Effect.gen(function* () {
+    const list = (input: { readonly baseWhere: SQL<unknown>; readonly options: EvaluationListOptions | undefined }) =>
+      Effect.gen(function* () {
+        const sqlClient = (yield* SqlClient) as SqlClientShape<Operator>
+        return yield* sqlClient
+          .query((db, organizationId) => {
+            const limit = input.options?.limit ?? 50
+            const offset = input.options?.offset ?? 0
+            const lifecycleWhere = applyLifecycleFilter(input.options)
+            const whereClause =
+              and(eq(evaluations.organizationId, organizationId), input.baseWhere, lifecycleWhere) ??
+              and(eq(evaluations.organizationId, organizationId), input.baseWhere)
+
+            return db
+              .select()
+              .from(evaluations)
+              .where(whereClause)
+              .orderBy(desc(evaluations.createdAt), desc(evaluations.id))
+              .limit(limit + 1)
+              .offset(offset)
+          })
+          .pipe(
+            Effect.map((rows) => {
+              const limit = input.options?.limit ?? 50
+              const hasMore = rows.length > limit
+              const items = rows.slice(0, limit).map(toDomainEvaluation)
+
+              return {
+                items,
+                hasMore,
+                limit,
+                offset: input.options?.offset ?? 0,
+              }
+            }),
+          )
+      })
+
+    return {
+      findById: (id: string) =>
+        Effect.gen(function* () {
+          const sqlClient = (yield* SqlClient) as SqlClientShape<Operator>
+          return yield* sqlClient
+            .query((db, organizationId) =>
+              db
+                .select()
+                .from(evaluations)
+                .where(and(eq(evaluations.organizationId, organizationId), eq(evaluations.id, id)))
+                .limit(1),
+            )
+            .pipe(
+              Effect.flatMap((rows) => {
+                const row = rows[0]
+                if (!row) {
+                  return Effect.fail(new NotFoundError({ entity: "Evaluation", id }))
+                }
+
+                return Effect.succeed(toDomainEvaluation(row))
+              }),
+            )
+        }),
+
+      save: (evaluation: Evaluation) =>
+        Effect.gen(function* () {
+          const sqlClient = (yield* SqlClient) as SqlClientShape<Operator>
+          const row = toInsertRow(evaluation)
+
+          yield* sqlClient.query((db) =>
+            db
+              .insert(evaluations)
+              .values(row)
+              .onConflictDoUpdate({
+                target: evaluations.id,
+                set: {
+                  signalId: row.signalId,
+                  name: row.name,
+                  description: row.description,
+                  script: row.script,
+                  trigger: row.trigger,
+                  alignment: row.alignment,
+                  alignedAt: row.alignedAt,
+                  archivedAt: row.archivedAt,
+                  deletedAt: row.deletedAt,
+                  updatedAt: row.updatedAt,
+                },
+              }),
+          )
+        }),
+
+      listByProjectId: ({
+        projectId,
+        options,
+      }: {
+        readonly projectId: ProjectId
+        readonly options?: EvaluationListOptions
+      }) =>
+        list({
+          baseWhere: eq(evaluations.projectId, projectId),
+          options,
+        }),
+
+      listBySignalId: ({
+        projectId,
+        signalId,
+        options,
+      }: {
+        readonly projectId: ProjectId
+        readonly signalId: SignalId
+        readonly options?: EvaluationListOptions
+      }) =>
+        list({
+          baseWhere:
+            and(eq(evaluations.projectId, projectId), eq(evaluations.signalId, signalId)) ??
+            eq(evaluations.projectId, projectId),
+          options,
+        }),
+
+      listBySignalIds: ({
+        projectId,
+        signalIds,
+        options,
+      }: {
+        readonly projectId: ProjectId
+        readonly signalIds: readonly SignalId[]
+        readonly options?: EvaluationListOptions
+      }) => {
+        if (signalIds.length === 0) {
+          return Effect.succeed({
+            items: [],
+            hasMore: false,
+            limit: options?.limit ?? 50,
+            offset: options?.offset ?? 0,
+          })
+        }
+
+        return list({
+          baseWhere:
+            and(
+              eq(evaluations.projectId, projectId),
+              inArray(evaluations.signalId, signalIds as unknown as string[]),
+            ) ?? eq(evaluations.projectId, projectId),
+          options,
+        })
+      },
+
+      archive: (id: EvaluationId) =>
+        Effect.gen(function* () {
+          const sqlClient = (yield* SqlClient) as SqlClientShape<Operator>
+          return yield* sqlClient
+            .query((db, organizationId) =>
+              db
+                .update(evaluations)
+                .set({ archivedAt: new Date(), updatedAt: new Date() })
+                .where(
+                  and(
+                    eq(evaluations.organizationId, organizationId),
+                    eq(evaluations.id, id),
+                    isNull(evaluations.deletedAt),
+                  ),
+                ),
+            )
+            .pipe(Effect.asVoid)
+        }),
+
+      unarchive: (id: EvaluationId) =>
+        Effect.gen(function* () {
+          const sqlClient = (yield* SqlClient) as SqlClientShape<Operator>
+          return yield* sqlClient
+            .query((db, organizationId) =>
+              db
+                .update(evaluations)
+                .set({ archivedAt: null, updatedAt: new Date() })
+                .where(
+                  and(
+                    eq(evaluations.organizationId, organizationId),
+                    eq(evaluations.id, id),
+                    isNull(evaluations.deletedAt),
+                  ),
+                ),
+            )
+            .pipe(Effect.asVoid)
+        }),
+
+      softDelete: (id: EvaluationId) =>
+        Effect.gen(function* () {
+          const sqlClient = (yield* SqlClient) as SqlClientShape<Operator>
+          return yield* sqlClient
+            .query((db, organizationId) =>
+              db
+                .update(evaluations)
+                .set({ deletedAt: new Date(), updatedAt: new Date() })
+                .where(
+                  and(
+                    eq(evaluations.organizationId, organizationId),
+                    eq(evaluations.id, id),
+                    isNull(evaluations.deletedAt),
+                  ),
+                ),
+            )
+            .pipe(Effect.asVoid)
+        }),
+
+      softDeleteBySignalId: ({ projectId, signalId }: { readonly projectId: ProjectId; readonly signalId: SignalId }) =>
+        Effect.gen(function* () {
+          const sqlClient = (yield* SqlClient) as SqlClientShape<Operator>
+          return yield* sqlClient
+            .query((db, organizationId) =>
+              db
+                .update(evaluations)
+                .set({ deletedAt: new Date(), updatedAt: new Date() })
+                .where(
+                  and(
+                    eq(evaluations.organizationId, organizationId),
+                    eq(evaluations.projectId, projectId),
+                    eq(evaluations.signalId, signalId),
+                    isNull(evaluations.deletedAt),
+                  ),
+                ),
+            )
+            .pipe(Effect.asVoid)
+        }),
+    }
+  }),
+)

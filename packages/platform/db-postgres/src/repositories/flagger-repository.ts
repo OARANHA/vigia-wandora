@@ -1,0 +1,226 @@
+import {
+  FLAGGER_DEFAULT_ENABLED,
+  FLAGGER_DEFAULT_SAMPLING,
+  FLAGGER_STRATEGY_SLUGS,
+  type Flagger,
+  FlaggerRepository,
+  type FlaggerRepositoryShape,
+  flaggerSchema,
+} from "@domain/flaggers"
+import { RepositoryError, SqlClient, type SqlClientShape } from "@domain/shared"
+import { createLogger } from "@repo/observability"
+import { and, asc, eq, inArray, ne, sql } from "drizzle-orm"
+import { Effect, Layer } from "effect"
+import type { Operator } from "../client.ts"
+import { flaggers } from "../schema/flaggers.ts"
+
+const logger = createLogger("db-postgres/flagger-repository")
+const knownFlaggerSlugs = new Set<string>(FLAGGER_STRATEGY_SLUGS)
+
+// Unknown strategy slugs are skipped so a newer DB row cannot fail reads of known flaggers.
+const toDomainFlagger = (row: typeof flaggers.$inferSelect): Flagger | null => {
+  if (!knownFlaggerSlugs.has(row.slug)) {
+    logger.warn("Skipping unrecognized flagger row", {
+      flaggerId: row.id,
+      projectId: row.projectId,
+      slug: row.slug,
+    })
+    return null
+  }
+
+  return flaggerSchema.parse({
+    id: row.id,
+    organizationId: row.organizationId,
+    projectId: row.projectId,
+    slug: row.slug,
+    enabled: row.enabled,
+    sampling: row.sampling,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  })
+}
+
+const toDomainFlaggers = (rows: readonly (typeof flaggers.$inferSelect)[]): Flagger[] =>
+  rows.map(toDomainFlagger).filter((flagger): flagger is Flagger => flagger !== null)
+
+export const FlaggerRepositoryLive = Layer.effect(
+  FlaggerRepository,
+  Effect.gen(function* () {
+    return {
+      listByProject: ({ projectId }) =>
+        Effect.gen(function* () {
+          const sqlClient = (yield* SqlClient) as SqlClientShape<Operator>
+          return yield* sqlClient
+            .query((db, organizationId) =>
+              db
+                .select()
+                .from(flaggers)
+                .where(and(eq(flaggers.organizationId, organizationId), eq(flaggers.projectId, projectId)))
+                .orderBy(asc(flaggers.slug)),
+            )
+            .pipe(
+              Effect.map(toDomainFlaggers),
+              Effect.mapError((cause) => new RepositoryError({ operation: "listByProject", cause })),
+            )
+        }),
+
+      findByProjectAndSlug: ({ projectId, slug }) =>
+        Effect.gen(function* () {
+          const sqlClient = (yield* SqlClient) as SqlClientShape<Operator>
+          return yield* sqlClient
+            .query((db, organizationId) =>
+              db
+                .select()
+                .from(flaggers)
+                .where(
+                  and(
+                    eq(flaggers.organizationId, organizationId),
+                    eq(flaggers.projectId, projectId),
+                    eq(flaggers.slug, slug),
+                  ),
+                )
+                .limit(1),
+            )
+            .pipe(
+              Effect.map((rows) => {
+                const row = rows[0]
+                return row !== undefined ? toDomainFlagger(row) : null
+              }),
+              Effect.mapError((cause) => new RepositoryError({ operation: "findByProjectAndSlug", cause })),
+            )
+        }),
+
+      saveManyForProject: ({ projectId, slugs }) =>
+        Effect.gen(function* () {
+          if (slugs.length === 0) {
+            return [] as readonly Flagger[]
+          }
+          const sqlClient = (yield* SqlClient) as SqlClientShape<Operator>
+
+          return yield* sqlClient
+            .query((db, organizationId) =>
+              db
+                .insert(flaggers)
+                .values(
+                  slugs.map((slug) => ({
+                    organizationId,
+                    projectId,
+                    slug,
+                    enabled: FLAGGER_DEFAULT_ENABLED,
+                    sampling: FLAGGER_DEFAULT_SAMPLING,
+                  })),
+                )
+                .onConflictDoNothing({
+                  target: [flaggers.organizationId, flaggers.projectId, flaggers.slug],
+                })
+                .returning(),
+            )
+            .pipe(
+              Effect.map((rows) => toDomainFlaggers(rows).sort((a, b) => a.slug.localeCompare(b.slug))),
+              Effect.mapError((cause) => new RepositoryError({ operation: "saveManyForProject", cause })),
+            )
+        }),
+
+      updateEnabledForProject: ({ projectId, enabledSlugs, slugs }) =>
+        Effect.gen(function* () {
+          if (slugs.length === 0) {
+            return [] as readonly Flagger[]
+          }
+
+          const sqlClient = (yield* SqlClient) as SqlClientShape<Operator>
+          const now = new Date()
+          const enabledExpression =
+            enabledSlugs.length === 0
+              ? sql<boolean>`false`
+              : sql<boolean>`case when ${flaggers.slug} in (${sql.join(
+                  enabledSlugs.map((slug) => sql`${slug}`),
+                  sql`, `,
+                )}) then true else false end`
+
+          return yield* sqlClient
+            .query((db, organizationId) =>
+              db
+                .update(flaggers)
+                .set({
+                  enabled: enabledExpression,
+                  updatedAt: now,
+                })
+                .where(
+                  and(
+                    eq(flaggers.organizationId, organizationId),
+                    eq(flaggers.projectId, projectId),
+                    inArray(flaggers.slug, slugs),
+                    sql`${flaggers.enabled} is distinct from ${enabledExpression}`,
+                  ),
+                )
+                .returning(),
+            )
+            .pipe(
+              Effect.map((rows) => toDomainFlaggers(rows).sort((a, b) => a.slug.localeCompare(b.slug))),
+              Effect.mapError((cause) => new RepositoryError({ operation: "updateEnabledForProject", cause })),
+            )
+        }),
+
+      applyDerivedSampling: ({ projectId, rates }) =>
+        Effect.gen(function* () {
+          const sqlClient = (yield* SqlClient) as SqlClientShape<Operator>
+          const now = new Date()
+
+          const updated = yield* Effect.forEach(
+            rates,
+            (rate) =>
+              sqlClient.query((db, organizationId) =>
+                db
+                  .update(flaggers)
+                  .set({ sampling: rate.sampling, samplingSource: "derived" as const, updatedAt: now })
+                  .where(
+                    and(
+                      eq(flaggers.organizationId, organizationId),
+                      eq(flaggers.projectId, projectId),
+                      eq(flaggers.slug, rate.slug),
+                      ne(flaggers.samplingSource, "user"),
+                    ),
+                  )
+                  .returning({ id: flaggers.id }),
+              ),
+            { concurrency: 1 },
+          ).pipe(Effect.mapError((cause) => new RepositoryError({ operation: "applyDerivedSampling", cause })))
+
+          return updated.reduce((total, rows) => total + rows.length, 0)
+        }),
+
+      update: ({ projectId, slug, enabled, sampling }) =>
+        Effect.gen(function* () {
+          const sqlClient = (yield* SqlClient) as SqlClientShape<Operator>
+          const now = new Date()
+
+          return yield* sqlClient
+            .query((db, organizationId) =>
+              db
+                .update(flaggers)
+                .set({
+                  ...(enabled !== undefined ? { enabled } : {}),
+                  // A rate somebody chose is a decision; the sweep reads this and stays out.
+                  ...(sampling !== undefined ? { sampling, samplingSource: "user" as const } : {}),
+                  updatedAt: now,
+                })
+                .where(
+                  and(
+                    eq(flaggers.organizationId, organizationId),
+                    eq(flaggers.projectId, projectId),
+                    eq(flaggers.slug, slug),
+                  ),
+                )
+                .returning(),
+            )
+            .pipe(
+              Effect.map((rows) => {
+                const row = rows[0]
+                return row !== undefined ? toDomainFlagger(row) : null
+              }),
+              Effect.mapError((cause) => new RepositoryError({ operation: "update", cause })),
+            )
+        }),
+    } satisfies FlaggerRepositoryShape
+  }),
+)

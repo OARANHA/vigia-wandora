@@ -1,0 +1,30 @@
+{
+  "name": "@platform/storage-object",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing/fake-storage-disk.ts"
+  },
+  "scripts": {
+    "check": "biome check src",
+    "format": "biome format --write src && biome check --fix src",
+    "typecheck": "tsgo -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests --dir src"
+  },
+  "devDependencies": {
+    "vitest": "catalog:"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.1117.0",
+    "@aws-sdk/s3-request-presigner": "3.1073.0",
+    "@domain/shared": "workspace:*",
+    "@platform/env": "workspace:*",
+    "@repo/utils": "workspace:*",
+    "effect": "catalog:",
+    "flydrive": "2.1.0"
+  }
+}

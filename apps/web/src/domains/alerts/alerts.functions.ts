@@ -1,0 +1,162 @@
+import { type AlertSeverity, type Incident, IncidentRepository } from "@domain/incidents"
+import { formatHumanReadableRule } from "@domain/monitors"
+import { type IncidentMonitorInfo, IncidentMonitorReader } from "@domain/notifications"
+import {
+  type IncidentNotificationKey,
+  type IncidentSourceType,
+  incidentSourceTypeSchema,
+  ProjectId,
+  SignalId,
+} from "@domain/shared"
+import { SignalRepository, type SignalWithLifecycle } from "@domain/signals"
+import { IncidentMonitorReaderLive, IncidentRepositoryLive, SignalRepositoryLive } from "@platform/db-postgres"
+import { withTracing } from "@repo/observability"
+import { createServerFn } from "@tanstack/react-start"
+import { Effect, Layer } from "effect"
+import { z } from "zod"
+import { getPostgresClient } from "../../server/clients.ts"
+import { resolveOrgScope } from "../../server/resolve-org-scope.ts"
+import { withScopedPostgres } from "../../server/scoped-postgres.ts"
+
+export const listProjectAlertIncidentsInRangeInputSchema = z.object({
+  projectId: z.string(),
+  fromIso: z.iso.datetime(),
+  toIso: z.iso.datetime(),
+  // TODO: remove once old browser bundles (pre-June-2026 issues→signals rename) are fully cycled out
+  sourceType: z.preprocess((v) => (v === "issue" ? "signal" : v), incidentSourceTypeSchema).optional(),
+  sourceId: z.string().min(1).optional(),
+})
+
+export interface AlertIncidentRecord {
+  readonly id: string
+  readonly projectId: string
+  readonly kind: IncidentNotificationKey
+  readonly severity: AlertSeverity
+  readonly sourceType: IncidentSourceType
+  readonly sourceId: string | null
+  readonly startedAt: string
+  readonly endedAt: string | null
+  /** When the monitor raised the incident. `startedAt` backdates to the offending run's start. */
+  readonly createdAt: string
+  /** Resolved name of the issue tied to the incident; `null` if not found (e.g., deleted). */
+  readonly signalName: string | null
+  /** Resolved slug of the issue tied to the incident, for the deep link; `null` if not found. */
+  readonly signalSlug: string | null
+  /** Resolved name of the saved search tied to the monitor, when available. */
+  readonly savedSearchName: string | null
+  /** Owning monitor name + slug for the attribution line + deep link; `null` on legacy or issue rows. */
+  readonly monitorName: string | null
+  readonly monitorSlug: string | null
+  /** Humanised firing condition; `null` for no-condition kinds. Drives the saved-search subtitle. */
+  readonly conditionSummary: string | null
+}
+
+const notificationKeyForIncident = (incident: Incident): IncidentNotificationKey => {
+  if (incident.sourceType === "signal") return "signal.escalating"
+  return incident.condition?.trigger === "escalating"
+    ? "monitor.escalating"
+    : incident.condition?.trigger === "threshold"
+      ? "monitor.threshold"
+      : "monitor.match"
+}
+
+const toRecord = (
+  incident: Incident,
+  issue: SignalWithLifecycle | undefined,
+  savedSearchName: string | undefined,
+  monitor: IncidentMonitorInfo | undefined,
+): AlertIncidentRecord => {
+  const kind = notificationKeyForIncident(incident)
+  return {
+    id: incident.id,
+    projectId: incident.projectId,
+    kind,
+    severity: incident.severity,
+    sourceType: incident.sourceType,
+    sourceId: incident.sourceId,
+    startedAt: incident.startedAt.toISOString(),
+    endedAt: incident.endedAt?.toISOString() ?? null,
+    createdAt: incident.createdAt.toISOString(),
+    signalName: issue?.name ?? null,
+    signalSlug: issue?.slug ?? null,
+    savedSearchName: savedSearchName ?? null,
+    monitorName: monitor?.name ?? null,
+    monitorSlug: monitor?.slug ?? null,
+    conditionSummary: incident.condition
+      ? formatHumanReadableRule({
+          trigger: kind.split(".")[1] as "threshold" | "escalating",
+          condition: incident.condition,
+        })
+      : null,
+  }
+}
+
+/**
+ * Returns incidents for the project whose lifetime overlaps `[fromIso, toIso]` or that were
+ * raised inside it (a match incident's lifetime is one instant, backdated to the start of the
+ * run it matched, which can predate the window it fired in),
+ * enriched with the issue's name/uuid so the histogram tooltip can show a human label
+ * without a follow-up request per incident. Signal lookup is best-effort — incidents
+ * whose source issue has been deleted still come back, with `signalName: null`.
+ */
+export const listProjectAlertIncidentsInRange = createServerFn({
+  method: "GET",
+})
+  .inputValidator(listProjectAlertIncidentsInRangeInputSchema)
+  .handler(async ({ data, context }): Promise<{ readonly items: readonly AlertIncidentRecord[] }> => {
+    const orgId = await resolveOrgScope(context)
+    const projectId = ProjectId(data.projectId)
+    const pgClient = getPostgresClient()
+
+    const items = await Effect.runPromise(
+      Effect.gen(function* () {
+        const incidentRepo = yield* IncidentRepository
+        const signalRepo = yield* SignalRepository
+        const monitorReader = yield* IncidentMonitorReader
+
+        const incidents = yield* incidentRepo.listByProjectId({
+          organizationId: orgId,
+          projectId,
+          from: new Date(data.fromIso),
+          to: new Date(data.toIso),
+          ...(data.sourceType ? { sourceTypes: [data.sourceType] } : {}),
+          ...(data.sourceId ? { sourceId: data.sourceId } : {}),
+        })
+
+        const signalIds = Array.from(
+          new Set(incidents.flatMap((i) => (i.sourceType === "signal" ? [i.sourceId] : []))),
+        ).map(SignalId)
+
+        const issues =
+          signalIds.length > 0
+            ? yield* signalRepo.findByIds({ projectId, signalIds })
+            : ([] as readonly SignalWithLifecycle[])
+        const signalById = new Map(issues.map((issue) => [issue.id, issue] as const))
+
+        const savedSearchNameById = new Map<string, string>()
+        const monitorById = new Map<string, IncidentMonitorInfo>()
+        for (const monitorId of new Set(incidents.flatMap((i) => (i.sourceType === "monitor" ? [i.sourceId] : [])))) {
+          const info = yield* monitorReader.findByMonitorId(monitorId)
+          if (info) monitorById.set(monitorId, info)
+        }
+
+        return incidents.map((incident) =>
+          toRecord(
+            incident,
+            incident.sourceType === "signal" ? signalById.get(SignalId(incident.sourceId)) : undefined,
+            savedSearchNameById.get(incident.sourceId),
+            incident.sourceType === "monitor" ? monitorById.get(incident.sourceId) : undefined,
+          ),
+        )
+      }).pipe(
+        withScopedPostgres(
+          Layer.mergeAll(IncidentRepositoryLive, SignalRepositoryLive, IncidentMonitorReaderLive),
+          pgClient,
+          orgId,
+        ),
+        withTracing,
+      ),
+    )
+
+    return { items }
+  })

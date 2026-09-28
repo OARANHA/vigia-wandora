@@ -1,0 +1,38 @@
+name: Vigia standalone infrastructure
+
+on:
+  pull_request:
+    paths:
+      - deploy/bootstrap/**
+      - deploy/infrastructure/**
+      - .github/workflows/vigia-infrastructure.yml
+  push:
+    branches: [main]
+    paths:
+      - deploy/bootstrap/**
+      - deploy/infrastructure/**
+      - .github/workflows/vigia-infrastructure.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compose:
+    name: Validate standalone infrastructure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Pull pinned infrastructure images
+        run: |
+          docker pull portainer/portainer-ce:2.45.0
+          docker pull traefik:v3.7.13
+
+      - name: Validate Portainer bootstrap
+        run: docker compose -f deploy/bootstrap/portainer.yml config --quiet
+
+      - name: Validate Traefik infrastructure
+        env:
+          TRAEFIK_ACME_EMAIL: ci@example.invalid
+        run: docker compose -f deploy/infrastructure/compose.yml config --quiet

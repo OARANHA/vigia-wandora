@@ -1,0 +1,22 @@
+name: vigia-portainer-bootstrap
+
+services:
+  portainer:
+    image: portainer/portainer-ce:2.45.0
+    container_name: vigia-portainer
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:9443:9443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - vigia-edge
+
+volumes:
+  portainer_data:
+    name: vigia_portainer_data
+
+networks:
+  vigia-edge:
+    name: vigia-edge

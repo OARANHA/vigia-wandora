@@ -2,7 +2,7 @@
 
 Este diretório contém o runtime reproduzível e canônico do primeiro deploy público do Vigia.
 
-Arquivos canônicos: `deploy/production/compose.yml`, `deploy/production/traefik-vigia.yml` e `.github/workflows/vigia-images.yml`. Evite criar um segundo Compose ou workflow concorrente para o mesmo runtime.
+Arquivos canônicos da aplicação: `deploy/production/compose.yml`, `deploy/production/traefik-vigia.yml` e `.github/workflows/vigia-images.yml`. A borda standalone fica em `deploy/infrastructure/compose.yml`; o bootstrap único do Portainer fica em `deploy/bootstrap/portainer.yml`.
 
 ## Modelo
 
@@ -11,7 +11,7 @@ Arquivos canônicos: `deploy/production/compose.yml`, `deploy/production/traefik
 - segredos entram apenas como variáveis/segredos da infraestrutura do Vigia;
 - Traefik é próprio da VPS Vigia e continua separado da stack de aplicação;
 - web, API e ingest compartilham o host público `vigia.wandora.com.br` por roteamento de path;
-- somente `web`, `api` e `ingest` entram na rede externa de borda do próprio Vigia;
+- somente `web`, `api` e `ingest` entram na rede externa `vigia-edge` do próprio Vigia;
 - object storage usa o driver `fs` em volume compartilhado no host único, evitando SeaweedFS neste primeiro runtime;
 - retenção inicial de telemetria: 30 dias; a VPS dedicada foi provisionada com 200 GB SSD e o consumo real será medido antes de ampliar a retenção.
 

@@ -25,6 +25,7 @@ import {
   getCodingAgentTelemetryPrompt,
   getCodingMachineInstallDescription,
   getCodingMachineTelemetryInstallCommand,
+  getCodingMachineVigiaRoutingConfig,
   getEnvBlock,
   getHermesConfigYamlBlock,
   getHermesEnvBlock,
@@ -350,6 +351,9 @@ function CodingMachineInstructions({
     )
   }
 
+
+  const vigiaRouting = getCodingMachineVigiaRoutingConfig(agent)
+
   return (
     <>
       <div className="flex flex-col gap-2">
@@ -357,6 +361,17 @@ function CodingMachineInstructions({
         <Text.H5 color="foregroundMuted">{getCodingMachineInstallDescription(agent)}</Text.H5>
         <CodeBlock value={getCodingMachineTelemetryInstallCommand(agent)} copyable />
       </div>
+
+      {vigiaRouting ? (
+        <div className="flex flex-col gap-2">
+          <Text.H5M>Route telemetry to Vigia</Text.H5M>
+          <Text.H5 color="foregroundMuted">
+            The upstream installer defaults to Latitude's cloud. After it finishes, add the field below{" "}
+            {vigiaRouting.target}, preserving the existing API key, project, and other settings.
+          </Text.H5>
+          <CodeBlock value={vigiaRouting.value} copyable />
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
@@ -625,7 +640,7 @@ export function TelemetryInstructions({
                       <Text.H5M>OpenTelemetry (OTLP)</Text.H5M>
                       <Text.H5 color="foregroundMuted">
                         Send a standard OTLP <code className="text-xs">ExportTraceServiceRequest</code> over HTTP.
-                        Successful ingest returns <code className="text-xs">202</code> with{" "}
+                        Successful ingest returns <code className="text-xs">200</code> with{" "}
                         <code className="text-xs">{"{}"}</code>.
                       </Text.H5>
                     </div>
@@ -661,7 +676,7 @@ export function TelemetryInstructions({
                               Settings.
                             </>
                           )}{" "}
-                          Expect <code className="text-xs">202</code> and an empty JSON body on success. Project slug is
+                          Expect <code className="text-xs">200</code> and an empty JSON body on success. Project slug is
                           prefilled on the header line.
                         </Text.H5>
                         <CodeBlock value={getOtelCurlVerifySnippet(slugForSnippets, defaultApiKeyToken)} copyable />

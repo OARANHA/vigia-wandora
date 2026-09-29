@@ -143,7 +143,7 @@ export function DestinationFormModal({
     } else if (destination) {
       probe = testExistingDestinationConnection({ data: { destinationId: destination.id, config } })
     } else {
-      setConnectionTest({ phase: "error", message: "Enter your credentials to test the connection." })
+      setConnectionTest({ phase: "error", message: "Informe suas credenciais para testar a conexão." })
       return
     }
 
@@ -157,7 +157,7 @@ export function DestinationFormModal({
           phase: "error",
           message: result.retryable
             ? `Falha na conexão (${result.reason ?? "desconhecido"}). Isso costuma ser temporário; tente novamente.`
-            : `Connection rejected (${result.reason ?? "unknown"}). Check the configuration and credentials.`,
+            : `Conexão rejeitada (${result.reason ?? "desconhecido"}). Verifique a configuração e as credenciais.`,
         })
       }
     } catch (error) {

@@ -9,9 +9,9 @@ export function ToolsDiscoveryBanner({ projectId }: { readonly projectId: string
   if (dismissed) return null
   return (
     <Alert
-      description="We detected these tools from the definitions on your LLM spans. None have been called in this window. Open a tool to see where it's offered."
+      description="Detectamos estas ferramentas pelas definições nos spans de LLM. Nenhuma foi chamada neste período. Abra uma ferramenta para ver onde ela foi oferecida."
       cta={
-        <Button variant="ghost" size="icon-xs" onClick={() => setDismissed(true)} aria-label="Dismiss">
+        <Button variant="ghost" size="icon-xs" onClick={() => setDismissed(true)} aria-label="Fechar aviso">
           <XIcon className="h-4 w-4" />
         </Button>
       }

@@ -9,8 +9,8 @@ import type { ReactNode } from "react"
 export type SettingScope = "organization" | "project"
 
 export const SCOPE_LABELS: Record<SettingScope, string> = {
-  organization: "Organization",
-  project: "This project",
+  organization: "Empresa",
+  project: "Este projeto",
 }
 
 const SCOPE_OPTIONS: { label: string; value: SettingScope }[] = [
@@ -70,14 +70,14 @@ export function ScopedSetting({
           <div className="flex min-w-0 flex-col gap-1">
             <div className="flex flex-row items-center gap-2">
               <Text.H5M>{title}</Text.H5M>
-              {isDirty ? <DotIndicator variant="primary" aria-label="Unsaved changes" /> : null}
+              {isDirty ? <DotIndicator variant="primary" aria-label="Alterações não salvas" /> : null}
             </div>
             {description ? <Text.H6 color="foregroundMuted">{description}</Text.H6> : null}
           </div>
           <div className="flex shrink-0 flex-row items-center gap-2">
-            <Text.H6 color="foregroundMuted">Set by</Text.H6>
+            <Text.H6 color="foregroundMuted">Definido por</Text.H6>
             {scope.kind === "selectable" && scope.locked ? (
-              <LockIcon className="h-3 w-3 text-muted-foreground" aria-label="Locked by the organization" />
+              <LockIcon className="h-3 w-3 text-muted-foreground" aria-label="Bloqueado pela empresa" />
             ) : null}
             {scope.kind === "fixed" ? (
               <Badge variant="outlineMuted" size="normal">
@@ -86,7 +86,7 @@ export function ScopedSetting({
             ) : (
               <Select
                 name={`${idPrefix}-scope`}
-                aria-label="Set by"
+                aria-label="Definido por"
                 options={SCOPE_OPTIONS}
                 value={scope.value}
                 size="small"

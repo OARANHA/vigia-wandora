@@ -40,8 +40,6 @@ O roteamento público fica versionado dentro da stack `deploy/infrastructure/com
 
 Hostname administrativo preferido: `ops.vigia.wandora.com.br` para Portainer/console operacional. Esse hostname não faz parte da API pública do produto.
 
-A rota administrativa é versionada no Traefik e encaminha para o Portainer pela rede privada `vigia-edge`; a porta `9443` permanece publicada apenas em `127.0.0.1` para acesso de contingência por túnel SSH. Antes de redeployar a infraestrutura com essa rota ativa, deve existir uma política de acesso administrativo na borda (preferencialmente Cloudflare Access ou proteção equivalente).
-
 
 ## Portainer CE e arquivos auxiliares
 

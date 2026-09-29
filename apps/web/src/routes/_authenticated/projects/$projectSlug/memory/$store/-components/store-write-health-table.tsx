@@ -46,7 +46,7 @@ export function StoreWriteHealthTable({
   const columns: InfiniteTableColumn<StoreWriteHealthRecord>[] = [
     {
       key: "record",
-      header: "Record",
+      header: "Registro",
       minWidth: 200,
       render: (row) => (
         <span className="min-w-0 truncate font-mono text-[13px]" title={recordDisplayLabel(row.recordId)}>
@@ -56,41 +56,41 @@ export function StoreWriteHealthTable({
     },
     {
       key: "writes",
-      header: "Writes",
+      header: "Gravações",
       align: "end",
       width: 88,
       sortKey: "writes",
-      headerTooltip: "Total add/update/remove events for this record in the window.",
+      headerTooltip: "Total de eventos de criação, atualização e remoção deste registro no período.",
       render: (row) => end(formatCount(row.writes)),
     },
     {
       key: "lastWrite",
-      header: "Last update",
+      header: "Última atualização",
       align: "end",
       width: 128,
       sortKey: "lastWrite",
-      headerTooltip: "How long ago this record was last written (add/update/remove).",
+      headerTooltip: "Há quanto tempo este registro foi gravado pela última vez (criação, atualização ou remoção).",
       render: (row) => end(`${formatElapsed(nowMs - Date.parse(row.lastWriteAt))} ago`),
     },
     {
       key: "noOps",
-      header: "No-op",
+      header: "Sem alteração",
       align: "end",
       width: 92,
       sortKey: "noOps",
-      headerTooltip: "Rewrites that saved byte-identical content (wasted writes).",
+      headerTooltip: "Regravações que salvaram conteúdo idêntico, sem mudança efetiva.",
       render: (row) => end(formatCount(row.noOps)),
     },
     {
       key: "reverted",
-      header: "Reverted",
+      header: "Revertido",
       align: "end",
       width: 108,
       sortKey: "reverted",
-      headerTooltip: "The record's content returned to an earlier value (A→B→A).",
+      headerTooltip: "O conteúdo do registro voltou a um valor anterior (A→B→A).",
       render: (row) =>
         row.reverted ? (
-          <Status variant="warning" label="Reverted" indicator={false} />
+          <Status variant="warning" label="Revertido" indicator={false} />
         ) : (
           <Text.H6 color="foregroundMuted">—</Text.H6>
         ),
@@ -109,9 +109,9 @@ export function StoreWriteHealthTable({
       scrollAreaLayout="intrinsic"
       className="max-h-96"
       onRowClick={(row) => onSelectRecord(row.recordId)}
-      getRowAriaLabel={(row) => `Open ${recordDisplayLabel(row.recordId)}`}
+      getRowAriaLabel={(row) => `Abrir ${recordDisplayLabel(row.recordId)}`}
       rowInteractionRole="button"
-      blankSlate="No writes in this time window"
+      blankSlate="Nenhuma gravação neste período"
     />
   )
 }

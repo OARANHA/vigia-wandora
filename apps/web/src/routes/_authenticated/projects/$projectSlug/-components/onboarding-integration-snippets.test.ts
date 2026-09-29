@@ -151,9 +151,11 @@ describe("Vigia public telemetry contract", () => {
   })
 
   it("gives coding agents the public Vigia OTLP contract without requiring Latitude setup", () => {
-    const prompt = getCodingAgentTelemetryPrompt("my-project", "vig-key")
+    const prompt = getCodingAgentTelemetryPrompt("my-project")
     expect(prompt).toContain("https://vigia.wandora.com.br/v1/traces")
     expect(prompt).toContain("X-Vigia-Project: my-project")
+    expect(prompt).toContain("VIGIA_API_KEY")
+    expect(prompt).not.toContain("vig-key")
     expect(prompt).not.toContain("latitude-telemetry")
     expect(prompt).not.toContain("Latitude MCP")
   })

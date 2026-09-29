@@ -277,7 +277,7 @@ export function AppSidebar({
                 alt={VIGIA_PRODUCT.name}
                 width={220}
                 height={100}
-                className="h-8 w-auto max-w-[44px] shrink-0 object-contain"
+                className="h-auto w-8 shrink-0 object-contain"
               />
             ) : (
               <div className="flex min-w-0 flex-1 items-center">

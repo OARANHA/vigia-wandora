@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   cloudflareAiGatewayConfig,
   getCodingAgentTelemetryPrompt,
+  getCodingMachineVigiaRoutingConfig,
   getEnvBlock,
   getHermesEnvBlock,
   getOnboardingSnippet,
@@ -138,6 +139,19 @@ describe("Vigia public telemetry contract", () => {
     expect(getPiTelemetryInstallCommand("my-project", "vig-key")).toContain(
       "--base-url=https://vigia.wandora.com.br",
     )
+  })
+
+  it("provides non-destructive Vigia routing overrides for Claude Code and OpenClaw", () => {
+    expect(getCodingMachineVigiaRoutingConfig("claude-code")).toEqual({
+      target: "no objeto env de ~/.claude/settings.json",
+      value: '"LATITUDE_BASE_URL": "https://vigia.wandora.com.br"',
+    })
+    expect(getCodingMachineVigiaRoutingConfig("openclaw")).toEqual({
+      target: 'em plugins.entries["@latitude-data/openclaw-telemetry"].config no ~/.openclaw/openclaw.json',
+      value: '"baseUrl": "https://vigia.wandora.com.br"',
+    })
+    expect(getCodingMachineVigiaRoutingConfig("hermes")).toBeNull()
+    expect(getCodingMachineVigiaRoutingConfig("pi")).toBeNull()
   })
 
   it("gives coding agents the public Vigia OTLP contract without requiring Latitude setup", () => {

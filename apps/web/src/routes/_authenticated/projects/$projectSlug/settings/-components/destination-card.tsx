@@ -6,7 +6,7 @@ import { Link } from "@tanstack/react-router"
 import { ChevronDown, History, Pause, Play, Trash2 } from "lucide-react"
 import { useRef, useState } from "react"
 import {
-  cancelDestinationImportar histórico,
+  cancelDestinationBackfill,
   type DestinationRecord,
   type DestinationSyncRunRecord,
   getDestinationFreshness,
@@ -15,7 +15,7 @@ import {
   resumeDestination,
 } from "../../../../../../domains/destinations/destinations.functions.ts"
 import { toUserMessage } from "../../../../../../lib/errors.ts"
-import { Importar históricoDestinationModal } from "./backfill-destination-modal.tsx"
+import { BackfillDestinationModal } from "./backfill-destination-modal.tsx"
 import { DeleteDestinationModal } from "./delete-destination-modal.tsx"
 import { DESTINATION_HEALTH_BADGE, DESTINATION_KIND_LABEL, formatLag } from "./destination-display.ts"
 import { DestinationFormModal } from "./destination-form-modal.tsx"
@@ -40,7 +40,7 @@ function LastRunSummary({ run }: { run: DestinationSyncRunRecord | null | undefi
  * Self-contained destination summary + lifecycle actions, reused for both the
  * list and the destination's own detail page. It owns its edit/delete modals
  * and pause/resume, so callers just render it. On the list (`linkToDetail`) the
- * identity links to the detail page and a "View logs" shortcut is shown; on the
+ * identity links to the detail page and a "Ver logs" shortcut is shown; on the
  * detail page itself that navigation is suppressed. "Test connection" lives in
  * the edit modal — the probe needs the API key, which is write-only.
  */
@@ -60,7 +60,7 @@ export function DestinationCard({
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showSources, setShowSources] = useState(false)
-  const [backfillOpen, setImportar históricoOpen] = useState(false)
+  const [backfillOpen, setBackfillOpen] = useState(false)
   // Until this instant, poll freshness even before the worker flips it in-progress, so a
   // just-triggered backfill is picked up within a tick or two instead of after staleTime.
   const pollUntil = useRef(0)
@@ -119,8 +119,8 @@ export function DestinationCard({
     onError: (error) => toast({ variant: "destructive", description: toUserMessage(error) }),
   })
 
-  const cancelImportar histórico = useMutation({
-    mutationFn: () => cancelDestinationImportar histórico({ data: { projectId, destinationId: destination.id } }),
+  const cancelBackfill = useMutation({
+    mutationFn: () => cancelDestinationBackfill({ data: { projectId, destinationId: destination.id } }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: destinationsQueryKey(projectId) })
       void queryClient.invalidateQueries({ queryKey: ["destination-freshness", destination.id] })
@@ -225,12 +225,12 @@ export function DestinationCard({
               params={{ projectSlug, destinationId: destination.id }}
             >
               <Button variant="outline" size="sm">
-                View logs
+                Ver logs
               </Button>
             </Link>
           ) : null}
           <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-            Edit
+            Editar
           </Button>
           {!linkToDetail && destination.status === "active" ? (
             freshness?.backfillInProgress ? (
@@ -244,14 +244,14 @@ export function DestinationCard({
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={cancelImportar histórico.isPending}
-                  onClick={() => cancelImportar histórico.mutate()}
+                  disabled={cancelBackfill.isPending}
+                  onClick={() => cancelBackfill.mutate()}
                 >
-                  Cancel
+                  Cancelar
                 </Button>
               </>
             ) : freshness?.backfillAvailable ? (
-              <Button variant="outline" size="sm" onClick={() => setImportar históricoOpen(true)}>
+              <Button variant="outline" size="sm" onClick={() => setBackfillOpen(true)}>
                 <Icon icon={History} size="sm" />
                 Importar histórico
               </Button>
@@ -270,12 +270,12 @@ export function DestinationCard({
               onClick={() => pause.mutate()}
             >
               <Icon icon={Pause} size="sm" />
-              Pause
+              Pausar
             </Button>
           )}
           <Button variant="outline" size="sm" onClick={() => setDeleting(true)}>
             <Icon icon={Trash2} size="sm" />
-            Delete
+            Excluir
           </Button>
         </div>
       </div>
@@ -299,10 +299,10 @@ export function DestinationCard({
         <DeleteDestinationModal projectId={projectId} destination={destination} onClose={() => setDeleting(false)} />
       ) : null}
       {backfillOpen ? (
-        <Importar históricoDestinationModal
+        <BackfillDestinationModal
           projectId={projectId}
           destination={destination}
-          onClose={() => setImportar históricoOpen(false)}
+          onClose={() => setBackfillOpen(false)}
           onStarted={() => {
             pollUntil.current = Date.now() + 60_000
             void queryClient.invalidateQueries({ queryKey: ["destination-freshness", destination.id] })

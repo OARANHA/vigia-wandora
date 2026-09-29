@@ -34,21 +34,20 @@ export function DestinationsSection({
       {isLoading ? null : destinations.length === 0 ? (
         <BlankSlate
           icon={Share2Icon}
-          title="No destinations yet"
-          description="Connect a destination to stream new spans, traces, and sessions into a customer-owned system."
+          title="Nenhum destino configurado"
+          description="Conecte um destino para enviar novos spans, traces e sessões a um sistema controlado pelo cliente."
           action={{
-            label: "Add destination",
+            label: "Adicionar destino",
             icon: Plus,
             onClick: () => setCreating(true),
           }}
-          docsHref="https://docs.latitude.so/more/data-destinations/overview"
         />
       ) : (
         <>
           <div className="flex flex-row justify-end">
             <Button onClick={() => setCreating(true)}>
               <Icon icon={Plus} size="sm" />
-              Add destination
+              Adicionar destino
             </Button>
           </div>
 

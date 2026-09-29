@@ -430,3 +430,14 @@ Validação de código do PR #46:
 - teste da apresentação **Resultado** e valor em PT-BR: sucesso.
 
 A validação de produção e o uso da Wandora como primeiro cliente real devem ser registrados após o deploy, sem antecipar esse estado neste checkpoint.
+
+
+## Business Events v0 — integrado, deploy pendente — 2026-09-29
+
+O PR #46 foi integrado ao `main` no commit `c845630556be695d6b8a49bee93b9b8ec6c9e4cb`. O workflow `Vigia container images` #86 publicou com sucesso as imagens de produção do merge.
+
+A implantação no runtime público foi interrompida **antes do redeploy**. O precheck operacional tentou repullar `ghcr.io/oaranha/vigia-web:main` três vezes por execução e recebeu `connection reset by peer` em conexões IPv6 do backend do GHCR. Uma segunda execução controlada repetiu o mesmo resultado e também abortou antes de tocar a stack.
+
+Readback pós-falha confirmou a stack `vigia` ativa, serviços saudáveis e `ConfigHash` ainda em `417b322c23f06d6c6d17e4839ec437e679c97219`. O endpoint novo de Business Events, portanto, **ainda não deve ser considerado implantado em produção**.
+
+O próximo passo é tratar o transporte de registry da VPS. Qualquer mudança de rede/daemon que ultrapasse retry/readback exige aprovação operacional explícita. Depois disso, repetir apenas o pull necessário, redeploy via Portainer e smoke real do contrato.

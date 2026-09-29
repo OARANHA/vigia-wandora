@@ -114,7 +114,7 @@ export function RedactionCard({
               <div className="flex flex-col gap-1">
                 <Label htmlFor={`${idPrefix}-metadata`}>Também analisar metadata e tags</Label>
                 <Text.H6 color="foregroundMuted">
-                  Valores adicionados por você, como <span className="font-mono">plan</span> or{" "}
+                  Valores adicionados por você, como <span className="font-mono">plan</span> ou{" "}
                   <span className="font-mono">region</span>. Fica desativado por padrão porque a análise pode remover valores usados em filtros
                   e agrupamentos.
                 </Text.H6>

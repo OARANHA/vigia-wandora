@@ -28,6 +28,7 @@ import { rollupCostDisplay } from "../../../../../domains/spans/cost-display.ts"
 import type { TraceRecord } from "../../../../../domains/traces/traces.functions.ts"
 import { ListingLayout as Layout, listingLayoutIntrinsicScroll } from "../../../../../layouts/ListingLayout/index.tsx"
 import { useParamState } from "../../../../../lib/hooks/useParamState.ts"
+import { ptBR } from "../../../../../lib/i18n/pt-BR.ts"
 import type { SelectionState } from "../../../../../lib/hooks/useSelectableRows.ts"
 import { FiltersSidebar } from "./filters-sidebar.tsx"
 import { isLargeSession, MAX_SESSION_ANALYSIS_TRACE_COUNT } from "./session-detail-drawer/session-size.ts"
@@ -61,19 +62,19 @@ export const DEFAULT_SESSION_SORTING: InfiniteTableSorting = {
 }
 
 export const SESSION_COLUMN_OPTIONS = [
-  { id: "indicators", label: "Indicators" },
-  { id: "lastActivity", label: "Last Activity", required: true },
-  { id: "name", label: "Name" },
-  { id: "tags", label: "Tags" },
-  { id: "searchMatches", label: "Matching traces" },
-  { id: "duration", label: "Duration" },
-  { id: "ttft", label: "Time To First Token", defaultHidden: true },
-  { id: "cost", label: "Cost" },
-  { id: "cacheHitRate", label: "Cache Hit Rate" },
-  { id: "sessionId", label: "Session ID" },
-  { id: "userId", label: "User ID" },
-  { id: "models", label: "Models" },
-  { id: "spans", label: "Spans" },
+  { id: "indicators", label: ptBR.clientPages.sessions.columns.indicators },
+  { id: "lastActivity", label: ptBR.clientPages.sessions.columns.lastActivity, required: true },
+  { id: "name", label: ptBR.clientPages.sessions.columns.name },
+  { id: "tags", label: ptBR.clientPages.sessions.columns.tags },
+  { id: "searchMatches", label: ptBR.clientPages.sessions.columns.matchingTraces },
+  { id: "duration", label: ptBR.clientPages.sessions.columns.duration },
+  { id: "ttft", label: ptBR.clientPages.sessions.columns.ttft, defaultHidden: true },
+  { id: "cost", label: ptBR.clientPages.sessions.columns.cost },
+  { id: "cacheHitRate", label: ptBR.clientPages.sessions.columns.cacheHitRate },
+  { id: "sessionId", label: ptBR.clientPages.sessions.columns.sessionId },
+  { id: "userId", label: ptBR.clientPages.sessions.columns.userId },
+  { id: "models", label: ptBR.clientPages.sessions.columns.models },
+  { id: "spans", label: ptBR.clientPages.sessions.columns.spans },
 ] as const
 
 export type SessionColumnId = (typeof SESSION_COLUMN_OPTIONS)[number]["id"]
@@ -325,12 +326,12 @@ export function SessionsView({
     shouldCheckOrphanFragmentSessions && !isOrphanFragmentCountLoading && sessionsWithoutLlmActivityCount > 0
 
   const blankSlate = useMemo(() => {
-    if (searchQuery) return "No sessions match the current search"
+    if (searchQuery) return ptBR.clientPages.sessions.emptySearch
     if (hasOrphanFragmentSessions) {
       return <SessionsOrphanFragmentsBlankSlate onShowAllSessions={onShowAllSessions} />
     }
-    if (hasUserAppliedFilters) return "No sessions match the current filters"
-    return "No sessions found"
+    if (hasUserAppliedFilters) return ptBR.clientPages.sessions.emptyFilters
+    return ptBR.clientPages.sessions.empty
   }, [hasOrphanFragmentSessions, hasUserAppliedFilters, onShowAllSessions, searchQuery])
 
   const sessionRelevantTraceIds = useMemo(() => {
@@ -396,7 +397,7 @@ export function SessionsView({
     return [
       {
         key: "indicators",
-        header: "Indicators",
+        header: ptBR.clientPages.sessions.columns.indicators,
         width: 88,
         minWidth: 88,
         maxWidth: 88,
@@ -419,7 +420,7 @@ export function SessionsView({
       },
       {
         key: "lastActivity",
-        header: "Last Activity",
+        header: ptBR.clientPages.sessions.columns.lastActivity,
         sortKey: "lastActivity",
         width: 210,
         // For session rows, surface the most recent span start; expanded trace
@@ -442,7 +443,7 @@ export function SessionsView({
       },
       {
         key: "name",
-        header: "Name",
+        header: ptBR.clientPages.sessions.columns.name,
         width: 180,
         render: (row) => {
           const name = field(row, "rootSpanName")
@@ -453,13 +454,13 @@ export function SessionsView({
       },
       {
         key: "tags",
-        header: "Tags",
+        header: ptBR.clientPages.sessions.columns.tags,
         width: 150,
         render: (row) => <TagList tags={field(row, "tags")} />,
       },
       {
         key: "searchMatches",
-        header: "Matching traces",
+        header: ptBR.clientPages.sessions.columns.matchingTraces,
         width: 150,
         // Empty cell when no match metadata exists for the session (or the row
         // is a child trace). The column is always declared so the visible-
@@ -479,7 +480,7 @@ export function SessionsView({
       },
       {
         key: "duration",
-        header: "Duration",
+        header: ptBR.clientPages.sessions.columns.duration,
         align: "end",
         sortKey: "duration",
         width: 140,
@@ -506,7 +507,7 @@ export function SessionsView({
       },
       {
         key: "ttft",
-        header: "Time To First Token",
+        header: ptBR.clientPages.sessions.columns.ttft,
         align: "end",
         sortKey: "ttft",
         width: 176,
@@ -535,7 +536,7 @@ export function SessionsView({
       },
       {
         key: "cost",
-        header: "Cost",
+        header: ptBR.clientPages.sessions.columns.cost,
         align: "end",
         sortKey: "cost",
         width: 146,
@@ -575,7 +576,7 @@ export function SessionsView({
       },
       {
         key: "cacheHitRate",
-        header: "Cache Hit Rate",
+        header: ptBR.clientPages.sessions.columns.cacheHitRate,
         align: "end",
         width: 130,
         render: (row) => {
@@ -588,7 +589,7 @@ export function SessionsView({
       },
       {
         key: "sessionId",
-        header: "Session ID",
+        header: ptBR.clientPages.sessions.columns.sessionId,
         width: 160,
         render: (row) => {
           if (row.kind === "session") {
@@ -599,13 +600,13 @@ export function SessionsView({
       },
       {
         key: "userId",
-        header: "User ID",
+        header: ptBR.clientPages.sessions.columns.userId,
         width: 160,
         render: (row) => field(row, "userId"),
       },
       {
         key: "models",
-        header: "Models",
+        header: ptBR.clientPages.sessions.columns.models,
         width: 160,
         render: (row) => {
           const providers = field(row, "providers")
@@ -632,7 +633,7 @@ export function SessionsView({
       },
       {
         key: "spans",
-        header: "Spans",
+        header: ptBR.clientPages.sessions.columns.spans,
         align: "end",
         sortKey: "spans",
         width: 110,
@@ -717,10 +718,10 @@ export function SessionsView({
   const getRowAriaLabel = useCallback((row: SessionTableRow) => {
     if (row.kind === "session") {
       const short = row.session.rootSpanName || row.session.sessionId.slice(0, 8)
-      return `View session ${short}`
+      return `Abrir sessão ${short}`
     }
     const short = row.trace.rootSpanName || row.trace.traceId.slice(0, 8)
-    return `View trace ${short}`
+    return `Abrir trace ${short}`
   }, [])
 
   // Flat set of every matching trace id across visible sessions → dim the
@@ -792,8 +793,8 @@ export function SessionsView({
             <div className="flex min-w-0 flex-1 items-center justify-start">{leadingControl}</div>
             <div className="flex min-w-0 flex-1 items-center justify-center gap-3">
               <Text.H6 color="foregroundMuted" noWrap>
-                Showing {traces.length} of {totalCount} traces
-                {displayLimitReached ? " (display limit reached)" : ""}
+                Exibindo {traces.length} de {totalCount} traces
+                {displayLimitReached ? " (limite de exibição atingido)" : ""}
               </Text.H6>
               {entry.hasMore ? (
                 <Button
@@ -804,8 +805,8 @@ export function SessionsView({
                   onClick={() => loadMoreSessionTraces(sessionId)}
                 >
                   {entry.isLoadingMore
-                    ? "Loading…"
-                    : `Load ${Math.min(EXPANDED_TRACE_PAGE_SIZE, Math.max(totalCount - traces.length, 0))} more`}
+                    ? ptBR.clientPages.sessions.loading
+                    : `Carregar mais ${Math.min(EXPANDED_TRACE_PAGE_SIZE, Math.max(totalCount - traces.length, 0))}`}
                 </Button>
               ) : null}
             </div>
@@ -816,7 +817,7 @@ export function SessionsView({
       return {
         data: traces.map((trace): SessionTableRow => ({ kind: "trace", trace })),
         isLoading: entry.isLoading,
-        blankSlate: "No traces in this session",
+        blankSlate: ptBR.clientPages.sessions.noTraces,
         ...(footer ? { header: footer } : {}),
       }
     }
@@ -833,7 +834,7 @@ export function SessionsView({
         hiddenCount > 0 ? (
           <Button variant="ghost" size="sm" onClick={() => toggleShowAllForSession(sessionId)}>
             {showingAll ? <ChevronsDownUpIcon className="size-3.5" /> : <ChevronsUpDownIcon className="size-3.5" />}
-            {showingAll ? "Hide" : "Show"} {hiddenCount} non-matching trace
+            {showingAll ? "Ocultar" : "Mostrar"} {hiddenCount} trace que não corresponde
             {hiddenCount === 1 ? "" : "s"}
           </Button>
         ) : undefined

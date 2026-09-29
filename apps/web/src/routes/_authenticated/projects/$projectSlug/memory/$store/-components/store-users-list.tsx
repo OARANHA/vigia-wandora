@@ -20,7 +20,7 @@ export function StoreUsersList({
   return (
     <div className="flex flex-wrap items-center gap-1.5">
       <Text.H6 color="foregroundMuted" className="mr-0.5">
-        Accessed by {users.length === 1 ? "1 user" : `${users.length} users`}
+        Acessado por {users.length === 1 ? "1 usuário" : `${users.length} usuários`}
       </Text.H6>
       {users.map((user) => (
         <Link

@@ -1,6 +1,6 @@
-import { Button, Icon, Input, Text, useValueWithDefault } from "@repo/ui"
+import { Icon, Input, Text, useValueWithDefault } from "@repo/ui"
 import { createFileRoute } from "@tanstack/react-router"
-import { ExternalLinkIcon, SearchIcon, UsersRoundIcon } from "lucide-react"
+import { SearchIcon, UsersRoundIcon } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { TimeFilterDropdown } from "../../../../../components/time-filter-dropdown.tsx"
 import { useProjectUsers, useUsersOverview } from "../../../../../domains/end-users/end-users.collection.ts"
@@ -57,17 +57,11 @@ function UsersEmptyState() {
         <Icon icon={UsersRoundIcon} size="lg" color="foregroundMuted" />
       </div>
       <div className="flex max-w-md flex-col items-center gap-2">
-        <Text.H3 centered>No users yet</Text.H3>
+        <Text.H3 centered>{ptBR.clientPages.users.emptyTitle}</Text.H3>
         <Text.H5 color="foregroundMuted" centered>
-          Attach user IDs to traces to understand each customer's activity, sessions, and errors.
+          {ptBR.clientPages.users.emptyDescription}
         </Text.H5>
       </div>
-      <a href="https://docs.latitude.so/observability/users" target="_blank" rel="noopener noreferrer">
-        <Button>
-          <Icon size="sm" icon={ExternalLinkIcon} />
-          Read the docs
-        </Button>
-      </a>
     </div>
   )
 }
@@ -184,7 +178,7 @@ function UsersPage() {
                 <Input
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
-                  placeholder="Search by user id or email"
+                  placeholder={ptBR.clientPages.users.searchPlaceholder}
                   size="sm"
                   className="w-64 pl-8 rounded-lg"
                 />
@@ -194,7 +188,7 @@ function UsersPage() {
                 projectId={project.id}
                 projectSlug={project.slug}
                 target={allUsersMonitorTarget()}
-                label="Monitor users"
+                label={ptBR.clientPages.users.monitor}
               />
             </Layout.ActionRowItem>
           </Layout.ActionsRow>

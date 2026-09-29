@@ -33,7 +33,7 @@ export function ToolDescription({
           <Button variant="link" size="sm" className="px-0" onClick={() => setOpen(true)}>
             Show more
           </Button>
-          <Modal open={open} onOpenChange={setOpen} dismissible title={toolName} description="Tool description">
+          <Modal open={open} onOpenChange={setOpen} dismissible title={toolName} description="Descrição da ferramenta">
             <Text.H5 color="foregroundMuted" whiteSpace="preWrap">
               {description}
             </Text.H5>

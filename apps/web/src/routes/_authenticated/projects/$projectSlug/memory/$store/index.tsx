@@ -20,7 +20,7 @@ import { StoreUsersList } from "./-components/store-users-list.tsx"
 function StoreBreadcrumb() {
   const { store } = useParams({ strict: false })
   return (
-    <BreadcrumbText variant="current">{store ? storeDisplayLabel(decodeStoreSegment(store)) : "Store"}</BreadcrumbText>
+    <BreadcrumbText variant="current">{store ? storeDisplayLabel(decodeStoreSegment(store)) : "Armazenamento"}</BreadcrumbText>
   )
 }
 
@@ -57,7 +57,7 @@ function StoreDetailPage() {
               asChild
               side="bottom"
               trigger={
-                <Button asChild variant="ghost" size="sm" className="w-fit" aria-label="Back to stores">
+                <Button asChild variant="ghost" size="sm" className="w-fit" aria-label="Voltar para armazenamentos">
                   <Link to="/projects/$projectSlug/memory" params={{ projectSlug }}>
                     <Icon icon={ArrowLeftIcon} size="sm" />
                     Back

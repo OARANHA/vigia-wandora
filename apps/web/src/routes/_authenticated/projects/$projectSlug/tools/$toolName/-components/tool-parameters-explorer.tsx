@@ -77,7 +77,7 @@ function ParameterBadges({ defined }: { readonly defined: DefinedParameter | und
         defined.options.length > 0 ? (
           <Tooltip asChild trigger={<Status variant="neutral" label={defined.type} indicator={false} />}>
             <div className="flex flex-col gap-0.5">
-              <Text.H6 color="foregroundMuted">Allowed values</Text.H6>
+              <Text.H6 color="foregroundMuted">Valores permitidos</Text.H6>
               {defined.options.map((option) => (
                 <Text.H6B key={option} className="font-mono">
                   {option}
@@ -93,7 +93,7 @@ function ParameterBadges({ defined }: { readonly defined: DefinedParameter | und
         <Tooltip asChild trigger={<InfoIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}>
           <div className="flex max-w-72 flex-col gap-0.5">
             {defined.description ? <Text.H6>{defined.description}</Text.H6> : null}
-            {defined.required ? <Text.H6 color="foregroundMuted">Required</Text.H6> : null}
+            {defined.required ? <Text.H6 color="foregroundMuted">Obrigatório</Text.H6> : null}
           </div>
         </Tooltip>
       ) : null}
@@ -115,7 +115,7 @@ function ParameterValues({
         <div key={value.value} className="flex flex-col gap-1">
           <div className="flex min-w-0 flex-row items-center gap-2">
             <div className="min-w-0 flex-1">
-              <CopyableText value={value.value} size="sm" ellipsis tooltip="Copy value" />
+              <CopyableText value={value.value} size="sm" ellipsis tooltip="Copiar valor" />
             </div>
             <Text.H6 color="foreground" className="shrink-0 tabular-nums">
               {formatCount(value.count)}
@@ -188,10 +188,10 @@ export function ToolParametersExplorer({
   return (
     <div className={`flex min-w-0 flex-col gap-3 rounded-lg bg-secondary p-4 ${TOOL_DETAIL_PANEL_MAX_HEIGHT}`}>
       <div className="flex items-center justify-between">
-        <Text.H6 color="foregroundMuted">Parameters</Text.H6>
+        <Text.H6 color="foregroundMuted">Parâmetros</Text.H6>
         {sampleSize > 0 ? (
           <Text.H6 color="foregroundMuted">
-            based on the most recent {formatCount(sampleSize)} {errorsOnly ? "failed calls" : "calls"}
+            com base nas {formatCount(sampleSize)} {errorsOnly ? "chamadas com falha" : "chamadas"} mais recentes
           </Text.H6>
         ) : null}
       </div>
@@ -204,7 +204,7 @@ export function ToolParametersExplorer({
       ) : parameters.length === 0 ? (
         <div className="flex min-h-[120px] items-center justify-center">
           <Text.H6 color="foregroundMuted">
-            {errorsOnly ? "No parameters recorded on failed calls" : "No parameters defined or recorded"}
+            {errorsOnly ? "Nenhum parâmetro registrado nas chamadas com falha" : "Nenhum parâmetro definido ou registrado"}
           </Text.H6>
         </div>
       ) : single ? (
@@ -217,7 +217,7 @@ export function ToolParametersExplorer({
           </div>
           {sampleSize === 0 ? (
             <Text.H6 color="foregroundMuted">
-              {errorsOnly ? "No failed calls in this window." : "No calls in this window."}
+              {errorsOnly ? "Nenhuma chamada com falha neste período." : "Nenhuma chamada neste período."}
             </Text.H6>
           ) : (
             <div className="flex min-h-0 min-w-0 flex-col gap-2 overflow-y-auto">
@@ -264,12 +264,12 @@ export function ToolParametersExplorer({
             {active ? (
               sampleSize === 0 ? (
                 <Text.H6 color="foregroundMuted">
-                  {errorsOnly ? "No failed calls in this window." : "No calls in this window."}
+                  {errorsOnly ? "Nenhuma chamada com falha neste período." : "Nenhuma chamada neste período."}
                 </Text.H6>
               ) : (
                 <>
                   <Text.H6 color="foregroundMuted">
-                    Top values of <span className="font-mono">{active.name}</span>
+                    Principais valores de <span className="font-mono">{active.name}</span>
                   </Text.H6>
                   <ParameterValues parameter={active} sampleSize={sampleSize} />
                 </>

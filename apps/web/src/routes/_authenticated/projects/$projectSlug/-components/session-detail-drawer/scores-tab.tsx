@@ -120,7 +120,7 @@ export function ScoresTab({
       scores={otherScores}
       isLoading={isLoading}
       isError={isError}
-      listLabel="Other annotations and evaluations"
+      listLabel="Outras anotações e avaliações"
       intro={
         <div className="flex flex-col gap-6">
           <SessionAssessmentSection
@@ -139,13 +139,12 @@ export function ScoresTab({
           />
           {latestTraceId.length > 0 ? (
             <div className="flex flex-col items-start gap-1">
-              <Text.H6B>Missing something?</Text.H6B>
+              <Text.H6B>Faltou algo?</Text.H6B>
               <Text.H6 color="foregroundMuted">
-                Add feedback about the whole session below, or select a specific part in Conversation to annotate it
-                there.
+                Adicione feedback sobre a sessão inteira abaixo ou selecione uma parte específica em Conversa para anotá-la.
               </Text.H6>
               <Button type="button" variant="link" size="sm" className="h-auto px-0 py-0" onClick={onOpenConversation}>
-                Open conversation
+                Abrir conversa
               </Button>
             </div>
           ) : null}

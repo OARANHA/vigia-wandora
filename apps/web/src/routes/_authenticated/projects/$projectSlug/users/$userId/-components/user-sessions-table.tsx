@@ -14,7 +14,7 @@ import { rollupCostDisplay } from "../../../../../../../domains/spans/cost-displ
 const COLUMNS: InfiniteTableColumn<SessionRecord>[] = [
   {
     key: "lastActivity",
-    header: "Last Activity",
+    header: "Última atividade",
     sortKey: "lastActivity",
     width: 180,
     render: (session) => (
@@ -25,7 +25,7 @@ const COLUMNS: InfiniteTableColumn<SessionRecord>[] = [
   },
   {
     key: "name",
-    header: "Name",
+    header: "Nome",
     width: 220,
     render: (session) => (
       <div className="flex min-w-0 items-center gap-2">
@@ -34,7 +34,7 @@ const COLUMNS: InfiniteTableColumn<SessionRecord>[] = [
         </Text.H5>
         {session.errorCount > 0 ? (
           <Text.H6 color="destructive" noWrap>
-            {formatCount(session.errorCount)} {session.errorCount === 1 ? "error" : "errors"}
+            {formatCount(session.errorCount)} {session.errorCount === 1 ? "erro" : "erros"}
           </Text.H6>
         ) : null}
       </div>
@@ -57,7 +57,7 @@ const COLUMNS: InfiniteTableColumn<SessionRecord>[] = [
   },
   {
     key: "duration",
-    header: "Duration",
+    header: "Duração",
     width: 110,
     minWidth: 96,
     align: "end",
@@ -66,7 +66,7 @@ const COLUMNS: InfiniteTableColumn<SessionRecord>[] = [
   },
   {
     key: "cost",
-    header: "Cost",
+    header: "Custo",
     width: 110,
     minWidth: 96,
     align: "end",
@@ -111,7 +111,7 @@ export function UserSessionsTable({
       {...(activeSessionId !== undefined ? { activeRowKey: activeSessionId } : {})}
       onRowClick={(session: SessionRecord) => onSessionClick(session.sessionId)}
       getRowAriaLabel={(session: SessionRecord) =>
-        `Open session ${session.rootSpanName || session.sessionId.slice(0, 12)} in the session panel`
+        `Abrir sessão ${session.rootSpanName || session.sessionId.slice(0, 12)} no painel de sessões`
       }
       rowInteractionRole="button"
       infiniteScroll={infiniteScroll}

@@ -65,9 +65,9 @@ export function UserUsageSection({
 }) {
   return (
     <div className="flex flex-col gap-4 md:flex-row">
-      <UsageList projectId={projectId} userId={userId} dimension="model" title="Models" errorsOnly={errorsOnly} />
-      <UsageList projectId={projectId} userId={userId} dimension="provider" title="Providers" errorsOnly={errorsOnly} />
-      <UsageList projectId={projectId} userId={userId} dimension="tool" title="Tools" errorsOnly={errorsOnly} />
+      <UsageList projectId={projectId} userId={userId} dimension="model" title="Modelos" errorsOnly={errorsOnly} />
+      <UsageList projectId={projectId} userId={userId} dimension="provider" title="Provedores" errorsOnly={errorsOnly} />
+      <UsageList projectId={projectId} userId={userId} dimension="tool" title="Ferramentas" errorsOnly={errorsOnly} />
     </div>
   )
 }

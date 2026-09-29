@@ -81,14 +81,14 @@ function MomentLabelEvidence({ label }: { readonly label: MomentLabelRecord }) {
     <div className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
         <Text.H4>{capitalizeMomentKind(label.kind)}</Text.H4>
-        <Text.H6 color="foregroundMuted">Confidence {Math.round(label.confidence * 100)}%</Text.H6>
+        <Text.H6 color="foregroundMuted">Confiança {Math.round(label.confidence * 100)}%</Text.H6>
       </div>
       <div className="flex flex-col gap-1.5">
-        <Text.H6 color="foregroundMuted">Summary</Text.H6>
+        <Text.H6 color="foregroundMuted">Resumo</Text.H6>
         <Text.H5>{displayLabelSummary(label.summary)}</Text.H5>
       </div>
       <div className="flex flex-col gap-1.5">
-        <Text.H6 color="foregroundMuted">Evidence</Text.H6>
+        <Text.H6 color="foregroundMuted">Evidência</Text.H6>
         <Text.H5 className="italic">“{label.evidence}”</Text.H5>
       </div>
     </div>
@@ -137,7 +137,7 @@ function MomentLabelBadge({ label, store }: { readonly label: MomentLabelRecord;
         <button
           type="button"
           className="inline-flex max-w-48 cursor-pointer items-center rounded-full border border-border bg-muted px-2 py-0.5 text-muted-foreground text-xs hover:bg-muted/70 data-[state=open]:border-primary data-[state=open]:bg-primary/10"
-          title="Show moment evidence"
+          title="Mostrar evidência do momento"
           onClick={(event) => event.stopPropagation()}
         >
           {label.kind.replaceAll("_", " ")}
@@ -149,7 +149,7 @@ function MomentLabelBadge({ label, store }: { readonly label: MomentLabelRecord;
             <MomentLabelEvidence label={label} />
           </div>
           <PopoverClose asChild>
-            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Close moment">
+            <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" aria-label="Fechar momento">
               <Icon icon={XIcon} size="sm" />
             </Button>
           </PopoverClose>
@@ -290,7 +290,7 @@ export function ConversationTab({
   if (!latestTraceId) {
     return (
       <div className="flex flex-1 items-center justify-center px-6 py-10">
-        <Text.H5 color="foregroundMuted">No conversation in this session.</Text.H5>
+        <Text.H5 color="foregroundMuted">Nenhuma conversa nesta sessão.</Text.H5>
       </div>
     )
   }
@@ -313,7 +313,7 @@ export function ConversationTab({
     return (
       <TraceConversationTab
         {...conversationProps}
-        timelineNotice="Timeline hidden for large sessions. Open an individual trace to inspect its timeline."
+        timelineNotice="A linha do tempo fica oculta em sessões grandes. Abra um trace individual para inspecioná-la."
       />
     )
   }

@@ -60,7 +60,7 @@ export function StoreInsightList({
               onClick={() => setExpanded((prev) => !prev)}
               className="self-start text-left focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
             >
-              <Text.H6 color="primary">{expanded ? "Show less" : `Show all ${items.length}`}</Text.H6>
+              <Text.H6 color="primary">{expanded ? "Mostrar menos" : `Mostrar todos (${items.length})`}</Text.H6>
             </button>
           ) : null}
         </>

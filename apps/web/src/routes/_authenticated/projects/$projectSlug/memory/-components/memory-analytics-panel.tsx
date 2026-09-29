@@ -2,6 +2,7 @@ import { Button, Chart, type ChartSeries, HistogramSkeleton, Icon, Skeleton, Tex
 import { formatCount } from "@repo/utils"
 import { BarChart2, ChevronDown, ChevronUp } from "lucide-react"
 import { useMemo, useState } from "react"
+import { ptBR } from "../../../../../../lib/i18n/pt-BR.ts"
 import type {
   MemoryActivityBucketRecord,
   MemoryOverviewRecord,
@@ -84,16 +85,16 @@ export interface MemoryTile {
 function memoryTiles(overview: MemoryOverviewRecord | undefined): readonly MemoryTile[] {
   const o = overview
   return [
-    { key: "records", label: "Records", value: formatCount(o?.liveRecords ?? 0) },
+    { key: "records", label: ptBR.clientPages.memory.columns.records, value: formatCount(o?.liveRecords ?? 0) },
     {
       key: "tokens",
-      label: "Total tokens",
+      label: ptBR.clientPages.memory.columns.tokens,
       value: formatCount(o?.liveTokens ?? 0),
       ...(o && o.liveTokens > 0 ? { subtext: `${formatPercent(o.deadTokens / o.liveTokens)} dead` } : {}),
     },
-    { key: "searches", label: "Searches", value: formatCount(o?.searches ?? 0) },
-    { key: "writes", label: "Writes", value: formatCount(o?.writes ?? 0) },
-    { key: "ratio", label: "Read:write", value: formatRatio(o?.recordsRetrieved ?? 0, o?.writes ?? 0) },
+    { key: "searches", label: ptBR.clientPages.memory.searches, value: formatCount(o?.searches ?? 0) },
+    { key: "writes", label: ptBR.clientPages.memory.columns.writes, value: formatCount(o?.writes ?? 0) },
+    { key: "ratio", label: ptBR.clientPages.memory.columns.ratio, value: formatRatio(o?.recordsRetrieved ?? 0, o?.writes ?? 0) },
   ]
 }
 
@@ -135,7 +136,7 @@ export function MemoryAnalyticsPanel({
     () => [
       {
         kind: "bar",
-        name: "Created",
+        name: ptBR.clientPages.memory.created,
         values: denseHistogramBuckets.map((b) => b.creations),
         color: ADD_COLOR,
         axis: "left",
@@ -143,7 +144,7 @@ export function MemoryAnalyticsPanel({
       },
       {
         kind: "bar",
-        name: "Updated",
+        name: ptBR.clientPages.memory.updated,
         values: denseHistogramBuckets.map((b) => b.updates),
         color: UPDATE_COLOR,
         axis: "left",
@@ -151,7 +152,7 @@ export function MemoryAnalyticsPanel({
       },
       {
         kind: "bar",
-        name: "Deleted",
+        name: ptBR.clientPages.memory.deleted,
         values: denseHistogramBuckets.map((b) => b.deletions),
         color: REMOVE_COLOR,
         axis: "left",
@@ -159,7 +160,7 @@ export function MemoryAnalyticsPanel({
       },
       {
         kind: "line",
-        name: "Records retrieved",
+        name: ptBR.clientPages.memory.recordsRetrieved,
         values: denseHistogramBuckets.map((b) => b.recordsRetrieved),
         color: READS_COLOR,
         axis: "right",
@@ -178,9 +179,9 @@ export function MemoryAnalyticsPanel({
         <div className="flex items-center justify-between px-4 py-2">
           <div className="flex items-center gap-1.5">
             <Icon icon={BarChart2} size="sm" color="foregroundMuted" />
-            <Text.H6 color="foregroundMuted">Memory statistics</Text.H6>
+            <Text.H6 color="foregroundMuted">{ptBR.clientPages.memory.statistics}</Text.H6>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setCollapsed(false)} aria-label="Expand statistics">
+          <Button variant="ghost" size="icon" onClick={() => setCollapsed(false)} aria-label="Expandir estatísticas">
             <Icon icon={ChevronDown} size="sm" />
           </Button>
         </div>
@@ -216,7 +217,7 @@ export function MemoryAnalyticsPanel({
             variant="ghost"
             size="icon"
             onClick={() => setCollapsed(true)}
-            aria-label="Collapse statistics"
+            aria-label="Recolher estatísticas"
             className="shrink-0"
           >
             <Icon icon={ChevronUp} size="sm" />
@@ -229,12 +230,12 @@ export function MemoryAnalyticsPanel({
           </div>
         ) : isEmpty ? (
           <div className="flex w-full min-h-[80px] items-center justify-center px-4 py-3">
-            <Text.H6 color="foregroundMuted">No memory activity in this time window</Text.H6>
+            <Text.H6 color="foregroundMuted">{ptBR.clientPages.memory.noActivity}</Text.H6>
           </div>
         ) : (
           <>
             <ChartHeader
-              title="Memory activity over time"
+              title={ptBR.clientPages.memory.activityOverTime}
               fromIso={rangeFromIso}
               toIso={rangeToIso}
               isAllTime={isAllTime}
@@ -245,7 +246,7 @@ export function MemoryAnalyticsPanel({
                 series={series}
                 height={160}
                 xAxisLabelFontSize={10}
-                ariaLabel="Memory activity over time"
+                ariaLabel={ptBR.clientPages.memory.activityOverTime}
               />
             </div>
           </>

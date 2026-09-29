@@ -30,7 +30,7 @@ export function FiltersSidebar({
   return (
     <Layout.Sidebar>
       <div className="flex items-center justify-between px-4 py-3 border-b">
-        <Text.H5>Filters</Text.H5>
+        <Text.H5>Filtros</Text.H5>
         <Button variant="ghost" size="icon" onClick={onClose}>
           <Icon icon={XIcon} size="sm" />
         </Button>

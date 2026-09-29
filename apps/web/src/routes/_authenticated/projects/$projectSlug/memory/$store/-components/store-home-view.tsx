@@ -67,19 +67,19 @@ function storeOverviewTiles(
 ): readonly MemoryTile[] {
   const o = overview
   return [
-    { key: "records", label: "Records", value: formatCount(o?.liveRecords ?? 0) },
+    { key: "records", label: "Registros", value: formatCount(o?.liveRecords ?? 0) },
     {
       key: "tokens",
-      label: "Total tokens",
+      label: "Total de tokens",
       value: formatCount(o?.liveTokens ?? 0),
-      ...(o && o.liveTokens > 0 ? { subtext: `${formatPercent(o.deadTokens / o.liveTokens)} dead` } : {}),
+      ...(o && o.liveTokens > 0 ? { subtext: `${formatPercent(o.deadTokens / o.liveTokens)} inativos` } : {}),
     },
-    { key: "ratio", label: "Read:write", value: formatRatio(o?.recordsRetrieved ?? 0, o?.writes ?? 0) },
+    { key: "ratio", label: "Leitura:gravação", value: formatRatio(o?.recordsRetrieved ?? 0, o?.writes ?? 0) },
     {
       key: "searches",
-      label: "Searches",
+      label: "Buscas",
       value: formatCount(o?.searches ?? 0),
-      ...(o && o.searches > 0 ? { subtext: `${formatPercent(o.zeroHitSearches / o.searches)} zero-hit` } : {}),
+      ...(o && o.searches > 0 ? { subtext: `${formatPercent(o.zeroHitSearches / o.searches)} sem resultado` } : {}),
     },
   ]
 }
@@ -90,7 +90,7 @@ function mostReadItems(insights: StoreInsightsRecord | undefined) {
   return rows.map((row) => ({
     key: row.recordId,
     label: recordDisplayLabel(row.recordId),
-    value: `${formatCount(row.reads)} reads`,
+    value: `${formatCount(row.reads)} leituras`,
     fraction: max > 0 ? row.reads / max : 0,
     recordId: row.recordId,
   }))
@@ -107,7 +107,7 @@ function coldItems(insights: StoreInsightsRecord | undefined, nowMs: number) {
   return rows.map((row) => ({
     key: row.recordId,
     label: recordDisplayLabel(row.recordId),
-    value: `${formatElapsed(idleOf(row))} without activity`,
+    value: `${formatElapsed(idleOf(row))} sem atividade`,
     fraction: maxIdle > 0 ? idleOf(row) / maxIdle : 0,
     recordId: row.recordId,
   }))
@@ -118,7 +118,7 @@ function queryItems(rows: readonly { readonly queryText: string; readonly search
   return rows.map((row, index) => ({
     key: `${index}:${row.queryText}`,
     label: row.queryText,
-    value: `${formatCount(row.searches)} searches`,
+    value: `${formatCount(row.searches)} buscas`,
     fraction: max > 0 ? row.searches / max : 0,
   }))
 }
@@ -224,7 +224,7 @@ export function StoreHomeView({
     () => [
       {
         kind: "line",
-        name: "Total tokens",
+        name: "Total de tokens",
         values: denseTokens.map((point) => point.tokens),
         color: TOKENS_COLOR,
         area: true,
@@ -238,7 +238,7 @@ export function StoreHomeView({
     () => [
       {
         kind: "bar",
-        name: "Records",
+        name: "Registros",
         values: (insights?.sizeDistribution ?? []).map((bucket) => bucket.count),
         color: SIZE_BAR_COLOR,
       },
@@ -263,21 +263,21 @@ export function StoreHomeView({
         />
 
         <div className="flex flex-col gap-3">
-          <SectionHeading>What's used</SectionHeading>
+          <SectionHeading>O que é usado</SectionHeading>
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <StoreInsightList
-              title="Most-read records"
+              title="Registros mais lidos"
               items={mostRead}
               isLoading={insightsLoading}
-              emptyText="No records retrieved in this window"
+              emptyText="Nenhum registro recuperado neste período"
               mono
               onSelectRecord={onSelectRecord}
             />
             <StoreInsightList
-              title="Cold storage"
+              title="Registros inativos"
               items={cold}
               isLoading={insightsLoading}
-              emptyText="No records idle over 7 days"
+              emptyText="Nenhum registro inativo há mais de 7 dias"
               mono
               tone="destructive"
               onSelectRecord={onSelectRecord}
@@ -286,39 +286,39 @@ export function StoreHomeView({
         </div>
 
         <div className="flex flex-col gap-3">
-          <SectionHeading>What agents look for</SectionHeading>
+          <SectionHeading>O que os agentes procuram</SectionHeading>
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <StoreInsightList
-              title="Top queries"
+              title="Principais buscas"
               items={topQueries}
               isLoading={insightsLoading}
-              emptyText="No searches in this window"
+              emptyText="Nenhuma busca neste período"
             />
             <StoreInsightList
-              title="Zero-hit queries"
+              title="Buscas sem resultado"
               items={zeroHit}
               isLoading={insightsLoading}
-              emptyText="No zero-hit searches in this window"
+              emptyText="Nenhuma busca sem resultado neste período"
               tone="destructive"
             />
           </div>
         </div>
 
         <div className="flex flex-col gap-3">
-          <SectionHeading>Write health</SectionHeading>
+          <SectionHeading>Saúde das gravações</SectionHeading>
           <div className="flex flex-wrap gap-8 rounded-lg bg-secondary p-4">
             <StatCallout
-              label="Thrash writes"
+              label="Gravações repetitivas"
               value={formatCount(insights?.thrashWrites ?? 0)}
-              subtext="repeats within a run"
+              subtext="repetições na mesma execução"
             />
-            <StatCallout label="No-op rewrites" value={formatCount(insights?.noOpRewrites ?? 0)} subtext={undefined} />
+            <StatCallout label="Regravações sem alteração" value={formatCount(insights?.noOpRewrites ?? 0)} subtext={undefined} />
             <StatCallout
-              label="Duplicate records"
+              label="Registros duplicados"
               value={formatCount(insights?.duplicateRecords ?? 0)}
               subtext={
                 insights && insights.duplicateGroups > 0
-                  ? `across ${formatCount(insights.duplicateGroups)} contents`
+                  ? `em ${formatCount(insights.duplicateGroups)} conteúdos`
                   : undefined
               }
             />
@@ -331,14 +331,14 @@ export function StoreHomeView({
         </div>
 
         <div className="flex flex-col gap-3">
-          <SectionHeading>Footprint</SectionHeading>
+          <SectionHeading>Volume armazenado</SectionHeading>
           <div className="flex min-w-0 flex-col gap-3 rounded-lg bg-secondary p-4">
-            <Text.H6 color="foregroundMuted">Total tokens over time</Text.H6>
+            <Text.H6 color="foregroundMuted">Total de tokens ao longo do tempo</Text.H6>
             {insightsLoading ? (
               <HistogramSkeleton height={160} />
             ) : tokensEmpty ? (
               <div className="flex min-h-[120px] items-center justify-center">
-                <Text.H6 color="foregroundMuted">No writes yet</Text.H6>
+                <Text.H6 color="foregroundMuted">Ainda não há gravações</Text.H6>
               </div>
             ) : (
               <Chart
@@ -346,33 +346,33 @@ export function StoreHomeView({
                 series={tokenSeries}
                 height={160}
                 xAxisLabelFontSize={10}
-                ariaLabel="Total tokens over time"
+                ariaLabel="Total de tokens ao longo do tempo"
               />
             )}
           </div>
           <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
             <StoreInsightList
-              title="Largest records"
+              title="Maiores registros"
               items={largest}
               isLoading={insightsLoading}
-              emptyText="No live records"
+              emptyText="Nenhum registro ativo"
               mono
               onSelectRecord={onSelectRecord}
             />
             <div className="flex min-w-0 flex-col gap-3 rounded-lg bg-secondary p-4">
-              <Text.H6 color="foregroundMuted">Size distribution</Text.H6>
+              <Text.H6 color="foregroundMuted">Distribuição de tamanho</Text.H6>
               {insightsLoading ? (
                 <HistogramSkeleton height={160} />
               ) : sizeEmpty ? (
                 <div className="flex min-h-[120px] items-center justify-center">
-                  <Text.H6 color="foregroundMuted">No live records</Text.H6>
+                  <Text.H6 color="foregroundMuted">Nenhum registro ativo</Text.H6>
                 </div>
               ) : (
                 <Chart
                   categories={sizeCategories}
                   series={sizeSeries}
                   height={160}
-                  ariaLabel="Record size distribution"
+                  ariaLabel="Distribuição de tamanho dos registros"
                 />
               )}
             </div>

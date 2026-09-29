@@ -58,7 +58,7 @@ export function SignalsTab({
     () => [
       {
         key: "name",
-        header: "Signal",
+        header: "Sinal",
         sortKey: "name",
         minWidth: 200,
         render: (issue) => (
@@ -80,7 +80,7 @@ export function SignalsTab({
       },
       {
         key: "dimensions",
-        header: "Dimensions",
+        header: "Dimensões",
         width: 190,
         minWidth: 150,
         render: (issue) => (
@@ -93,7 +93,7 @@ export function SignalsTab({
       },
       {
         key: "seenAt",
-        header: "Seen at",
+        header: "Visto em",
         sortKey: "lastSeen",
         width: 120,
         minWidth: 100,
@@ -110,7 +110,7 @@ export function SignalsTab({
   if (isError) {
     return (
       <div className="flex flex-1 items-center justify-center px-6 py-10">
-        <Text.H5 color="foregroundMuted">Couldn't load signals. Please try again.</Text.H5>
+        <Text.H5 color="foregroundMuted">Não foi possível carregar os sinais. Tente novamente.</Text.H5>
       </div>
     )
   }
@@ -123,11 +123,11 @@ export function SignalsTab({
         columns={columns}
         getRowKey={(issue) => issue.id}
         onRowClick={(issue) => onOpenSignal(issue.id)}
-        getRowAriaLabel={(issue) => `Open issue ${issue.name}`}
+        getRowAriaLabel={(issue) => `Abrir sinal ${issue.name}`}
         sorting={sorting}
         defaultSorting={DEFAULT_SORTING}
         onSortChange={setSorting}
-        blankSlate="No signals detected in this session."
+        blankSlate="Nenhum sinal detectado nesta sessão."
       />
     </div>
   )

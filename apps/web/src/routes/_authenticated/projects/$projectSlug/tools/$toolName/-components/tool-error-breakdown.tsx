@@ -22,7 +22,7 @@ export function ToolErrorBreakdown({
 
   return (
     <div className={`flex min-w-0 flex-col gap-3 rounded-lg bg-secondary p-4 ${TOOL_DETAIL_PANEL_MAX_HEIGHT}`}>
-      <Text.H6 color="foregroundMuted">Common errors</Text.H6>
+      <Text.H6 color="foregroundMuted">Erros mais comuns</Text.H6>
       {isLoading ? (
         <div className="flex flex-col gap-2">
           <Skeleton className="h-5 w-full" />
@@ -31,7 +31,7 @@ export function ToolErrorBreakdown({
         </div>
       ) : rows.length === 0 ? (
         <div className="flex min-h-[200px] items-center justify-center">
-          <Text.H6 color="foregroundMuted">No failed calls in this time window</Text.H6>
+          <Text.H6 color="foregroundMuted">Nenhuma chamada com falha neste período</Text.H6>
         </div>
       ) : (
         <div className="flex min-h-0 flex-col gap-2 overflow-y-auto">
@@ -40,7 +40,7 @@ export function ToolErrorBreakdown({
               <div className="flex min-w-0 flex-row items-center gap-2">
                 {row.sample ? (
                   <div className="min-w-0 flex-1">
-                    <CopyableText value={row.sample} size="sm" ellipsis tooltip="Copy error output" />
+                    <CopyableText value={row.sample} size="sm" ellipsis tooltip="Copiar saída do erro" />
                   </div>
                 ) : (
                   <Text.H6 color="foregroundMuted" className="min-w-0 flex-1 truncate italic">

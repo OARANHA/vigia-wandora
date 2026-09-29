@@ -44,9 +44,9 @@ export function UserStatStrip({
       <div className="relative min-w-0">
         <div className="flex flex-row gap-3 overflow-x-auto p-4">
           <StatItem label="Traces" value={formatCount(profile?.traceCount ?? 0)} isLoading={isLoading} />
-          <StatItem label="Sessions" value={formatCount(profile?.sessionCount ?? 0)} isLoading={isLoading} />
+          <StatItem label="Sessões" value={formatCount(profile?.sessionCount ?? 0)} isLoading={isLoading} />
           <StatItem
-            label="Errored sessions"
+            label="Sessões com erro"
             value={
               profile && profile.errorSessionCount > 0
                 ? `${formatCount(profile.errorSessionCount)}${errorRate ? ` (${errorRate})` : ""}`
@@ -56,7 +56,7 @@ export function UserStatStrip({
             destructive={(profile?.errorSessionCount ?? 0) > 0}
           />
           <StatItem
-            label="Total cost"
+            label="Custo total"
             value={
               profile && profile.costTotalMicrocents > 0 ? formatPrice(profile.costTotalMicrocents / 100_000_000) : "-"
             }
@@ -68,11 +68,11 @@ export function UserStatStrip({
             isLoading={isLoading}
           />
           <StatItem
-            label="Avg trace duration"
+            label="Duração média do trace"
             value={profile && profile.avgDurationNs > 0 ? formatDuration(profile.avgDurationNs) : "-"}
             isLoading={isLoading}
           />
-          <StatItem label="Active days" value={formatCount(profile?.activeDays ?? 0)} isLoading={isLoading} />
+          <StatItem label="Dias ativos" value={formatCount(profile?.activeDays ?? 0)} isLoading={isLoading} />
         </div>
         <div className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-lg bg-gradient-to-l from-secondary to-transparent" />
       </div>

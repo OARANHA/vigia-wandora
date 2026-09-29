@@ -56,7 +56,7 @@ export function ToolRecentCalls({
   const columns: InfiniteTableColumn<SessionRecord>[] = [
     {
       key: "time",
-      header: "Time",
+      header: "Horário",
       width: 110,
       minWidth: 100,
       render: (session) => (
@@ -70,14 +70,14 @@ export function ToolRecentCalls({
       minWidth: 80,
       render: (session) =>
         session.errorCount > 0 ? (
-          <Status variant="destructive" label="error" />
+          <Status variant="destructive" label="erro" />
         ) : (
           <Status variant="success" label="ok" />
         ),
     },
     {
       key: "duration",
-      header: "Duration",
+      header: "Duração",
       width: 90,
       minWidth: 80,
       align: "end",
@@ -85,7 +85,7 @@ export function ToolRecentCalls({
     },
     {
       key: "name",
-      header: "Session",
+      header: "Sessão",
       width: 360,
       minWidth: 200,
       render: (session) => (
@@ -96,13 +96,13 @@ export function ToolRecentCalls({
     },
     {
       key: "session",
-      header: "Session ID",
+      header: "ID da sessão",
       width: 160,
       minWidth: 120,
       render: (session) => (
         // biome-ignore lint/a11y/noStaticElementInteractions: click containment only
         <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-          <CopyableText value={session.sessionId} size="sm" ellipsis tooltip="Copy session id" />
+          <CopyableText value={session.sessionId} size="sm" ellipsis tooltip="Copiar ID da sessão" />
         </div>
       ),
     },
@@ -111,7 +111,7 @@ export function ToolRecentCalls({
   return (
     <div className="flex min-w-0 flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <Text.H5M color="foreground">{errorsOnly ? "Recent failed sessions" : "Recent sessions"}</Text.H5M>
+        <Text.H5M color="foreground">{errorsOnly ? "Sessões recentes com falha" : "Sessões recentes"}</Text.H5M>
         {headerAction}
       </div>
       <InfiniteTable
@@ -120,13 +120,13 @@ export function ToolRecentCalls({
         columns={columns}
         getRowKey={(session) => session.sessionId}
         onRowClick={(session) => openSession(session.sessionId)}
-        getRowAriaLabel={(session) => `Open session ${session.sessionId}`}
+        getRowAriaLabel={(session) => `Abrir sessão ${session.sessionId}`}
         infiniteScroll={infiniteScroll}
         scrollAreaLayout="intrinsic"
         className="max-h-[420px]"
-        blankSlate={errorsOnly ? "No failed sessions in this time window" : "No sessions in this time window"}
+        blankSlate={errorsOnly ? "Nenhuma sessão com falha neste período" : "Nenhuma sessão neste período"}
       />
-      <Sheet open={openSessionId !== null} onClose={closeSession} closeAriaLabel="Close session panel">
+      <Sheet open={openSessionId !== null} onClose={closeSession} closeAriaLabel="Fechar painel da sessão">
         {openSessionId ? (
           <SessionDetailDrawer
             key={openSessionId}

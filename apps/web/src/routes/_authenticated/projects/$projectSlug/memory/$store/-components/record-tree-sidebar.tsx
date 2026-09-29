@@ -84,7 +84,7 @@ export function RecordTreeSidebar({
           <button
             type="button"
             onClick={toggleAll}
-            title={allCollapsed ? "Expand all" : "Collapse all"}
+            title={allCollapsed ? "Expandir tudo" : "Recolher tudo"}
             className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
           >
             <Icon icon={allCollapsed ? ChevronsUpDownIcon : ChevronsDownUpIcon} size="sm" />
@@ -100,7 +100,7 @@ export function RecordTreeSidebar({
         </div>
       ) : records.length === 0 ? (
         <div className="flex flex-1 items-center justify-center p-3">
-          <Text.H6 color="foregroundMuted">No records</Text.H6>
+          <Text.H6 color="foregroundMuted">Nenhum registro</Text.H6>
         </div>
       ) : (
         <div role="tree" className="flex min-h-0 flex-1 flex-col overflow-y-auto py-2">

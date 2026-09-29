@@ -74,7 +74,7 @@ export function ToolActivityRow({
           [
             {
               kind: "bar",
-              name: "Failed calls",
+              name: "Chamadas com falha",
               values: histogram.map((bucket) => bucket.calls),
               color: FAILED_CALLS_COLOR,
               axis: "left",
@@ -85,7 +85,7 @@ export function ToolActivityRow({
             // bottom, where a shared baseline makes error volumes comparable.
             {
               kind: "bar",
-              name: "Failed calls",
+              name: "Chamadas com falha",
               values: histogram.map((bucket) => bucket.errors),
               color: FAILED_CALLS_COLOR,
               axis: "left",
@@ -93,7 +93,7 @@ export function ToolActivityRow({
             },
             {
               kind: "bar",
-              name: "Successful calls",
+              name: "Chamadas bem-sucedidas",
               values: histogram.map((bucket) => bucket.calls - bucket.errors),
               color: OK_CALLS_COLOR,
               axis: "left",
@@ -101,7 +101,7 @@ export function ToolActivityRow({
             },
             {
               kind: "line",
-              name: "Error rate %",
+              name: "Taxa de erro %",
               values: histogram.map((bucket) =>
                 bucket.calls > 0 ? Math.round((bucket.errors / bucket.calls) * 1000) / 10 : 0,
               ),
@@ -117,7 +117,7 @@ export function ToolActivityRow({
     () => [
       {
         kind: "line",
-        name: "p50 duration (ms)",
+        name: "Duração p50 (ms)",
         values: histogram.map((bucket) => Math.round(bucket.p50DurationNs / 1_000_000)),
         color: LATENCY_COLOR,
         axis: "left",
@@ -129,7 +129,7 @@ export function ToolActivityRow({
   )
 
   const isEmpty = histogram.length === 0 || histogram.every((bucket) => bucket.calls === 0)
-  const emptyLabel = errorsOnly ? "No failed calls in this time window" : "No calls in this time window"
+  const emptyLabel = errorsOnly ? "Nenhuma chamada com falha neste período" : "Nenhuma chamada neste período"
   const latencyTooltipTitle = useMemo(
     () => (category: string, dataIndex: number) => {
       const bucket = histogram[dataIndex]
@@ -141,7 +141,7 @@ export function ToolActivityRow({
   return (
     <div className={TOOL_DETAIL_ROW_GRID}>
       <ChartPanel
-        title={errorsOnly ? "Failed calls over time" : "Calls over time"}
+        title={errorsOnly ? "Chamadas com falha ao longo do tempo" : "Chamadas ao longo do tempo"}
         isLoading={isLoading}
         isEmpty={isEmpty}
         emptyLabel={emptyLabel}
@@ -151,20 +151,20 @@ export function ToolActivityRow({
           series={callsSeries}
           height={200}
           xAxisLabelFontSize={10}
-          ariaLabel={`Calls of ${toolName} over time`}
+          ariaLabel={`Chamadas de ${toolName} ao longo do tempo`}
         />
       </ChartPanel>
       {errorsOnly ? (
         <ToolErrorBreakdown projectId={projectId} toolName={toolName} range={range} failedCalls={failedCalls} />
       ) : (
-        <ChartPanel title="Latency over time" isLoading={isLoading} isEmpty={isEmpty} emptyLabel={emptyLabel}>
+        <ChartPanel title="Latência ao longo do tempo" isLoading={isLoading} isEmpty={isEmpty} emptyLabel={emptyLabel}>
           <Chart
             categories={categories}
             series={latencySeries}
             height={200}
             xAxisLabelFontSize={10}
             tooltipTitle={latencyTooltipTitle}
-            ariaLabel={`p50 latency of ${toolName} over time`}
+            ariaLabel={`Latência p50 de ${toolName} ao longo do tempo`}
           />
         </ChartPanel>
       )}

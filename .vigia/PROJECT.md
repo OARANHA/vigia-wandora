@@ -263,3 +263,42 @@ O contrato técnico do webhook `X-Latitude-Signature` foi preservado deliberadam
 SSO e billing continuam fora deste slice porque ainda carregam decisões comerciais do upstream. O Vigia não deve inventar destino de vendas, plano, preço ou operação comercial antes de existir uma decisão canônica de produto.
 
 Depois de fechar essas superfícies, verificar na aplicação real se **Custos** e **Pontuação do agente** estão habilitados antes de iniciar esse trabalho. O `/backoffice` permanece separado como futura **Administração Vigia**.
+
+## Configurações avançadas — Privacidade e redaction — 2026-09-29
+
+O PR #38 conclui o slice de **Privacidade/redaction avançada** das Configurações do cliente.
+
+Superfícies cobertas:
+
+- política de privacidade do projeto e padrão da empresa em Vigia/PT-BR;
+- escopo empresa → projeto, overrides e lock da política da empresa;
+- categorias de PII, avisos de falso positivo e irreversibilidade;
+- tratamento de identificadores de usuário e pseudonimização;
+- metadata e tags;
+- regras customizadas, editor, validação e estados de erro;
+- preview contra spans recentes, estados vazios e resumo das alterações;
+- confirmações e blast radius ao alterar o padrão da empresa.
+
+A revisão preserva deliberadamente os contratos e a semântica do motor: modos, enums, schemas, campos persistidos, resolução empresa → projeto, lock, merge/override, entidades reconhecidas, pseudonimização, validação, `validatorVersion`, preview, ingestão e APIs não foram renomeados por branding.
+
+Os rótulos internos retornados pelo preview e os códigos de validação continuam no contrato técnico original; a tradução para PT-BR acontece apenas na camada de apresentação do web.
+
+Validação do código do PR #38 no commit `0f6c8ef0ae58d6a704ca46b071918599c704edb8`:
+
+- `Vigia container images`: sucesso;
+- Validate production Compose: sucesso;
+- builds de web, api, ingest, workers, workflows, migrations, postgres e clickhouse: sucesso;
+- pulls públicos das imagens principais no gate de PR: sucesso.
+
+O CLA Assistant continua falhando por configuração herdada do upstream: aponta para o documento do Latitude e para a branch `signatures`, inexistente no repositório Vigia. Esse erro não é falha do produto nem deste slice.
+
+**Configurações continua parcialmente concluída.** Permanecem pendentes:
+
+- GitHub e Slack avançados;
+- defaults;
+- flaggers;
+- SSO, quando habilitado e após decisão comercial canônica;
+- billing, quando habilitado e após decisão comercial canônica.
+
+Depois dessas superfícies, verificar na aplicação real se **Custos** e **Pontuação do agente** estão habilitados. O `/backoffice` permanece separado como futura **Administração Vigia**.
+

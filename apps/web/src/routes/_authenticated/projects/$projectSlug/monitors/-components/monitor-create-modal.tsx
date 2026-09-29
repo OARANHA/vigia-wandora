@@ -118,7 +118,7 @@ export function MonitorCreateModal({
       : targetName
   const modalDescription = modalTargetName
     ? `This monitor watches ${modalTargetName} and opens an incident when its condition is met.`
-    : "Monitors watch your saved searches and open incidents when their conditions are met."
+    : "Monitores acompanham suas buscas salvas e abrem incidentes quando as condições são atendidas."
 
   const onAlertChange = (next: AlertDraft) => {
     setAlert(next)

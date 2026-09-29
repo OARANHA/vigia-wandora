@@ -3,6 +3,7 @@ import { formatCount, relativeTime } from "@repo/utils"
 import { Link } from "@tanstack/react-router"
 import { DatabaseIcon } from "lucide-react"
 import type { ReactNode } from "react"
+import { ptBR } from "../../../../../../lib/i18n/pt-BR.ts"
 import type { MemoryStoreMetricsRecord } from "../../../../../../domains/memories/memories.functions.ts"
 import {
   ListingLayout as Layout,
@@ -20,20 +21,20 @@ import { MemoryTrendBar } from "./memory-trend-bar.tsx"
 import { encodeStoreSegment, storeDisplayLabel } from "./store-encoding.ts"
 
 export const MEMORY_COLUMN_OPTIONS = [
-  { id: "store", label: "Store", required: true },
-  { id: "trend", label: "Trend" },
-  { id: "records", label: "Records" },
-  { id: "writes", label: "Writes" },
-  { id: "reads", label: "Reads" },
-  { id: "ratio", label: "Read:write" },
-  { id: "dead", label: "Dead %" },
-  { id: "zeroHit", label: "Zero-hit %" },
-  { id: "lastActivity", label: "Last activity" },
-  { id: "churn", label: "Rewrites", defaultHidden: true },
-  { id: "netGrowth", label: "Net growth", defaultHidden: true },
-  { id: "tokens", label: "Total tokens", defaultHidden: true },
-  { id: "sessions", label: "Sessions", defaultHidden: true },
-  { id: "users", label: "Users", defaultHidden: true },
+  { id: "store", label: ptBR.clientPages.memory.columns.store, required: true },
+  { id: "trend", label: ptBR.clientPages.memory.columns.trend },
+  { id: "records", label: ptBR.clientPages.memory.columns.records },
+  { id: "writes", label: ptBR.clientPages.memory.columns.writes },
+  { id: "reads", label: ptBR.clientPages.memory.columns.reads },
+  { id: "ratio", label: ptBR.clientPages.memory.columns.ratio },
+  { id: "dead", label: ptBR.clientPages.memory.columns.dead },
+  { id: "zeroHit", label: ptBR.clientPages.memory.columns.zeroHit },
+  { id: "lastActivity", label: ptBR.clientPages.memory.columns.lastActivity },
+  { id: "churn", label: ptBR.clientPages.memory.columns.churn, defaultHidden: true },
+  { id: "netGrowth", label: ptBR.clientPages.memory.columns.netGrowth, defaultHidden: true },
+  { id: "tokens", label: ptBR.clientPages.memory.columns.tokens, defaultHidden: true },
+  { id: "sessions", label: ptBR.clientPages.memory.columns.sessions, defaultHidden: true },
+  { id: "users", label: ptBR.clientPages.memory.columns.users, defaultHidden: true },
 ] as const satisfies readonly TableColumnOption[]
 
 export type MemoryColumnId = (typeof MEMORY_COLUMN_OPTIONS)[number]["id"]
@@ -87,7 +88,7 @@ export function MemoryStoresView({
   const allColumns: readonly InfiniteTableColumn<MemoryStoreMetricsRecord>[] = [
     {
       key: "store",
-      header: "Store",
+      header: ptBR.clientPages.memory.columns.store,
       width: 300,
       minWidth: 220,
       render: (store) => (
@@ -107,7 +108,7 @@ export function MemoryStoresView({
     },
     {
       key: "trend",
-      header: "Trend",
+      header: ptBR.clientPages.memory.columns.trend,
       width: 176,
       minWidth: 140,
       render: (store) => (
@@ -133,7 +134,7 @@ export function MemoryStoresView({
     },
     {
       key: "records",
-      header: "Records",
+      header: ptBR.clientPages.memory.columns.records,
       width: 92,
       minWidth: 80,
       align: "end",
@@ -142,7 +143,7 @@ export function MemoryStoresView({
     },
     {
       key: "writes",
-      header: "Writes",
+      header: ptBR.clientPages.memory.columns.writes,
       width: 90,
       minWidth: 80,
       align: "end",
@@ -151,7 +152,7 @@ export function MemoryStoresView({
     },
     {
       key: "reads",
-      header: "Reads",
+      header: ptBR.clientPages.memory.columns.reads,
       width: 90,
       minWidth: 80,
       align: "end",
@@ -164,8 +165,8 @@ export function MemoryStoresView({
     },
     {
       key: "ratio",
-      header: "Read:write",
-      headerTooltip: "Records read for every record written in this window.",
+      header: ptBR.clientPages.memory.columns.ratio,
+      headerTooltip: "Registros lidos para cada registro gravado neste período.",
       width: 100,
       minWidth: 90,
       align: "end",
@@ -179,8 +180,8 @@ export function MemoryStoresView({
     },
     {
       key: "dead",
-      header: "Dead %",
-      headerTooltip: "Share of records not read in the last ~120 days.",
+      header: ptBR.clientPages.memory.columns.dead,
+      headerTooltip: "Percentual de registros não lidos nos últimos ~120 dias.",
       width: 92,
       minWidth: 80,
       align: "end",
@@ -196,8 +197,8 @@ export function MemoryStoresView({
     },
     {
       key: "zeroHit",
-      header: "Zero-hit %",
-      headerTooltip: "Share of searches that returned no records in this window.",
+      header: ptBR.clientPages.memory.columns.zeroHit,
+      headerTooltip: "Percentual de buscas que não retornaram registros neste período.",
       width: 96,
       minWidth: 84,
       align: "end",
@@ -213,7 +214,7 @@ export function MemoryStoresView({
     },
     {
       key: "lastActivity",
-      header: "Last activity",
+      header: ptBR.clientPages.memory.columns.lastActivity,
       width: 120,
       minWidth: 100,
       sortKey: "lastActivity",
@@ -221,8 +222,8 @@ export function MemoryStoresView({
     },
     {
       key: "churn",
-      header: "Rewrites",
-      headerTooltip: "Average number of updates per record in this window.",
+      header: ptBR.clientPages.memory.columns.churn,
+      headerTooltip: "Média de atualizações por registro neste período.",
       width: 90,
       minWidth: 80,
       align: "end",
@@ -242,8 +243,8 @@ export function MemoryStoresView({
     },
     {
       key: "netGrowth",
-      header: "Net growth",
-      headerTooltip: "Tokens gained or lost in this window.",
+      header: ptBR.clientPages.memory.columns.netGrowth,
+      headerTooltip: "Tokens adicionados ou removidos neste período.",
       width: 100,
       minWidth: 90,
       align: "end",
@@ -268,7 +269,7 @@ export function MemoryStoresView({
     },
     {
       key: "tokens",
-      header: "Total tokens",
+      header: ptBR.clientPages.memory.columns.tokens,
       width: 100,
       minWidth: 90,
       align: "end",
@@ -277,7 +278,7 @@ export function MemoryStoresView({
     },
     {
       key: "sessions",
-      header: "Sessions",
+      header: ptBR.clientPages.memory.columns.sessions,
       width: 92,
       minWidth: 80,
       align: "end",
@@ -286,7 +287,7 @@ export function MemoryStoresView({
     },
     {
       key: "users",
-      header: "Users",
+      header: ptBR.clientPages.memory.columns.users,
       width: 84,
       minWidth: 72,
       align: "end",
@@ -323,11 +324,11 @@ export function MemoryStoresView({
             <Link
               to="/projects/$projectSlug/memory/$store"
               params={{ projectSlug, store: encodeStoreSegment(store.storeId) }}
-              aria-label={`Open store ${storeDisplayLabel(store.storeId)}`}
+              aria-label={`Abrir armazenamento ${storeDisplayLabel(store.storeId)}`}
               {...props}
             />
           )}
-          blankSlate="No memory stores match."
+          blankSlate={ptBR.clientPages.memory.noMatches}
         />
       </Layout.List>
     </Layout.Body>

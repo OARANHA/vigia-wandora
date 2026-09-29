@@ -65,17 +65,17 @@ export function OrgDefaultConfirmModal({
       onOpenChange={(next) => {
         if (!next && !isApplying) onCancel()
       }}
-      title="Change the organization default?"
-      description={`${inheriting} of ${projectCount} projects use this default and will change immediately.${
-        overrideCount > 0 ? ` ${overrideCount} override it and keep their own values.` : ""
+      title="Alterar o padrão da empresa?"
+      description={`${inheriting} de ${projectCount} projetos usam este padrão e serão alterados imediatamente.${
+        overrideCount > 0 ? ` ${overrideCount} usam configuração própria e manterão seus valores.` : ""
       }`}
       footer={
         <div className="flex flex-row items-center gap-2">
           <Button variant="outline" onClick={onCancel} disabled={isApplying}>
-            Cancel
+            Cancelar
           </Button>
           <Button onClick={onConfirm} disabled={isApplying}>
-            Save default
+            Salvar padrão
           </Button>
         </div>
       }

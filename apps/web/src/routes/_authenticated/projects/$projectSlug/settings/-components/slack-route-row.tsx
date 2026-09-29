@@ -24,7 +24,7 @@ import {
 } from "../../../../../../domains/integrations/integrations.functions.ts"
 
 type ChannelOption = { readonly id: string; readonly name: string }
-const DON_T_SEND: ChannelOption = { id: "", name: "Don't send" }
+const DON_T_SEND: ChannelOption = { id: "", name: "Não enviar" }
 
 /** Writes one group's routing. Callers decide when — on change, or behind a save. */
 export const persistSlackRoute = (group: NotificationGroup, route: SlackRoute | null) =>
@@ -94,7 +94,7 @@ export function SlackRouteRow({
               pick(picked ?? DON_T_SEND)
             }}
             items={allOptions}
-            itemToStringValue={(item: ChannelOption) => (item.id === "" ? "Don't send" : `#${item.name}`)}
+            itemToStringValue={(item: ChannelOption) => (item.id === "" ? "Não enviar" : `#${item.name}`)}
             isItemEqualToValue={(a: ChannelOption, b: ChannelOption) => a.id === b.id}
             onOpenChange={(open) => {
               if (open) void refetch()
@@ -108,7 +108,7 @@ export function SlackRouteRow({
                 title={selected.id === "" ? undefined : `#${selected.name}`}
               >
                 {selected.id === "" ? (
-                  <Text.H5 color="foregroundMuted">Don't send</Text.H5>
+                  <Text.H5 color="foregroundMuted">Não enviar</Text.H5>
                 ) : (
                   <Text.H5 ellipsis className="min-w-0">
                     #{selected.name}
@@ -118,7 +118,7 @@ export function SlackRouteRow({
             </Button>
             <ComboboxContent anchor={triggerRef} className="w-64">
               <ComboboxInput
-                placeholder="Search channels…"
+                placeholder="Buscar canais…"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 loading={isFetching}
@@ -127,14 +127,14 @@ export function SlackRouteRow({
                 {(item: ChannelOption) => (
                   <ComboboxItem value={item}>
                     {item.id === "" ? (
-                      <Text.H5 color="foregroundMuted">Don't send</Text.H5>
+                      <Text.H5 color="foregroundMuted">Não enviar</Text.H5>
                     ) : (
                       <Text.H5>#{item.name}</Text.H5>
                     )}
                   </ComboboxItem>
                 )}
               </ComboboxList>
-              <ComboboxEmpty>No channels found.</ComboboxEmpty>
+              <ComboboxEmpty>Nenhum canal encontrado.</ComboboxEmpty>
             </ComboboxContent>
           </Combobox>
         </div>
@@ -166,7 +166,7 @@ export function SlackRouteRow({
       {route && meta.severityFiltered ? (
         <div className="flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-lg bg-muted/80 px-3 py-2">
           <Text.H6 color="foregroundMuted" className="min-w-0 flex-1">
-            Severity · {minSeverityHint(route.minSeverity ?? "low")}
+            Severidade · {minSeverityHint(route.minSeverity ?? "low")}
           </Text.H6>
           <SeveritySelector
             variant="bordered"

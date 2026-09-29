@@ -2,6 +2,7 @@ import { Button, Chart, type ChartSeries, HistogramSkeleton, Icon, Skeleton, Tex
 import { formatCount } from "@repo/utils"
 import { ChevronDown, ChevronUp, UsersRoundIcon } from "lucide-react"
 import { useMemo, useState } from "react"
+import { ptBR } from "../../../../../../lib/i18n/pt-BR.ts"
 import type { UsersOverviewRecord } from "../../../../../../domains/end-users/end-users.functions.ts"
 import { ChartHeader } from "../../-components/chart-header.tsx"
 import { formatBucketLabel } from "./user-formatters.ts"
@@ -92,7 +93,7 @@ export function UsersAnalyticsPanel({
     () => [
       {
         kind: "bar",
-        name: "Errored sessions",
+        name: "Sessões com erro",
         values: histogram.map((bucket) => bucket.errorSessionCount),
         color: FAILED_SESSIONS_COLOR,
         axis: "left",
@@ -100,7 +101,7 @@ export function UsersAnalyticsPanel({
       },
       {
         kind: "bar",
-        name: "Successful sessions",
+        name: "Sessões bem-sucedidas",
         values: histogram.map((bucket) => bucket.sessionCount - bucket.errorSessionCount),
         color: OK_SESSIONS_COLOR,
         axis: "left",
@@ -108,7 +109,7 @@ export function UsersAnalyticsPanel({
       },
       {
         kind: "line",
-        name: "Error rate %",
+        name: "Taxa de erro %",
         values: histogram.map((bucket) =>
           bucket.sessionCount > 0 ? Math.round((bucket.errorSessionCount / bucket.sessionCount) * 1000) / 10 : 0,
         ),
@@ -126,9 +127,9 @@ export function UsersAnalyticsPanel({
         <div className="flex items-center justify-between px-4 py-2">
           <div className="flex items-center gap-1.5">
             <Icon icon={UsersRoundIcon} size="sm" color="foregroundMuted" />
-            <Text.H6 color="foregroundMuted">Users statistics</Text.H6>
+            <Text.H6 color="foregroundMuted">{ptBR.clientPages.users.statistics}</Text.H6>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setCollapsed(false)} aria-label="Expand statistics">
+          <Button variant="ghost" size="icon" onClick={() => setCollapsed(false)} aria-label="Expandir estatísticas">
             <Icon icon={ChevronDown} size="sm" />
           </Button>
         </div>
@@ -145,23 +146,23 @@ export function UsersAnalyticsPanel({
           <div className="relative min-w-0 flex-1">
             <div className="flex flex-row gap-3 overflow-x-auto p-4">
               <AggregationItem
-                label="Unique users"
+                label={ptBR.clientPages.users.uniqueUsers}
                 value={formatCount(overview?.uniqueUsers ?? 0)}
                 isLoading={showSkeletons}
               />
               <AggregationItem
-                label="New users"
+                label={ptBR.clientPages.users.newUsers}
                 value={formatCount(overview?.newUsers ?? 0)}
                 isLoading={showSkeletons}
               />
               <AggregationItem
-                label="Identified sessions"
+                label={ptBR.clientPages.users.identifiedSessions}
                 value={formatCoverage(overview?.identifiedSessions ?? 0, overview?.totalSessions ?? 0)}
                 isLoading={showSkeletons}
                 tooltip="Share of sessions in this time window that carry a user id, and can therefore be attributed to a user."
               />
               <AggregationItem
-                label="Sessions per user"
+                label={ptBR.clientPages.users.sessionsPerUser}
                 value={
                   overview && overview.uniqueUsers > 0
                     ? formatCount(Math.round(overview.identifiedSessions / overview.uniqueUsers))
@@ -176,7 +177,7 @@ export function UsersAnalyticsPanel({
             variant="ghost"
             size="icon"
             onClick={() => setCollapsed(true)}
-            aria-label="Collapse statistics"
+            aria-label="Recolher estatísticas"
             className="shrink-0"
           >
             <Icon icon={ChevronUp} size="sm" />
@@ -189,12 +190,12 @@ export function UsersAnalyticsPanel({
           </div>
         ) : histogram.length === 0 || histogram.every((bucket) => bucket.sessionCount === 0) ? (
           <div className="flex w-full min-h-[80px] items-center justify-center px-4 py-3">
-            <Text.H6 color="foregroundMuted">No user sessions in this time window</Text.H6>
+            <Text.H6 color="foregroundMuted">{ptBR.clientPages.users.noSessions}</Text.H6>
           </div>
         ) : (
           <>
             <ChartHeader
-              title="User sessions over time"
+              title={ptBR.clientPages.users.sessionsOverTime}
               fromIso={rangeFromIso}
               toIso={rangeToIso}
               isAllTime={isAllTime}
@@ -205,7 +206,7 @@ export function UsersAnalyticsPanel({
                 series={series}
                 height={160}
                 xAxisLabelFontSize={10}
-                ariaLabel="User sessions over time"
+                ariaLabel={ptBR.clientPages.users.sessionsOverTime}
                 {...(onRangeSelect ? { onSelect: handleSelect } : {})}
               />
             </div>

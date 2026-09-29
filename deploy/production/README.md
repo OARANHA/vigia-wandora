@@ -44,3 +44,8 @@ Hostname administrativo preferido: `ops.vigia.wandora.com.br` para Portainer/con
 ## Portainer CE e arquivos auxiliares
 
 O deploy Git não usa bind mounts relativos para arquivos do repositório. Os arquivos de inicialização de Postgres e ClickHouse são incorporados às imagens `vigia-postgres` e `vigia-clickhouse` durante o build no GitHub Actions.
+
+
+## Role de runtime do Postgres
+
+O usuário interno de runtime do PostgreSQL permanece `latitude_app`. Esse nome faz parte do contrato técnico do upstream: migrations do Latitude concedem permissões e default privileges diretamente a essa role. Não renomear essa role em Compose ou bootstrap; a identidade de produto Vigia fica nas camadas externas, não nos nomes internos esperados pelo motor.

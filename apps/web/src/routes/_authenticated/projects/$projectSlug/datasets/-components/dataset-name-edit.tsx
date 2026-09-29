@@ -45,7 +45,7 @@ function DatasetEditModal({
           qc.invalidateQueries({ queryKey: ["dataset", dataset.id] })
           onOpenChange(false)
           onSuccess?.()
-          showToast({ description: "Dataset updated" })
+          showToast({ description: "Conjunto de dados atualizado" })
         },
         onError: (error) => {
           showToast({ variant: "destructive", description: toUserMessage(error) })
@@ -63,7 +63,7 @@ function DatasetEditModal({
           form.reset({ name: dataset.name, description: dataset.description ?? "" })
         }
       }}
-      title="Edit dataset"
+      title="Editar conjunto de dados"
       description="Update the dataset name and description."
       dismissible
       footer={
@@ -94,7 +94,7 @@ function DatasetEditModal({
           {(field) => (
             <Input
               id="dataset-edit-name"
-              label="Name"
+              label="Nome"
               value={field.state.value}
               onChange={(event) => field.handleChange(event.target.value)}
               onKeyDown={(event) => {
@@ -109,7 +109,7 @@ function DatasetEditModal({
           {(field) => (
             <Textarea
               id="dataset-edit-description"
-              label="Description"
+              label="Descrição"
               value={field.state.value}
               onChange={(event) => field.handleChange(event.target.value)}
               disabled={form.state.isSubmitting}
@@ -140,7 +140,7 @@ export function DatasetTitleBlock({ dataset }: { dataset: DatasetRecord }) {
             trigger={
               <button
                 type="button"
-                aria-label="Dataset description"
+                aria-label="Descrição do conjunto de dados"
                 className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
               >
                 <Icon icon={Info} size="sm" />
@@ -177,7 +177,7 @@ export function DatasetActionsMenu({ dataset, onSuccess }: { dataset: DatasetRec
       qc.invalidateQueries({ queryKey: ["datasetRows", dataset.id] })
       qc.invalidateQueries({ queryKey: ["datasetRowCount", dataset.id] })
       setDeleteOpen(false)
-      toast({ description: "Dataset removed" })
+      toast({ description: "Conjunto de dados removido" })
       navigate({ to: "/projects/$projectSlug/datasets", params: { projectId } })
     } catch (e) {
       toast({
@@ -196,16 +196,16 @@ export function DatasetActionsMenu({ dataset, onSuccess }: { dataset: DatasetRec
         triggerButtonProps={{
           variant: "outline",
           size: "icon",
-          "aria-label": "Dataset actions",
+          "aria-label": "Ações do conjunto de dados",
           className: "shrink-0",
         }}
         options={[
           {
-            label: "Edit details",
+            label: "Editar detalhes",
             onClick: openEdit,
           },
           {
-            label: "Remove dataset",
+            label: "Remover conjunto de dados",
             type: "destructive" as const,
             onClick: () => setDeleteOpen(true),
           },
@@ -222,7 +222,7 @@ export function DatasetActionsMenu({ dataset, onSuccess }: { dataset: DatasetRec
       <Modal
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Remove dataset"
+        title="Remover conjunto de dados"
         description="This will remove the dataset from the project. Row data will no longer be available. This cannot be undone."
         dismissible
         footer={

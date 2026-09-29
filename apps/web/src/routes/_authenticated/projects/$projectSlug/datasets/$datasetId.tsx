@@ -114,7 +114,7 @@ function ExpectedOutputCell({ value }: { value: string | Record<string, unknown>
   if (isEmptyCell(value)) {
     return (
       <span className="italic opacity-70">
-        <Text.Mono color="foregroundMuted">+ Add expected output</Text.Mono>
+        <Text.Mono color="foregroundMuted">+ Adicionar saída esperada</Text.Mono>
       </span>
     )
   }
@@ -137,7 +137,7 @@ function buildRowColumns(columns: DatasetColumn[] | null): InfiniteTableColumn<D
     },
     {
       key: "createdAt",
-      header: "Created",
+      header: "Criado em",
       sortKey: "createdAt",
       render: (r) => relativeTime(r.createdAt),
     },
@@ -226,7 +226,7 @@ function DatasetDetailPage() {
       } catch (e) {
         toast({
           variant: "destructive",
-          description: e instanceof Error ? e.message : "Failed to add row",
+          description: e instanceof Error ? e.message : "Não foi possível adicionar a linha",
         })
         throw e
       }
@@ -249,7 +249,7 @@ function DatasetDetailPage() {
     return (
       <Container>
         <div className="flex items-center justify-center pt-20">
-          <Text.H5 color="foregroundMuted">Dataset not found</Text.H5>
+          <Text.H5 color="foregroundMuted">Conjunto de dados não encontrado</Text.H5>
         </div>
       </Container>
     )
@@ -441,8 +441,8 @@ function DatasetRowsView({
     (r: DatasetRowRecord) => {
       const idx = displayRows.findIndex((row) => row.rowId === r.rowId)
       const n = idx >= 0 ? idx + 1 : null
-      const position = n != null ? `row ${n}` : "row"
-      return r.rowId === rid ? `Close details for ${position}` : `View details for ${position}`
+      const position = n != null ? `linha ${n}` : "linha"
+      return r.rowId === rid ? `Fechar detalhes de ${position}` : `Ver detalhes de ${position}`
     },
     [displayRows, rid],
   )
@@ -642,14 +642,14 @@ function DatasetRowsView({
           triggerCsvBrowserDownload(result.csv, result.filename)
         } else {
           toast({
-            title: "Export started",
-            description: "You'll receive an email with a download link when your export is ready.",
+            title: "Exportação iniciada",
+            description: "Você receberá um email com o link para download quando a exportação estiver pronta.",
           })
         }
       } catch (e) {
         toast({
           variant: "destructive",
-          description: e instanceof Error ? e.message : "Export failed",
+          description: e instanceof Error ? e.message : "Falha ao exportar",
         })
       } finally {
         setDownloading(false)
@@ -700,7 +700,7 @@ function DatasetRowsView({
                   <DatasetTitleBlock dataset={dataset} />
                 </div>
                 <div className="flex flex-row items-center gap-2 shrink-0">
-                  <Input type="text" placeholder="Search rows..." value={q} onChange={(e) => setQ(e.target.value)} />
+                  <Input type="text" placeholder="Buscar linhas..." value={q} onChange={(e) => setQ(e.target.value)} />
                   <Button
                     variant="outline"
                     size="sm"
@@ -708,7 +708,7 @@ function DatasetRowsView({
                     onClick={() => importFileRef.current?.click()}
                   >
                     <Icon icon={FileDownIcon} size="sm" />
-                    <Text.H6>Import</Text.H6>
+                    <Text.H6>Importar</Text.H6>
                   </Button>
                   <input
                     ref={importFileRef}
@@ -729,7 +729,7 @@ function DatasetRowsView({
                     isLoading={downloading}
                   >
                     <Icon icon={Download} size="sm" />
-                    <Text.H6>Export</Text.H6>
+                    <Text.H6>Exportar</Text.H6>
                   </Button>
                   <DatasetColumnsSelector datasetId={datasetId} projectId={projectId} columns={dataset.columns} />
                   <Button size="sm" className="shrink-0 whitespace-nowrap" onClick={handleAddRow} disabled={saving}>
@@ -819,7 +819,7 @@ function DatasetRowsView({
             setExportModalOpen(open)
             if (!open) setPendingExport(null)
           }}
-          itemLabel="row"
+          itemLabel="linha"
           selectedCount={pendingExport.selectedCount}
           mode={pendingExport.selectedCount <= DATASET_DOWNLOAD_DIRECT_THRESHOLD ? "direct" : "email"}
           onConfirm={() => void confirmDownload()}

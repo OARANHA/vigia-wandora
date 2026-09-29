@@ -15,7 +15,7 @@ export function DatasetsEmptyState({
           <Icon icon={DatabaseIcon} size="lg" color="foregroundMuted" />
         </div>
         <div className="flex flex-col items-center gap-2">
-          <Text.H3 centered>No datasets yet</Text.H3>
+          <Text.H3 centered>Nenhum conjunto de dados ainda</Text.H3>
           <Text.H5 color="foregroundMuted" centered>
             Datasets let you curate traces for evaluation and regression testing.
           </Text.H5>
@@ -25,7 +25,7 @@ export function DatasetsEmptyState({
             <Icon size="sm" icon={DatabaseAddIcon} />
             Dataset
           </Button>
-          <a href="https://docs.latitude.so/evaluations/overview" target="_blank" rel="noopener noreferrer">
+          <a href="#" target="_blank" rel="noopener noreferrer">
             <Button variant="outline">
               <Icon size="sm" icon={ExternalLinkIcon} />
               Read the docs

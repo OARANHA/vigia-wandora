@@ -38,13 +38,13 @@ const DEFAULT_SORTING: InfiniteTableSorting = {
 const columns: InfiniteTableColumn<DatasetRecord>[] = [
   {
     key: "name",
-    header: "Name",
+    header: "Nome",
     sortKey: "name",
     render: (d) => d.name,
   },
   {
     key: "description",
-    header: "Description",
+    header: "Descrição",
     render: (d) => d.description ?? "—",
   },
   {
@@ -114,7 +114,7 @@ function DatasetsPage() {
   })
   const creating = createDataset.isPending
   const handleCreate = useCallback(() => {
-    createDataset.mutate(`Dataset ${new Date().toLocaleString()}`)
+    createDataset.mutate(`Conjunto ${new Date().toLocaleString("pt-BR")}`)
   }, [createDataset])
 
   if (isLoading && hasNoDatasets) {

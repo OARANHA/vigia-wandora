@@ -30,7 +30,7 @@ export function CsvPreviewTable({ csvRows, totalRows, mapping, options }: CsvPre
       <div className="flex flex-col flex-1 min-h-0">
         <PreviewHeader totalRows={totalRows} />
         <div className="flex flex-1 items-center justify-center p-8">
-          <Text.H5 color="foregroundMuted">Assign columns on the right to see a preview</Text.H5>
+          <Text.H5 color="foregroundMuted">Atribua as colunas à direita para visualizar uma prévia</Text.H5>
         </div>
       </div>
     )
@@ -113,7 +113,7 @@ export function CsvPreviewTable({ csvRows, totalRows, mapping, options }: CsvPre
 function PreviewHeader({ totalRows }: { totalRows: number }) {
   return (
     <div className="flex flex-row items-center justify-between px-4 py-3 border-b">
-      <Text.H5 weight="bold">Row Preview</Text.H5>
+      <Text.H5 weight="bold">Prévia da linha</Text.H5>
       <Text.H6 color="foregroundMuted">{totalRows} rows</Text.H6>
     </div>
   )

@@ -20,7 +20,7 @@ const bucketMeta: Record<
   { label: string; icon: string; border: string; bg: string; badge: string; dropHighlight: string }
 > = {
   input: {
-    label: "Input",
+    label: "Entrada",
     icon: "↘",
     border: "border-blue-200 dark:border-blue-800",
     bg: "bg-blue-50/50 dark:bg-blue-950/20",
@@ -28,7 +28,7 @@ const bucketMeta: Record<
     dropHighlight: "border-blue-400 bg-blue-50 dark:bg-blue-950/40",
   },
   output: {
-    label: "Output",
+    label: "Saída",
     icon: "=",
     border: "border-green-200 dark:border-green-800",
     bg: "bg-green-50/50 dark:bg-green-950/20",
@@ -36,7 +36,7 @@ const bucketMeta: Record<
     dropHighlight: "border-green-400 bg-green-50 dark:bg-green-950/40",
   },
   expectedOutput: {
-    label: "Expected output",
+    label: "Saída esperada",
     icon: "★",
     border: "border-violet-200 dark:border-violet-800",
     bg: "bg-violet-50/50 dark:bg-violet-950/20",
@@ -44,7 +44,7 @@ const bucketMeta: Record<
     dropHighlight: "border-violet-400 bg-violet-50 dark:bg-violet-950/40",
   },
   metadata: {
-    label: "Metadata",
+    label: "Metadados",
     icon: "{}",
     border: "border-amber-200 dark:border-amber-800",
     bg: "bg-amber-50/50 dark:bg-amber-950/20",
@@ -111,9 +111,9 @@ export function ColumnMapper({
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="flex flex-row items-center justify-between px-4 py-3 border-b">
-        <Text.H5 weight="bold">Column Mapping</Text.H5>
+        <Text.H5 weight="bold">Mapeamento de colunas</Text.H5>
         <Button onClick={onSave} disabled={saving || totalMapped === 0} isLoading={saving} size="sm">
-          <Text.H5 color="white">Save mapping</Text.H5>
+          <Text.H5 color="white">Salvar mapeamento</Text.H5>
         </Button>
       </div>
 
@@ -127,7 +127,7 @@ export function ColumnMapper({
                 onChange={(e) => onOptionsChange({ ...options, flattenSingleColumn: e.target.checked })}
                 className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
               />
-              <Text.H6>Flatten single-column values</Text.H6>
+              <Text.H6>Simplificar valores de coluna única</Text.H6>
             </label>
             <label className="flex flex-row items-center gap-2 cursor-pointer select-none">
               <input
@@ -136,11 +136,11 @@ export function ColumnMapper({
                 onChange={(e) => onOptionsChange({ ...options, autoParseJson: e.target.checked })}
                 className="h-4 w-4 rounded border-input accent-primary cursor-pointer"
               />
-              <Text.H6>Auto-parse objects in strings</Text.H6>
+              <Text.H6>Interpretar objetos em texto automaticamente</Text.H6>
             </label>
             <div className="flex flex-row items-center gap-2">
               <Button variant="outline" size="sm" onClick={moveAllToInput}>
-                <Text.H6>Move all to input</Text.H6>
+                <Text.H6>Mover tudo para entrada</Text.H6>
               </Button>
             </div>
           </div>
@@ -245,7 +245,7 @@ function BucketSection({
         <div className="flex items-center justify-center rounded border border-dashed border-current/20 py-4">
           <div className="flex flex-row items-center gap-1.5 text-muted-foreground">
             <ArrowDown className="h-3 w-3" />
-            <Text.H6 color="foregroundMuted">Drop columns here</Text.H6>
+            <Text.H6 color="foregroundMuted">Solte as colunas aqui</Text.H6>
           </div>
         </div>
       ) : (

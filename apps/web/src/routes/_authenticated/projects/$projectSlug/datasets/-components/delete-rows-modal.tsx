@@ -18,11 +18,11 @@ export function DeleteRowsModal({
   onConfirm,
   deleting,
 }: DeleteRowsModalProps) {
-  const title = isAllSelected ? "Delete all rows" : "Delete selected rows"
+  const title = isAllSelected ? "Excluir todas as linhas" : "Excluir linhas selecionadas"
   const description = isAllSelected
     ? "You are about to delete all rows in this dataset."
     : `You are about to delete ${selectedCount} row${selectedCount === 1 ? "" : "s"}.`
-  const buttonLabel = isAllSelected ? "Delete all rows" : `Delete ${selectedCount} row${selectedCount === 1 ? "" : "s"}`
+  const buttonLabel = isAllSelected ? "Excluir todas as linhas" : `Excluir ${selectedCount} linha${selectedCount === 1 ? "" : "s"}`
 
   return (
     <Modal
@@ -34,7 +34,7 @@ export function DeleteRowsModal({
       footer={
         <div className="flex flex-row items-center gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={deleting}>
-            <Text.H5>Cancel</Text.H5>
+            <Text.H5>Cancelar</Text.H5>
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={deleting}>
             {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}

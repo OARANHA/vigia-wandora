@@ -91,7 +91,7 @@ function MetadataToolsSection({ session }: { readonly session: SessionDetailReco
   const toolPills = useMemo(() => aggregateToolPills(spans), [spans])
 
   return (
-    <DetailSection icon={<WrenchIcon className="h-4 w-4" />} label="Tools" defaultOpen={false}>
+    <DetailSection icon={<WrenchIcon className="h-4 w-4" />} label="Ferramentas" defaultOpen={false}>
       {() =>
         isLoading ? (
           <Skeleton className="h-7 w-48" />
@@ -99,7 +99,7 @@ function MetadataToolsSection({ session }: { readonly session: SessionDetailReco
           <ToolPillList tools={toolPills} scopeLabel="session" />
         ) : (
           <Text.H6 color="foregroundMuted" italic>
-            No tools
+            Nenhuma ferramenta
           </Text.H6>
         )
       }
@@ -169,7 +169,7 @@ export function MetadataTab({
       <DetailSummary
         items={[
           {
-            label: "Start Time",
+            label: "Início",
             value: relativeTime(new Date(session.startTime)),
           },
           {
@@ -178,7 +178,7 @@ export function MetadataTab({
           },
           {
             label: "Spans",
-            value: `${formatCount(session.spanCount)}${session.errorCount > 0 ? ` (${session.errorCount} err)` : ""}`,
+            value: `${formatCount(session.spanCount)}${session.errorCount > 0 ? ` (${session.errorCount} erro${session.errorCount === 1 ? "" : "s"})` : ""}`,
           },
         ]}
       />
@@ -221,7 +221,7 @@ export function MetadataTab({
           <UsageSummary data={session} costBadges={costBadgesNode} costDisplay={rollupCostDisplay(session)} />
           <MemorySummary projectId={session.projectId} sessionId={session.sessionId} />
           <Text.H6 color="foregroundMuted">
-            Duration, agent, and tool breakdowns are deferred for large sessions. Open Spans to inspect details.
+            Detalhes de duração, agente e ferramentas são adiados em sessões grandes. Abra Spans para inspecionar.
           </Text.H6>
         </div>
       ) : (
@@ -234,7 +234,7 @@ export function MetadataTab({
           <TagBadgeList tags={session.tags} />
         ) : (
           <Text.H6 color="foregroundMuted" italic>
-            No tags
+            Nenhuma tag
           </Text.H6>
         )}
       </div>
@@ -243,19 +243,19 @@ export function MetadataTab({
 
       <MemoryChangesSection projectId={session.projectId} sessionId={session.sessionId} />
 
-      <DetailSection icon={<TextIcon className="h-4 w-4" />} label="Metadata" defaultOpen={false}>
+      <DetailSection icon={<TextIcon className="h-4 w-4" />} label="Metadados" defaultOpen={false}>
         {() =>
           hasMetadata ? (
             <JsonBlock value={session.metadata} />
           ) : (
             <Text.H6 color="foregroundMuted" italic>
-              No metadata
+              Sem metadados
             </Text.H6>
           )
         }
       </DetailSection>
 
-      <DetailSection icon={<BrainIcon className="h-4 w-4" />} label="System Instructions" defaultOpen={false}>
+      <DetailSection icon={<BrainIcon className="h-4 w-4" />} label="Instruções do sistema" defaultOpen={false}>
         {() =>
           session.systemInstructions.length ? (
             <div className="flex flex-col rounded-lg bg-secondary p-4">
@@ -263,13 +263,13 @@ export function MetadataTab({
             </div>
           ) : (
             <Text.H6 color="foregroundMuted" italic>
-              No system instructions
+              Sem instruções do sistema
             </Text.H6>
           )
         }
       </DetailSection>
 
-      <DetailSection icon={<ArrowDownRightIcon className="h-4 w-4" />} label="Input" defaultOpen={false}>
+      <DetailSection icon={<ArrowDownRightIcon className="h-4 w-4" />} label="Entrada" defaultOpen={false}>
         {() =>
           session.inputMessages.length ? (
             <div className="flex flex-col rounded-lg bg-secondary p-4">
@@ -277,13 +277,13 @@ export function MetadataTab({
             </div>
           ) : (
             <Text.H6 color="foregroundMuted" italic>
-              No input messages
+              Sem mensagens de entrada
             </Text.H6>
           )
         }
       </DetailSection>
 
-      <DetailSection icon={<ArrowUpRightIcon className="h-4 w-4" />} label="Output" defaultOpen={!largeSession}>
+      <DetailSection icon={<ArrowUpRightIcon className="h-4 w-4" />} label="Saída" defaultOpen={!largeSession}>
         {() =>
           session.outputMessages.length ? (
             <div className="flex flex-col rounded-lg bg-secondary p-4">
@@ -291,34 +291,34 @@ export function MetadataTab({
             </div>
           ) : (
             <Text.H6 color="foregroundMuted" italic>
-              No output messages
+              Sem mensagens de saída
             </Text.H6>
           )
         }
       </DetailSection>
 
-      <DetailSection icon={<FingerprintIcon className="h-4 w-4" />} label="Identifiers" defaultOpen={false}>
+      <DetailSection icon={<FingerprintIcon className="h-4 w-4" />} label="Identificadores" defaultOpen={false}>
         {() => (
           <DetailSummary
             items={[
-              { label: "Session ID", value: session.sessionId, copyable: true },
+              { label: "ID da sessão", value: session.sessionId, copyable: true },
               ...(session.traceIds.length === 1
-                ? [{ label: "Trace ID", value: session.traceIds[0] as string, copyable: true }]
+                ? [{ label: "ID do trace", value: session.traceIds[0] as string, copyable: true }]
                 : []),
               ...(session.simulationId?.trim()
                 ? [
                     {
-                      label: "Simulation ID",
+                      label: "ID da simulação",
                       value: session.simulationId,
                       copyable: true,
                     },
                   ]
                 : []),
-              ...(session.userId?.trim() ? [{ label: "User ID", value: session.userId, copyable: true }] : []),
+              ...(session.userId?.trim() ? [{ label: "ID do usuário", value: session.userId, copyable: true }] : []),
               ...(session.rootSpanId?.trim()
                 ? [
                     {
-                      label: "Root Span ID",
+                      label: "ID do span raiz",
                       value: session.rootSpanId,
                       copyable: true,
                     },
@@ -327,7 +327,7 @@ export function MetadataTab({
               ...(session.serviceNames.length > 0
                 ? [
                     {
-                      label: "Services",
+                      label: "Serviços",
                       value: session.serviceNames.join(", "),
                       copyable: true,
                     },

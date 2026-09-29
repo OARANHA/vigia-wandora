@@ -120,7 +120,7 @@ export function ScopedSetting({
           footer={
             <div className="flex flex-row items-center gap-2">
               <Button variant="outline" onClick={pendingChange.onDiscard} disabled={pendingChange.isApplying}>
-                Cancel
+                Cancelar
               </Button>
               <Button onClick={pendingChange.onApply} disabled={pendingChange.isApplying}>
                 {pendingChange.applyLabel}

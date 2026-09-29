@@ -393,7 +393,7 @@ O diferencial que merece código próprio é a combinação de:
 
 ## 14. Próxima ação objetiva
 
-**Implantar e validar o Business Events v0 ponta a ponta e, em seguida, usar a Wandora como primeiro emissor real.**
+**Usar a Wandora como primeiro emissor/cliente real do Vigia, enviando OTLP + Business Events para o runtime público já validado.**
 
 A investigação confirmou que o Latitude já fornece persistência de scores, metadata, correlação com trace/session/span, analytics técnicos, outbox e descoberta de Sinais. O Vigia adiciona somente o contrato e a apresentação de negócio necessários.
 
@@ -415,19 +415,28 @@ A tentativa na VPS Wandora foi abandonada e seus artefatos foram removidos. O pr
 
 A automação disponível para criar a stack exige receber os segredos como variáveis. O controle de segurança bloqueou esse transporte antes da execução; portanto nenhum segredo foi persistido e nenhuma stack foi criada. O próximo passo é fornecer os segredos diretamente por um canal operacional seguro do Portainer/host, criar a stack Git, validar saúde e recursos, e somente depois instalar a configuração dinâmica do Traefik.
 
+### Business Events v0 — produção validada — 2026-09-29
 
-### Estado operacional do Business Events v0 — 2026-09-29
+O PR #46 está integrado ao `main` no commit `c845630556be695d6b8a49bee93b9b8ec6c9e4cb` e o Business Events v0 foi implantado e validado no runtime público do Vigia.
 
-O PR #46 foi integrado ao `main` no commit `c845630556be695d6b8a49bee93b9b8ec6c9e4cb`. O workflow de produção `Vigia container images` #86 concluiu com sucesso e publicou as imagens desse commit.
+O bloqueio de deploy foi isolado no caminho Docker -> GHCR: o hostname de blobs `pkg-containers.githubusercontent.com` oferecia IPv4 e IPv6, e o Docker estabelecia conexão IPv6 com a faixa `2606:50c0:8000::/46`, recebendo `connection reset by peer` durante a cópia dos blobs. O registry `ghcr.io` e o mesmo CDN por IPv4 estavam alcançáveis normalmente.
 
-O redeploy na VPS Vigia **não foi executado**. A automação operacional abortou ainda na etapa de pull de imagens porque o Docker recebeu `connection reset by peer` ao copiar blobs do GHCR por IPv6. Duas execuções controladas falharam da mesma forma no primeiro pull (`vigia-web:main`) e terminaram com `aborted_before_redeploy`.
+A correção operacional mínima aprovada foi adicionar uma rota `unreachable` apenas para `2606:50c0:8000::/46`, fazendo o cliente falhar imediatamente nesse caminho IPv6 e usar IPv4 para os blobs. Não houve alteração de `daemon.json`, sysctl, firewall, Docker daemon ou IPv6 global do host.
 
-Após as falhas foi reconfirmado:
+Importante: essa rota é um workaround **temporário e não persistente após reboot**. Antes de depender de novo pull após reinício do host, deve-se verificar se o problema de rede externa ainda existe e decidir uma correção durável igualmente estreita, sem desabilitar IPv6 globalmente por antecipação.
 
-- stack Portainer `vigia` ativa;
-- `CurrentDeploymentInfo.ConfigHash = 417b322c23f06d6c6d17e4839ec437e679c97219`;
-- serviços principais permanecem saudáveis;
-- nenhum redeploy parcial ocorreu;
-- o host alcança `ghcr.io` por IPv4, portanto o bloqueio está no caminho de cópia de blobs usado pelo Docker/registry.
+Validação concluída:
 
-Próxima ação operacional: corrigir ou contornar o transporte GHCR/IPv6 da VPS, com aprovação específica antes de qualquer alteração de daemon/rede; depois repullar as imagens, redeployar via Portainer e executar o smoke `trace -> Business Event -> Resultado`.
+- acesso normal ao CDN de blobs passou a usar IPv4;
+- as oito imagens `ghcr.io/oaranha/vigia-*:main` foram repulladas com sucesso;
+- todas as oito imagens locais reportaram `org.opencontainers.image.revision = c845630556be695d6b8a49bee93b9b8ec6c9e4cb`;
+- redeploy executado pelo Portainer local da VPS Vigia, sem novo pull;
+- stack `vigia` ativa com `CurrentDeploymentInfo.ConfigHash = c845630556be695d6b8a49bee93b9b8ec6c9e4cb`;
+- `web`, `api`, `ingest`, `workers`, `workflows`, Postgres, ClickHouse e Redis saudáveis;
+- `vigia-migrations` concluiu com exit 0;
+- endpoint público continuou acessível por HTTPS;
+- smoke real enviou um novo trace por OTLP com HTTP 200 e confirmou o trace pela API de leitura com HTTP 200;
+- `POST /v1/projects/:projectSlug/events` retornou HTTP 201;
+- o resultado persistido foi confirmado no Postgres como `sourceId = vigia.business.smoke_success`, `passed = true` e com o mesmo `traceId` do trace recém-enviado.
+
+Com isso, o fluxo `trace -> Business Event -> Resultado` está provado em produção. O próximo passo de produto é usar a Wandora como primeiro emissor real antes de ampliar analytics, SDKs ou abstrações.

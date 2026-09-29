@@ -67,9 +67,10 @@ jobs:
 
       - name: Typecheck affected workspaces
         run: >-
-          pnpm --filter @domain/email typecheck &&
-          pnpm --filter @app/web typecheck &&
-          pnpm --filter @app/workers typecheck
+          pnpm turbo typecheck
+          --filter=@domain/email
+          --filter=@app/web
+          --filter=@app/workers
 
       - name: Build web
         run: pnpm --filter @app/web build

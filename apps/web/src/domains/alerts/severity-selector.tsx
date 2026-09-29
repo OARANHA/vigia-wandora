@@ -42,10 +42,10 @@ export function SeverityStatus({ severity, label }: { readonly severity: AlertSe
  * spells out the progressive semantics without introducing extra concepts.
  */
 export const minSeverityHint = (minimum: AlertSeverity): string => {
-  if (minimum === "low") return "All severities"
-  if (minimum === "medium") return "Medium and above"
-  if (minimum === "high") return "High and urgent"
-  return "Urgent only"
+  if (minimum === "low") return "Todas as severidades"
+  if (minimum === "medium") return "Média ou superior"
+  if (minimum === "high") return "Alta ou urgente"
+  return "Somente urgente"
 }
 
 /**

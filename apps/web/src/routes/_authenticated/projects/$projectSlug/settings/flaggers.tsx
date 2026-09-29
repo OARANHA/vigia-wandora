@@ -9,6 +9,7 @@ import {
 } from "../../../../../domains/flaggers/flaggers.collection.ts"
 import type { FlaggerRecord } from "../../../../../domains/flaggers/flaggers.functions.ts"
 import {
+  FLAGGER_DISPLAY_PT_BR,
   FLAGGER_GROUPS,
   FLAGGER_USE_CASE_PRESETS,
   type FlaggerPresetSlug,
@@ -151,7 +152,7 @@ function ProjectFlaggersSettingsPage() {
       await Promise.all(transactions.map((t) => t.isPersisted.promise))
       setPending({})
       toast({
-        description: `Updated ${entries.length} flagger${entries.length === 1 ? "" : "s"}`,
+        description: `${entries.length} ${entries.length === 1 ? "avaliador atualizado" : "avaliadores atualizados"}`,
       })
     } catch (error) {
       toast({ variant: "destructive", description: toUserMessage(error) })
@@ -163,7 +164,7 @@ function ProjectFlaggersSettingsPage() {
   useDirtyGuard({
     hasDirty,
     isApplying,
-    confirmMessage: "You have unsaved changes. Leave anyway?",
+    confirmMessage: "Há alterações não salvas. Deseja sair mesmo assim?",
     onApply: apply,
     onDiscard: discard,
   })
@@ -179,8 +180,8 @@ function ProjectFlaggersSettingsPage() {
 
   return (
     <SettingsPage
-      title="Flaggers"
-      description="Flaggers automatically inspect new traces for known failure patterns and create issues when they detect regressions"
+      title="Avaliadores"
+      description="Avaliadores inspecionam novos traces em busca de padrões conhecidos de falha e criam ocorrências quando detectam regressões."
       actions={
         <DirtyActions
           dirtyCount={dirtyCount}
@@ -193,11 +194,11 @@ function ProjectFlaggersSettingsPage() {
     >
       <div className="flex w-full flex-col gap-8">
         {isLoadingFlaggers ? null : flaggers.length === 0 ? (
-          <Text.H5 color="foregroundMuted">No flaggers have been provisioned for this project yet</Text.H5>
+          <Text.H5 color="foregroundMuted">Nenhum avaliador foi provisionado para este projeto ainda.</Text.H5>
         ) : (
           <>
             <div className="flex flex-col gap-2">
-              <Text.H6 color="foregroundMuted">Apply a use-case preset</Text.H6>
+              <Text.H6 color="foregroundMuted">Aplicar uma predefinição por caso de uso</Text.H6>
               <div className="flex flex-row flex-wrap gap-2">
                 {FLAGGER_USE_CASE_PRESETS.map((preset) => {
                   const isActive = activePresetId === preset.id
@@ -234,6 +235,7 @@ function ProjectFlaggersSettingsPage() {
                         const isTarget = targetFlaggerSlug !== "" && row.slug === targetFlaggerSlug
                         const isDeterministic = row.mode === "deterministic"
                         const coverageRow = coverageBySlug.get(row.slug)
+                        const display = FLAGGER_DISPLAY_PT_BR[row.slug]
                         return (
                           <div
                             key={row.id}
@@ -245,29 +247,29 @@ function ProjectFlaggersSettingsPage() {
                             <div className="flex flex-row items-start justify-between gap-4">
                               <div className="flex min-w-0 flex-col gap-1">
                                 <div className="flex flex-row items-center gap-2">
-                                  <Text.H5M>{row.name}</Text.H5M>
+                                  <Text.H5M>{display.name}</Text.H5M>
                                   {row.isDirty ? (
                                     <span
                                       role="img"
                                       className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-primary"
-                                      aria-label="Unsaved changes"
-                                      title="Unsaved changes"
+                                      aria-label="Alterações não salvas"
+                                      title="Alterações não salvas"
                                     />
                                   ) : null}
                                 </div>
-                                <Text.H6 color="foregroundMuted">{row.description}</Text.H6>
+                                <Text.H6 color="foregroundMuted">{display.description}</Text.H6>
                               </div>
                               <div className="shrink-0">
                                 <Switch
                                   checked={row.viewEnabled}
                                   onCheckedChange={(checked) => setRowChange(row.id, { enabled: checked })}
-                                  aria-label={`${row.viewEnabled ? "Disable" : "Enable"} ${row.name}`}
+                                  aria-label={`${row.viewEnabled ? "Desativar" : "Ativar"} ${display.name}`}
                                 />
                               </div>
                             </div>
                             <div className="flex flex-col gap-1">
                               {isDeterministic ? (
-                                <Text.H6 color="foregroundMuted">Free · Runs on 100% of eligible sessions</Text.H6>
+                                <Text.H6 color="foregroundMuted">Sem custo de LLM · executa em 100% das sessões elegíveis</Text.H6>
                               ) : (
                                 <div className="flex flex-row flex-wrap items-center gap-x-4 gap-y-2">
                                   <div className="flex flex-row items-center gap-3">
@@ -279,13 +281,13 @@ function ProjectFlaggersSettingsPage() {
                                         value={[row.viewSampling]}
                                         onValueChange={(values) => setRowChange(row.id, { sampling: values[0] ?? 0 })}
                                         disabled={!row.viewEnabled}
-                                        aria-label={`Sampling rate for ${row.name}`}
+                                        aria-label={`Taxa de amostragem de ${display.name}`}
                                       />
                                     </div>
                                     <Text.H5 className="w-10 tabular-nums">{row.viewSampling}%</Text.H5>
                                   </div>
                                   <Text.H6 color="foregroundMuted">
-                                    Billed by AI usage · runs on {row.viewSampling}% of eligible sessions
+                                    Uso de IA cobrado · executa em {row.viewSampling}% das sessões elegíveis
                                   </Text.H6>
                                 </div>
                               )}

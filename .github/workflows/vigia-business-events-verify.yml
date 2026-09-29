@@ -1,0 +1,35 @@
+name: Vigia business events verification
+
+on:
+  pull_request:
+    paths:
+      - packages/operations/src/operations/business-events.ts
+      - packages/operations/src/operations/index.ts
+      - apps/api/src/routes/business-events.test.ts
+      - apps/web/src/routes/_authenticated/projects/**/scores/score-card-display.ts
+      - apps/web/src/routes/_authenticated/projects/**/scores/score-card-display.test.ts
+      - apps/web/src/routes/_authenticated/projects/**/scores/score-card.tsx
+      - .github/workflows/vigia-business-events-verify.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "25"
+      - name: Install pnpm
+        run: npm install -g pnpm@10.33.0
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Typecheck operations
+        run: pnpm --filter @repo/operations typecheck
+      - name: Test business events API
+        run: pnpm --filter @app/api exec vitest run src/routes/business-events.test.ts
+      - name: Test business result presentation
+        run: pnpm --filter @app/web exec vitest run 'src/routes/_authenticated/projects/$projectSlug/-components/scores/score-card-display.test.ts'

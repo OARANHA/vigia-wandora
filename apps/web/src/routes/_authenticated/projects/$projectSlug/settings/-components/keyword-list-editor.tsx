@@ -10,6 +10,7 @@ export function KeywordListEditor({
   onChange,
   error,
   onReset,
+  placeholder = "Add a keyword…",
   disabled = false,
 }: {
   label: string
@@ -17,6 +18,7 @@ export function KeywordListEditor({
   onChange: (next: string[]) => void
   error?: string | undefined
   onReset?: () => void
+  placeholder?: string
   disabled?: boolean
 }) {
   return (
@@ -34,7 +36,7 @@ export function KeywordListEditor({
         onChange={onChange}
         errors={error ? [error] : undefined}
         disabled={disabled}
-        placeholder="Add a keyword…"
+        placeholder={placeholder}
       />
     </div>
   )

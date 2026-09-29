@@ -44,7 +44,7 @@ Futuramente, SSO pode conectar os dois produtos com um fluxo "Abrir no Vigia".
 - Assinatura: **Vigia by Wandora**
 - URL principal: `vigia.wandora.com.br` (**entrada pública canônica; web/API/ingest no MVP**)
 - Operação: `ops-vigia.wandora.com.br` (**Portainer/console operacional**)
-- Reservados no DNS para uso futuro, sem rota ativa por padrão: `app-vigia.wandora.com.br`, `api-vigia.wandora.com.br`, `ingest-vigia.wandora.com.br`, `docs-vigia.wandora.com.br` e `status-vigia.wandora.com.br`
+- Reservados no DNS/Cloudflare para uso futuro, sem rota ativa por padrão: `app-vigia.wandora.com.br`, `docs-vigia.wandora.com.br`, `ingest-vigia.wandora.com.br`, `status-vigia.wandora.com.br` e `vigia-infrastructure.wandora.com.br`
 
 ## Estado
 

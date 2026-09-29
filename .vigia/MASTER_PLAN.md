@@ -414,3 +414,20 @@ O empacotamento e o caminho de registry já foram comprovados antes de tocar pro
 A tentativa na VPS Wandora foi abandonada e seus artefatos foram removidos. O primeiro runtime será implantado exclusivamente na VPS dedicada do Vigia.
 
 A automação disponível para criar a stack exige receber os segredos como variáveis. O controle de segurança bloqueou esse transporte antes da execução; portanto nenhum segredo foi persistido e nenhuma stack foi criada. O próximo passo é fornecer os segredos diretamente por um canal operacional seguro do Portainer/host, criar a stack Git, validar saúde e recursos, e somente depois instalar a configuração dinâmica do Traefik.
+
+
+### Estado operacional do Business Events v0 — 2026-09-29
+
+O PR #46 foi integrado ao `main` no commit `c845630556be695d6b8a49bee93b9b8ec6c9e4cb`. O workflow de produção `Vigia container images` #86 concluiu com sucesso e publicou as imagens desse commit.
+
+O redeploy na VPS Vigia **não foi executado**. A automação operacional abortou ainda na etapa de pull de imagens porque o Docker recebeu `connection reset by peer` ao copiar blobs do GHCR por IPv6. Duas execuções controladas falharam da mesma forma no primeiro pull (`vigia-web:main`) e terminaram com `aborted_before_redeploy`.
+
+Após as falhas foi reconfirmado:
+
+- stack Portainer `vigia` ativa;
+- `CurrentDeploymentInfo.ConfigHash = 417b322c23f06d6c6d17e4839ec437e679c97219`;
+- serviços principais permanecem saudáveis;
+- nenhum redeploy parcial ocorreu;
+- o host alcança `ghcr.io` por IPv4, portanto o bloqueio está no caminho de cópia de blobs usado pelo Docker/registry.
+
+Próxima ação operacional: corrigir ou contornar o transporte GHCR/IPv6 da VPS, com aprovação específica antes de qualquer alteração de daemon/rede; depois repullar as imagens, redeployar via Portainer e executar o smoke `trace -> Business Event -> Resultado`.

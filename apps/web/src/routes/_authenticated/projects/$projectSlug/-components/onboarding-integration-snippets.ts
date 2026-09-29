@@ -1867,9 +1867,8 @@ export function cloudflareAiGatewayConfig(projectSlug: string, apiKey: string | 
  * (https://docs.latitude.so/telemetry/overview#ask-your-coding-agent), with the
  * project slug + API key pre-filled so the agent doesn't need to ask.
  */
-export function getCodingAgentTelemetryPrompt(projectSlug: string, apiKey: string | null): string {
-  const key = apiKey ?? "YOUR_API_KEY"
-  return `Instrument this app with OpenTelemetry tracing and export OTLP/HTTP traces to ${OTLP_TRACES_ENDPOINT}. Use the header Authorization: Bearer ${key} and X-Vigia-Project: ${projectSlug}. Preserve any existing telemetry setup, avoid changing unrelated application behavior, and verify the integration by sending one test trace to Vigia.`
+export function getCodingAgentTelemetryPrompt(projectSlug: string): string {
+  return `Instrument this app with OpenTelemetry tracing and export OTLP/HTTP traces to ${OTLP_TRACES_ENDPOINT}. Read the bearer token from the VIGIA_API_KEY environment variable; do not hard-code or print it. Send Authorization: Bearer <VIGIA_API_KEY> and X-Vigia-Project: ${projectSlug}. Preserve any existing telemetry setup, avoid changing unrelated application behavior, and verify the integration by sending one test trace to Vigia.`
 }
 
 /** Mirrors the memory-tracing docs prompt (docs.latitude.so/telemetry/memory). */

@@ -430,3 +430,21 @@ Validação de código do PR #46:
 - teste da apresentação **Resultado** e valor em PT-BR: sucesso.
 
 A validação de produção e o uso da Wandora como primeiro cliente real devem ser registrados após o deploy, sem antecipar esse estado neste checkpoint.
+
+## Business Events v0 — produção validada — 2026-09-29
+
+O Business Events v0 do PR #46 está implantado no runtime público no commit `c845630556be695d6b8a49bee93b9b8ec6c9e4cb`.
+
+O bloqueio de registry foi diagnosticado como falha no caminho IPv6 usado pelo Docker para o CDN de blobs do GHCR. Uma rota temporária e específica para `2606:50c0:8000::/46` fez o transporte cair para IPv4 sem alterar Docker daemon, sysctl, firewall ou IPv6 global. A rota não é persistente após reboot e deve ser reavaliada antes de futuros pulls se o problema externo continuar.
+
+Validação de produção:
+
+- oito imagens Vigia `:main` repulladas e confirmadas na revisão `c845630556be695d6b8a49bee93b9b8ec6c9e4cb`;
+- redeploy pelo Portainer local concluído;
+- `ConfigHash` da stack igual ao commit implantado;
+- serviços principais saudáveis e migrations com exit 0;
+- OTLP público retornando HTTP 200 e trace encontrado pela API de leitura;
+- Business Event público retornando HTTP 201;
+- custom score `vigia.business.smoke_success` persistido com o mesmo `traceId` e `passed = true`.
+
+O contrato `POST /v1/projects/:projectSlug/events` e a correlação `traceId -> resultado de negócio` estão, portanto, validados em produção. O próximo passo é integrar a Wandora como primeiro emissor real do Vigia.

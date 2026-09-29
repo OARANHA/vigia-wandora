@@ -29,8 +29,8 @@
 
 ## Fase 2 — camada própria
 
-- [ ] Events API
-- [ ] Correlação trace_id -> resultado de negócio
+- [x] Events API
+- [x] Correlação trace_id -> resultado de negócio
 - [ ] Métricas de saúde
 - [ ] Métricas de impacto
 - [ ] Alertas orientados a negócio
@@ -260,3 +260,22 @@ O v0 ainda não conclui **Métricas de impacto**: metadata de negócio não é m
 ### Próxima validação
 
 Implantar o PR #46, provar `trace -> evento de negócio -> resultado visível no Vigia` no runtime público e então marcar Events API/correlação como concluídas em produção. Em seguida, integrar a Wandora como primeiro emissor real antes de ampliar o modelo.
+
+## Checkpoint 2026-09-29 — Business Events v0 validado em produção
+
+- [x] PR #46 integrado ao `main` em `c845630556be695d6b8a49bee93b9b8ec6c9e4cb`;
+- [x] imagens `vigia-*:main` repulladas com sucesso e confirmadas nessa revisão;
+- [x] redeploy da stack `vigia` pelo Portainer local;
+- [x] `ConfigHash` confirmado em `c845630556be695d6b8a49bee93b9b8ec6c9e4cb`;
+- [x] serviços principais saudáveis e migrations com exit 0;
+- [x] smoke OTLP público com ingest HTTP 200 e trace encontrado por HTTP 200;
+- [x] `POST /v1/projects/:projectSlug/events` validado com HTTP 201;
+- [x] resultado `vigia.business.smoke_success` persistido com o mesmo `traceId` e `passed = true`.
+
+O bloqueio Docker -> GHCR foi contornado de forma estreita forçando apenas a faixa IPv6 observada do CDN de blobs a ficar inalcançável, permitindo fallback para IPv4. Esse workaround é temporário e não persiste após reboot; qualquer correção permanente deve continuar evitando mudanças globais de IPv6 sem necessidade comprovada.
+
+As caixas **Events API** e **Correlação trace_id -> resultado de negócio** estão concluídas na Fase 2.
+
+### Próxima ação
+
+- [ ] Integrar a Wandora como primeiro cliente/emissor real: `Wandora -> OTLP + Business Events -> Vigia`.

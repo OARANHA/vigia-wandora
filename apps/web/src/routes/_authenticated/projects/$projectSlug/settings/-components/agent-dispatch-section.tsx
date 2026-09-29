@@ -93,6 +93,11 @@ export const DISPATCH_ERROR_TITLES: Record<string, string> = {
   transport: "Erro de rede",
 }
 
+const DISPATCH_STATUS_LABELS: Record<string, string> = {
+  dispatched: "Enviado",
+  failed: "Falhou",
+}
+
 const DISPATCH_ERROR_FALLBACKS: Record<string, string> = {
   auth: "As credenciais da integração foram rejeitadas. Reconecte a integração e tente novamente.",
   config: "O provedor rejeitou o envio. Novas falhas exibem aqui a resposta do provedor.",
@@ -281,7 +286,7 @@ export function DispatchConnectionSection({
         actions={
           canDisconnect ? (
             <Button variant="destructive" onClick={() => setConfirmOpen(true)}>
-              Disconnect
+              Desconectar
             </Button>
           ) : (
             <Button asChild variant="ghost">
@@ -963,14 +968,14 @@ export function ConnectAgentDispatchModal({
           await queryClient.invalidateQueries({ queryKey: orgDefaultConfigQueryKey(kind) })
           await queryClient.invalidateQueries({ queryKey: projectDispatchSettingsQueryKey(projectId, kind) })
           await queryClient.invalidateQueries({ queryKey: sendToDestinationsQueryKey(projectId) })
-          toast({ description: `${KIND_LABELS[kind]} connected` })
+          toast({ description: `${KIND_LABELS[kind]} conectado` })
           return
         }
         await queryClient.invalidateQueries({ queryKey: AGENT_DISPATCH_INTEGRATIONS_QUERY_KEY })
         await queryClient.invalidateQueries({ queryKey: orgDefaultConfigQueryKey(kind) })
         await queryClient.invalidateQueries({ queryKey: projectDispatchSettingsQueryKey(projectId, kind) })
         await queryClient.invalidateQueries({ queryKey: sendToDestinationsQueryKey(projectId) })
-        toast({ description: `${KIND_LABELS[kind]} connected` })
+        toast({ description: `${KIND_LABELS[kind]} conectado` })
         onClose()
       },
       { resetOnSuccess: true },
@@ -1079,7 +1084,7 @@ export function ConnectAgentDispatchModal({
           <Button onClick={onClose}>Concluir</Button>
         ) : (
           <Button onClick={() => void form.handleSubmit()} isLoading={form.state.isSubmitting}>
-            Connect
+            Conectar
           </Button>
         )
       }
@@ -1272,7 +1277,7 @@ export function ConnectAgentDispatchModal({
           <form.Field name="routineUrl">
             {(field) => (
               <Input
-                label="Routine URL"
+                label="URL da rotina"
                 description="Copie este valor do navegador enquanto visualiza a rotina."
                 placeholder="https://claude.ai/code/routines/trig_..."
                 value={field.state.value}
@@ -1484,7 +1489,7 @@ function AgentDispatchHistorySection({
           <div className="flex min-w-0 items-end gap-2">
             <div className="flex min-w-0 flex-col gap-1">
               <Badge variant={statusVariant} size="small" className="w-fit capitalize">
-                {dispatch.status}
+                {DISPATCH_STATUS_LABELS[dispatch.status] ?? dispatch.status}
               </Badge>
               {errorTitle ? <Text.H7 color="destructive">{errorTitle}</Text.H7> : null}
             </div>

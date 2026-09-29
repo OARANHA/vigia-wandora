@@ -72,7 +72,7 @@ describe("RedactionRulesSection", () => {
     setup([TERMS], true)
 
     expect(screen.queryByRole("button", { name: "Adicionar regra" })).toBeNull()
-    expect(screen.queryByRole("button", { name: "Remove ACCOUNT_NUMBER" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Remover ACCOUNT_NUMBER" })).toBeNull()
     expect(screen.getByRole<HTMLInputElement>("checkbox", { name: "ACCOUNT_NUMBER" }).disabled).toBe(true)
   })
 

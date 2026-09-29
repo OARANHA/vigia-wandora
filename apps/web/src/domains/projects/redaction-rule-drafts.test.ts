@@ -69,7 +69,7 @@ describe("encodeRules", () => {
     "",
     "null",
   ])("refuses to decode %o to an empty policy, with a message a user can act on", (encoded) => {
-    expect(() => decodeRules(encoded)).toThrow("Could not read the redaction rules on this page")
+    expect(() => decodeRules(encoded)).toThrow("Não foi possível ler as regras de privacidade desta página")
   })
 })
 
@@ -98,7 +98,7 @@ describe("labelIssue", () => {
   })
 
   it("rejects a label a built-in category already uses", () => {
-    expect(labelIssue("EMAIL")).toContain("built-in")
+    expect(labelIssue("EMAIL")).toContain("categoria padrão")
   })
 
   it.each(["ab", "lowercase", "1LEADING", "HAS SPACE"])("rejects the malformed label %s", (label) => {
@@ -138,6 +138,6 @@ describe("describeRule", () => {
   it("caps a long term list rather than overflowing the row", () => {
     const many = terms({ terms: ["a1", "b2", "c3", "d4", "e5"] })
 
-    expect(describeRule(many)).toBe("a1, b2, c3 and 2 more")
+    expect(describeRule(many)).toBe("a1, b2, c3 e mais 2")
   })
 })

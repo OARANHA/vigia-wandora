@@ -5,6 +5,7 @@ import {
   getCodingMachineVigiaRoutingConfig,
   getEnvBlock,
   getHermesEnvBlock,
+  getMemoryTelemetryPrompt,
   getOnboardingSnippet,
   getOtelCurlVerifySnippet,
   getOtelExporterLanguageSnippet,
@@ -158,5 +159,16 @@ describe("Vigia public telemetry contract", () => {
     expect(prompt).not.toContain("vig-key")
     expect(prompt).not.toContain("latitude-telemetry")
     expect(prompt).not.toContain("Latitude MCP")
+  })
+
+  it("keeps memory onboarding Vigia-native and OpenTelemetry-based", () => {
+    const prompt = getMemoryTelemetryPrompt()
+    expect(prompt).toContain("OpenTelemetry GenAI")
+    expect(prompt).toContain("Vigia OTLP")
+    expect(prompt).toContain("gen_ai.operation.name")
+    expect(prompt).toContain("gen_ai.memory.store.id")
+    expect(prompt).not.toContain("latitude-telemetry")
+    expect(prompt).not.toContain("latitude-dev")
+    expect(prompt).not.toContain("Latitude")
   })
 })

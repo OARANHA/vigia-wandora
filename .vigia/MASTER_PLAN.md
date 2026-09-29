@@ -1,6 +1,6 @@
 # Vigia — Master Plan
 
-Atualizado em: 2026-09-28
+Atualizado em: 2026-09-29
 
 Este documento consolida as decisões tomadas para o Vigia e serve como fonte de verdade de produto, arquitetura, comercialização e execução.
 
@@ -262,7 +262,7 @@ O primeiro trace OTLP real pelo domínio público foi validado em 2026-09-29:
 - `projects.first_trace_at` ficou preenchido no projeto usado no smoke test;
 - a stack `vigia` estava ativa e os serviços web, API, ingest, workers, workflows, Postgres, ClickHouse e Redis estavam saudáveis.
 
-Durante essa validação foi identificado um gap de produto: algumas instruções visíveis de onboarding ainda apontam para `ingest.latitude.so`, `X-Latitude-Project` e nomenclatura Latitude. O próximo slice imediato deve consolidar essas superfícies no contrato público do Vigia antes de avançar para a definição de sucesso por agente e Business Events.
+O gap de onboarding público foi fechado no PR #44 e implantado em produção em 2026-09-29. As instruções públicas de OTLP usam o contrato Vigia, enquanto nomes e variáveis Latitude permanecem somente onde são exigidos por SDKs/adapters upstream. O runtime foi validado no commit `417b322c23f06d6c6d17e4839ec437e679c97219`: stack ativa, serviços saudáveis, HTTPS público 200 e novo smoke OTLP ponta a ponta com ingest HTTP 200 e trace encontrado pela API de leitura.
 
 ## 10. Regra de customização
 
@@ -379,11 +379,11 @@ O diferencial que merece código próprio é a combinação de:
 
 ## 14. Próxima ação objetiva
 
-**Consolidar o onboarding de telemetria para que toda instrução visível ao cliente use o contrato público do Vigia: `https://vigia.wandora.com.br/v1/traces`, `Authorization: Bearer <API key>` e `X-Vigia-Project`.**
+**Definir o primeiro contrato de Business Events a partir da pergunta: “o que significa sucesso para este agente?”**
 
-Preservar `X-Latitude-Project` e demais contratos Latitude apenas como compatibilidade interna quando necessários ao motor.
+Antes de criar código próprio, inspecionar no Latitude/Vigia as capabilities existentes de events, signals, scores e correlação com traces. Implementar somente a menor camada própria necessária para ligar uma execução técnica a um resultado de negócio útil ao cliente.
 
-Depois desse ajuste de produto, avançar para a definição de sucesso por agente e Business Events.
+O primeiro slice deve provar o fluxo completo `trace -> evento de negócio -> resultado visível no Vigia`, mantendo OTLP como porta principal e preservando o Latitude como motor interno.
 
 
 ### Checkpoint de preparação do primeiro runtime — 2026-09-28

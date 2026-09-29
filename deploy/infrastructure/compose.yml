@@ -39,6 +39,17 @@ services:
                 certResolver: letsencrypt
               service: vigia-web
 
+            # Ativar em produção somente com uma política de acesso administrativo
+            # na borda (preferencialmente Cloudflare Access ou equivalente).
+            vigia-ops:
+              rule: "Host(`ops.vigia.wandora.com.br`)"
+              entryPoints:
+                - websecure
+              priority: 100
+              tls:
+                certResolver: letsencrypt
+              service: vigia-portainer
+
           services:
             vigia-web:
               loadBalancer:
@@ -54,6 +65,16 @@ services:
               loadBalancer:
                 servers:
                   - url: "http://vigia-ingest:3002"
+
+            vigia-portainer:
+              loadBalancer:
+                serversTransport: vigia-portainer-tls
+                servers:
+                  - url: "https://vigia-portainer:9443"
+
+          serversTransports:
+            vigia-portainer-tls:
+              insecureSkipVerify: true
         EOF
     volumes:
       - traefik_dynamic:/dynamic

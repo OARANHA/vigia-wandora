@@ -133,7 +133,7 @@ describe("Vigia public telemetry contract", () => {
   })
 
   it("routes Hermes and pi compatibility installers to Vigia", () => {
-    expect(getHermesEnvBlock("my-project", "vig-key")).toContain("LATITUDE_TELEMETRY_URL=https://vigia.wandora.com.br")
+    expect(getHermesEnvBlock("my-project", "vig-key")).toContain("LATITUDE_BASE_URL=https://vigia.wandora.com.br")
     expect(getPiTelemetryInstallCommand("my-project", "vig-key")).toContain("--base-url=https://vigia.wandora.com.br")
   })
 

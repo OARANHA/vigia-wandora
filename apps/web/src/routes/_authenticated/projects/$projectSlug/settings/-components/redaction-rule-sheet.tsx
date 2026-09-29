@@ -201,6 +201,31 @@ export function RedactionRuleSheet({
   )
 }
 
+const ruleValidationIssueMessage = (issue: RuleValidation["errors"][number]): string => {
+  switch (issue.code) {
+    case "glob_too_broad":
+      return "usa um glob amplo demais e pode remover quase todos os atributos do span."
+    case "uncompilable":
+      return "não contém um regex válido."
+    case "matches_empty":
+      return "corresponde ao texto vazio e inseriria um marcador entre todos os caracteres."
+    case "bound_too_large":
+      return "repete um trecho vezes demais; use um limite de até 1000 repetições."
+    case "adjacent_quantifier":
+      return "repete partes sobrepostas sem um trecho obrigatório entre elas, o que pode causar backtracking por segundos em entradas longas."
+    case "backreference":
+      return "usa backreference, que não é suportada."
+    case "nested_quantifier":
+      return "aninha repetições sem limite, o que pode causar backtracking exponencial."
+    case "ambiguous_alternation":
+      return "repete alternativas que podem começar com o mesmo caractere, o que pode causar backtracking exponencial."
+    case "catastrophic_backtracking":
+      return "apresenta backtracking catastrófico no teste de segurança."
+    default:
+      return `não passou na validação (${issue.code}).`
+  }
+}
+
 // Says whether the rule is safe to run; over-breadth is the preview's question, not this one's.
 function RuleVerdict({ ready, verdict }: { readonly ready: boolean; readonly verdict: Verdict }) {
   if (!ready) {

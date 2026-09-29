@@ -9,10 +9,10 @@ export const DESTINATION_HEALTH_BADGE: Record<
   DestinationHealthBadge,
   { label: string; variant: StatusProps["variant"] }
 > = {
-  healthy: { label: "Healthy", variant: "success" },
-  lagging: { label: "Lagging", variant: "warning" },
-  paused: { label: "Paused", variant: "neutral" },
-  quarantined: { label: "Quarantined", variant: "destructive" },
+  healthy: { label: "Saudável", variant: "success" },
+  lagging: { label: "Atrasado", variant: "warning" },
+  paused: { label: "Pausado", variant: "neutral" },
+  quarantined: { label: "Em quarentena", variant: "destructive" },
 }
 
 const MINUTE_MS = 60_000
@@ -24,8 +24,8 @@ const HOUR_MS = 3_600_000
  * "up to date" rather than a misleading "0 sec".
  */
 export const formatLag = (lagMs: number | null): string => {
-  if (lagMs === null || lagMs < MINUTE_MS) return "Up to date"
-  if (lagMs < HOUR_MS) return `~${Math.round(lagMs / MINUTE_MS)} min behind`
+  if (lagMs === null || lagMs < MINUTE_MS) return "Atualizado"
+  if (lagMs < HOUR_MS) return `~${Math.round(lagMs / MINUTE_MS)} min de atraso`
   const hours = lagMs / HOUR_MS
-  return `~${hours < 10 ? hours.toFixed(1) : Math.round(hours)} hr behind`
+  return `~${hours < 10 ? hours.toFixed(1) : Math.round(hours)} h de atraso`
 }

@@ -39,31 +39,31 @@ const SENSITIVITY_MIN = 1
 const SENSITIVITY_MAX = 6
 // Field help copy — written so a non-engineer can predict what each control does.
 const KIND_HELP: Record<UserAlertKind, string> = {
-  "savedSearch.match": "Opens an incident the first time each matching session is detected",
-  "savedSearch.threshold": "Opens an incident once matching traces reach a threshold",
-  "savedSearch.escalating": "Opens an incident when matching traces stay elevated for a sustained window",
-  "monitor.match": "Opens an incident the first time each matching session is detected",
-  "monitor.threshold": "Opens an incident once the metric crosses a threshold",
-  "monitor.escalating": "Opens an incident when the metric stays elevated for a sustained window",
+  "savedSearch.match": "Abre um incidente na primeira vez em que cada sessão correspondente é detectada",
+  "savedSearch.threshold": "Abre um incidente quando os traces correspondentes atingem um limite",
+  "savedSearch.escalating": "Abre um incidente quando os traces correspondentes permanecem elevados por um período contínuo",
+  "monitor.match": "Abre um incidente na primeira vez em que cada sessão correspondente é detectada",
+  "monitor.threshold": "Abre um incidente quando a métrica cruza um limite",
+  "monitor.escalating": "Abre um incidente quando a métrica permanece elevada por um período contínuo",
 }
 
 // Monitors window on the activity axis while every other view is start-anchored, so the same
 // filters can read differently here and on the dashboard. Say so wherever a monitor is created.
 const TIME_AXIS_HELP = [
-  "Monitors evaluate sessions by their latest activity, so a long session is checked while it progresses and again when it finishes.",
-  "Each session alerts at most once, and any fixed date range in the search is ignored.",
-  "Dashboards and analytics list sessions by start time, so a session that just alerted can appear further back there.",
+  "Monitores avaliam as sessões pela atividade mais recente, então uma sessão longa é verificada durante a execução e novamente ao terminar.",
+  "Cada sessão gera no máximo um alerta, e qualquer intervalo fixo de datas da busca é ignorado.",
+  "Dashboards e análises listam sessões pelo horário de início, então uma sessão que acabou de alertar pode aparecer mais atrás.",
 ].join(" ")
 
 // Tab label + icon per kind. Saved-search exposes all three; a unified target
 // exposes only threshold/escalating (kindsForDraft drops "match" for targets).
 const TAB_FOR_KIND: Record<UserAlertKind, { label: string; icon: typeof EqualApproximately }> = {
-  "savedSearch.match": { label: "Match", icon: EqualApproximately },
-  "savedSearch.threshold": { label: "Threshold", icon: LineDotRightHorizontal },
-  "savedSearch.escalating": { label: "Escalating", icon: TrendingUp },
-  "monitor.match": { label: "Match", icon: EqualApproximately },
-  "monitor.threshold": { label: "Threshold", icon: LineDotRightHorizontal },
-  "monitor.escalating": { label: "Escalating", icon: TrendingUp },
+  "savedSearch.match": { label: "Correspondência", icon: EqualApproximately },
+  "savedSearch.threshold": { label: "Limite", icon: LineDotRightHorizontal },
+  "savedSearch.escalating": { label: "Escalando", icon: TrendingUp },
+  "monitor.match": { label: "Correspondência", icon: EqualApproximately },
+  "monitor.threshold": { label: "Limite", icon: LineDotRightHorizontal },
+  "monitor.escalating": { label: "Escalando", icon: TrendingUp },
 }
 
 const isMatchKind = (kind: UserAlertKind): boolean => kind === "savedSearch.match" || kind === "monitor.match"
@@ -75,45 +75,45 @@ type MetricDimension = "count" | "errorRate" | "cacheHitRate" | "duration" | "co
 const DIMENSION_META: Record<MetricDimension, { label: string; description: string; icon: typeof HashIcon }> = {
   count: {
     label: "Volume",
-    description: "How many matching sessions happen",
+    description: "Quantidade de sessões correspondentes",
     icon: HashIcon,
   },
   errorRate: {
-    label: "Errors",
-    description: "Share of matching sessions that fail",
+    label: "Erros",
+    description: "Percentual de sessões correspondentes que falham",
     icon: ActivityIcon,
   },
   cacheHitRate: {
-    label: "Cache hit rate",
-    description: "Share of input tokens served from cache",
+    label: "Taxa de acerto de cache",
+    description: "Percentual de tokens de entrada atendidos pelo cache",
     icon: DatabaseZapIcon,
   },
   duration: {
-    label: "Latency",
-    description: "How long matching sessions take",
+    label: "Latência",
+    description: "Quanto tempo as sessões correspondentes levam",
     icon: TimerIcon,
   },
   cost: {
-    label: "Cost",
-    description: "Spend across matching sessions",
+    label: "Custo",
+    description: "Custo das sessões correspondentes",
     icon: CircleDollarSignIcon,
   },
   tokens: {
     label: "Tokens",
-    description: "Token usage across matching sessions",
+    description: "Uso de tokens nas sessões correspondentes",
     icon: GaugeIcon,
   },
 }
 
 const aggregationLabel = (metric: MonitorMetric): string => {
-  if (metric.kind === "count") return "Count"
-  if (metric.kind === "errorRate") return "Rate"
-  if (metric.kind === "cacheHitRate") return "Rate"
-  if (metric.kind === "sum") return "Sum"
-  if (metric.kind === "min") return "Min"
-  if (metric.kind === "max") return "Max"
-  if (metric.kind === "avg") return "Average"
-  return "Median"
+  if (metric.kind === "count") return "Contagem"
+  if (metric.kind === "errorRate") return "Taxa"
+  if (metric.kind === "cacheHitRate") return "Taxa"
+  if (metric.kind === "sum") return "Soma"
+  if (metric.kind === "min") return "Mínimo"
+  if (metric.kind === "max") return "Máximo"
+  if (metric.kind === "avg") return "Média"
+  return "Mediana"
 }
 
 const metricDimension = (metric: MonitorMetric): MetricDimension => {
@@ -147,7 +147,7 @@ function MetricSelector({
 
   return (
     <div className="flex flex-col gap-2">
-      <Text.H5M>Metric</Text.H5M>
+      <Text.H5M>Métrica</Text.H5M>
       <div className="grid grid-cols-2 gap-2">
         {dimensions.map((dimension) => {
           const meta = DIMENSION_META[dimension]
@@ -180,7 +180,7 @@ function MetricSelector({
       </div>
       {aggregations.length > 1 ? (
         <div className="flex flex-col gap-1.5">
-          <Text.H6 color="foregroundMuted">Measure</Text.H6>
+          <Text.H6 color="foregroundMuted">Medida</Text.H6>
           <Tabs<string>
             variant="bordered"
             size="sm"
@@ -205,36 +205,36 @@ function MetricSelector({
 // alert opens (incident lists, chart markers, notifications) — it doesn't
 // change when or how the alert fires.
 const SEVERITY_HELP: Record<AlertSeverity, string> = {
-  low: "Opens incidents as low priority. Informational; review when you have time.",
-  medium: "Opens incidents as medium priority. Worth a look soon.",
-  high: "Opens incidents as high priority. Needs attention right away.",
-  urgent: "Opens incidents as urgent. Drop what you're doing.",
+  low: "Abre incidentes com prioridade baixa. Informativo; revise quando puder.",
+  medium: "Abre incidentes com prioridade média. Vale revisar em breve.",
+  high: "Abre incidentes com prioridade alta. Exige atenção imediata.",
+  urgent: "Abre incidentes como urgentes. Exige ação imediata.",
 }
 
 const COMPARISON_TABS: readonly TabOption<ComparisonMode>[] = [
-  { id: "times", label: "Absolute" },
-  { id: "timesMoreThan", label: "Relative" },
+  { id: "times", label: "Absoluto" },
+  { id: "timesMoreThan", label: "Relativo" },
 ]
 
 const TARGET_DIRECTION_OPTIONS: { label: string; value: MetricDirection }[] = [
-  { label: "above", value: "above" },
-  { label: "below", value: "below" },
+  { label: "acima", value: "above" },
+  { label: "abaixo", value: "below" },
 ]
 
 const RELATIVE_DIRECTION_OPTIONS: { label: string; value: MetricDirection }[] = [
-  { label: "times more than", value: "above" },
-  { label: "times less than", value: "below" },
+  { label: "vezes acima de", value: "above" },
+  { label: "vezes abaixo de", value: "below" },
 ]
 
 const BASELINE_KIND_OPTIONS: { label: string; value: BaselineKind }[] = [
-  { label: "the previous", value: "period" },
-  { label: "expected", value: "expected" },
+  { label: "do período anterior", value: "period" },
+  { label: "esperado", value: "expected" },
 ]
 
 const LOOKBACK_UNIT_OPTIONS: { label: string; value: LookbackUnit }[] = [
-  { label: "minutes", value: "minutes" },
-  { label: "hours", value: "hours" },
-  { label: "days", value: "days" },
+  { label: "minutos", value: "minutes" },
+  { label: "horas", value: "hours" },
+  { label: "dias", value: "days" },
 ]
 
 const LOOKBACK_MAX_BY_UNIT: Record<LookbackUnit, number> = {
@@ -244,9 +244,9 @@ const LOOKBACK_MAX_BY_UNIT: Record<LookbackUnit, number> = {
 }
 
 const WINDOW_UNIT_OPTIONS: { label: string; value: WindowUnit }[] = [
-  { label: "minutes", value: "minutes" },
-  { label: "hours", value: "hours" },
-  { label: "days", value: "days" },
+  { label: "minutos", value: "minutes" },
+  { label: "horas", value: "hours" },
+  { label: "dias", value: "days" },
 ]
 
 function FieldErrors({ errors }: { readonly errors?: readonly string[] | undefined }) {
@@ -299,7 +299,7 @@ function ThresholdWindowForm({
     />
   )
 
-  const leadIn = targetMode ? "Alert when the metric is" : "Alert when traces are detected"
+  const leadIn = targetMode ? "Alertar quando a métrica estiver" : "Alertar quando traces forem detectados"
   const lookbackMax = LOOKBACK_MAX_BY_UNIT[value.lookbackUnit]
 
   // The amount doubles as the sensitivity in expected mode; snap an out-of-range
@@ -332,7 +332,7 @@ function ThresholdWindowForm({
       <div className="flex flex-col gap-2">
         <div className="flex min-h-8 flex-row flex-wrap items-center justify-between gap-2">
           <div className="flex h-8 items-center">
-            <Text.H5M>Threshold</Text.H5M>
+            <Text.H5M>Limite</Text.H5M>
           </div>
           <Tabs<ComparisonMode>
             variant="bordered"
@@ -358,7 +358,7 @@ function ThresholdWindowForm({
           ) : null}
           {amountInput}
           {absoluteUnit ? <Text.H5 color="foregroundMuted">{absoluteUnit}</Text.H5> : null}
-          {!targetMode && !relative ? <Text.H5 color="foregroundMuted">times</Text.H5> : null}
+          {!targetMode && !relative ? <Text.H5 color="foregroundMuted">vezes</Text.H5> : null}
           {targetMode && relative ? (
             <Select<MetricDirection>
               name="relativeDirection"
@@ -370,7 +370,7 @@ function ThresholdWindowForm({
               {...(disabled ? { disabled: true } : {})}
             />
           ) : null}
-          {!targetMode && relative ? <Text.H5 color="foregroundMuted">times more than</Text.H5> : null}
+          {!targetMode && relative ? <Text.H5 color="foregroundMuted">vezes acima de</Text.H5> : null}
           {relative ? (
             <Select<BaselineKind>
               name="baselineKind"
@@ -417,9 +417,9 @@ function ThresholdWindowForm({
 
       {isEscalatingKind(value.kind) ? (
         <div className="flex flex-col">
-          <Text.H5M>Window</Text.H5M>
+          <Text.H5M>Janela</Text.H5M>
           <div className="flex flex-wrap items-center gap-2 -mt-1">
-            <Text.H5 color="foregroundMuted">Sustained for at least</Text.H5>
+            <Text.H5 color="foregroundMuted">Mantido por pelo menos</Text.H5>
             <Input
               type="number"
               min={1}
@@ -499,7 +499,7 @@ export function AlertCardForm({
   }))
 
   const removeButton = (
-    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onRemove} aria-label="Remove condition">
+    <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={onRemove} aria-label="Remover condição">
       <Icon icon={XIcon} size="sm" color="foregroundMuted" />
     </Button>
   )
@@ -559,7 +559,7 @@ export function AlertCardForm({
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <Text.H5M>Severity</Text.H5M>
+        <Text.H5M>Severidade</Text.H5M>
         <SeveritySelector
           value={value.severity}
           onSelect={(severity) => set({ severity })}

@@ -47,7 +47,7 @@ describe("FlaggerObservationStatus", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /Observadas 120/ }))
 
-    expect(screen.getByText("Eligible sessions")).toBeDefined()
+    expect(screen.getByText("Sessões elegíveis")).toBeDefined()
     expect(screen.getByText("110 (11%)")).toBeDefined()
     expect(screen.getByText("Com indício 20 · Amostra aleatória 980")).toBeDefined()
     expect(screen.getByText("Dados de amostragem incompletos 10")).toBeDefined()

@@ -46,12 +46,12 @@ export function IntegrationDetailHeader({
         {scope === "organization" ? (
           <Link to="/projects/$projectSlug/settings/organization/integrations" params={{ projectSlug }}>
             <Icon icon={ArrowLeftIcon} size="sm" />
-            Back
+            Voltar
           </Link>
         ) : (
           <Link to="/projects/$projectSlug/settings/integrations" params={{ projectSlug }}>
             <Icon icon={ArrowLeftIcon} size="sm" />
-            Back
+            Voltar
           </Link>
         )}
       </Button>

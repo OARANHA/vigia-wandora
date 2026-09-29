@@ -39,7 +39,7 @@ export function IntegrationRow({
       </div>
       <div className="flex shrink-0 flex-row items-center gap-3">
         {needsAttention ? (
-          <Status variant="warning" label={attentionLabel ?? "Action needed"} />
+          <Status variant="warning" label={attentionLabel ?? "Requer atenção"} />
         ) : (
           <Status variant="success" label="Ativa" />
         )}

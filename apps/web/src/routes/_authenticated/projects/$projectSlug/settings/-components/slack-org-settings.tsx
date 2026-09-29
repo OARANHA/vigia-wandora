@@ -45,29 +45,29 @@ function SlackOrgSettingsDetails({ integration }: { readonly integration: SlackI
         <Alert
           variant="destructive"
           showIcon
-          title="Slack connection expired"
-          description="We couldn't refresh the Slack token. Reconnect to restore notifications."
+          title="Conexão com o Slack expirada"
+          description="Não foi possível renovar o token do Slack. Reconecte para restaurar as notificações."
           cta={
             <Button asChild variant="destructive">
-              <a href="/integrations/slack/install">Reconnect</a>
+              <a href="/integrations/slack/install">Reconectar</a>
             </Button>
           }
         />
       ) : null}
 
       <SettingsCard
-        title="Connection"
-        description="Shared by every project in your organization."
+        title="Conexão"
+        description="Compartilhada por todos os projetos da empresa."
         actions={
           <Button variant="destructive" onClick={() => setDisconnectOpen(true)}>
-            Disconnect
+            Desconectar
           </Button>
         }
         footer={<IntegrationDocsFooter integration="slack" />}
       >
         <div className="flex min-w-0 flex-col gap-0.5">
           <Text.H5 weight="semibold">{integration.teamName}</Text.H5>
-          <Text.H6 color="foregroundMuted">Connected {relativeTime(new Date(integration.installedAt))}</Text.H6>
+          <Text.H6 color="foregroundMuted">Conectado {relativeTime(new Date(integration.installedAt))}</Text.H6>
         </div>
       </SettingsCard>
 
@@ -98,7 +98,7 @@ function SlackNotificationsSection({ integration }: { readonly integration: Slac
     setIsSaving(true)
     try {
       for (const group of changed) await persistSlackRoute(group, draft[group] ?? null)
-      toast({ description: "Notification routing saved" })
+      toast({ description: "Roteamento de notificações salvo" })
     } catch (error) {
       toast({ variant: "destructive", description: toUserMessage(error) })
     } finally {
@@ -110,8 +110,8 @@ function SlackNotificationsSection({ integration }: { readonly integration: Slac
 
   return (
     <SettingsCard
-      title="Notifications"
-      description="Which Slack channel each notification group goes to, for every project."
+      title="Notificações"
+      description="Canal do Slack usado por cada grupo de notificações em todos os projetos."
     >
       <div className="flex w-full flex-col gap-4">
         <div className="flex w-full flex-col gap-1">
@@ -128,7 +128,7 @@ function SlackNotificationsSection({ integration }: { readonly integration: Slac
         {changed.length > 0 ? (
           <div className="flex flex-row">
             <Button onClick={() => void save()} disabled={isSaving}>
-              Save default
+              Salvar padrão
             </Button>
           </div>
         ) : null}
@@ -149,7 +149,7 @@ function DisconnectSlackModal({ onClose }: { readonly onClose: () => void }) {
     try {
       await mutation.mutateAsync()
       await queryClient.invalidateQueries({ queryKey: SLACK_INTEGRATION_QUERY_KEY })
-      toast({ description: "Slack disconnected" })
+      toast({ description: "Slack desconectado" })
       onClose()
     } catch (error) {
       setDisconnecting(false)
@@ -164,12 +164,12 @@ function DisconnectSlackModal({ onClose }: { readonly onClose: () => void }) {
       onOpenChange={(value) => {
         if (!value && !disconnecting) onClose()
       }}
-      title="Disconnect Slack"
-      description="Disconnecting will stop all Latitude notifications to this Slack workspace and revoke the bot token. Channel routing will be reset if you reconnect. This affects every project in the organization."
+      title="Desconectar Slack"
+      description="A desconexão interromperá todas as notificações do Vigia para este workspace do Slack e revogará o token do bot. O roteamento de canais será redefinido se você reconectar. Isso afeta todos os projetos da empresa."
       footer={
         <div className="flex flex-row items-center gap-2">
           <Button variant="outline" onClick={onClose} disabled={disconnecting}>
-            Cancel
+            Cancelar
           </Button>
           <Button
             variant="destructive"
@@ -178,7 +178,7 @@ function DisconnectSlackModal({ onClose }: { readonly onClose: () => void }) {
             isLoading={disconnecting}
           >
             <Icon icon={Trash2} size="sm" />
-            {disconnecting ? "Disconnecting…" : "Disconnect Slack"}
+            {disconnecting ? "Desconectando…" : "Desconectar Slack"}
           </Button>
         </div>
       }

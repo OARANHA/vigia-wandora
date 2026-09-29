@@ -48,21 +48,21 @@ export function GithubProjectSettings({
         <Alert
           variant="warning"
           showIcon
-          title="GitHub installation suspended"
-          description="The GitHub App is suspended for this account. Unsuspend it on GitHub to resume processing."
+          title="Instalação do GitHub suspensa"
+          description="O GitHub App está suspenso nesta conta. Reative-o no GitHub para retomar o processamento."
         />
       ) : null}
 
       <SettingsCard
-        title="Connection"
-        description="Shared by every project in your organization."
+        title="Conexão"
+        description="Compartilhada por todos os projetos da empresa."
         actions={
           <Button asChild variant="ghost">
             <Link
               to="/projects/$projectSlug/settings/organization/integrations/$integrationSlug"
               params={{ projectSlug, integrationSlug: "github" }}
             >
-              Manage for the organization →
+              Gerenciar para a empresa →
             </Link>
           </Button>
         }
@@ -78,7 +78,7 @@ export function GithubProjectSettings({
           </div>
           <div className="flex min-w-0 flex-col gap-0.5">
             <Text.H5 weight="semibold">{integration.accountLogin}</Text.H5>
-            <Text.H6 color="foregroundMuted">Connected {relativeTime(new Date(integration.installedAt))}</Text.H6>
+            <Text.H6 color="foregroundMuted">Conectado {relativeTime(new Date(integration.installedAt))}</Text.H6>
           </div>
         </div>
       </SettingsCard>
@@ -189,7 +189,7 @@ function RepositorySection({
       await upsertGithubProjectConfig({ data: { projectId, repoId, branch: branch.trim() } })
       setStagedScope(null)
       await onChanged()
-      toast({ description: "Repository saved for this project" })
+      toast({ description: "Repositório salvo para este projeto" })
     } catch (error) {
       toast({ variant: "destructive", description: toUserMessage(error) })
     } finally {
@@ -203,7 +203,7 @@ function RepositorySection({
       await resetGithubProjectOverride({ data: { projectId } })
       setStagedScope(null)
       await onChanged()
-      toast({ description: "This project now follows the organization repository" })
+      toast({ description: "Este projeto agora segue o repositório da empresa" })
     } catch (error) {
       toast({ variant: "destructive", description: toUserMessage(error) })
     } finally {
@@ -214,8 +214,8 @@ function RepositorySection({
   return (
     <ScopedSetting
       idPrefix="github-repository"
-      title="Watching"
-      description="Which repository and branch this project's signals live in."
+      title="Repositório monitorado"
+      description="Repositório e branch onde vivem os sinais deste projeto."
       scope={{
         kind: "selectable",
         value: scope,
@@ -224,10 +224,10 @@ function RepositorySection({
       pendingChange={
         pendingRemoval
           ? {
-              title: "Follow the organization repository?",
+              title: "Seguir o repositório da empresa?",
               description:
-                "This project will follow the organization repository, and its own monitoring settings are discarded.",
-              applyLabel: "Follow organization",
+                "Este projeto passará a seguir o repositório da empresa, e suas configurações próprias de monitoramento serão descartadas.",
+              applyLabel: "Seguir empresa",
               isApplying: isSaving,
               onApply: () => void applyRemoval(),
               onDiscard: () => setStagedScope(null),
@@ -240,15 +240,15 @@ function RepositorySection({
           <div className="flex flex-row flex-wrap items-center justify-between gap-4">
             <Text.H6 color="foregroundMuted">
               {config.repoOverrideCount > 0
-                ? `Organization repository in effect for ${projectCount - config.repoOverrideCount} of ${projectCount} projects · ${config.repoOverrideCount} bind their own`
-                : `Organization repository in effect for all ${projectCount} projects`}
+                ? `Repositório da empresa em vigor em ${projectCount - config.repoOverrideCount} de ${projectCount} projetos · ${config.repoOverrideCount} usam configuração própria`
+                : `Repositório da empresa em vigor em todos os ${projectCount} projetos`}
             </Text.H6>
             <Button asChild variant="outline">
               <Link
                 to="/projects/$projectSlug/settings/organization/integrations/$integrationSlug"
                 params={{ projectSlug, integrationSlug: "github" }}
               >
-                Edit organization default
+                Editar padrão da empresa
               </Link>
             </Button>
           </div>
@@ -260,8 +260,8 @@ function RepositorySection({
           <div className="min-w-[16rem] flex-1">
             <Select
               name="project-repository"
-              label="Repository"
-              placeholder={reposLoading ? "Loading repositories" : "Select a repository"}
+              label="Repositório"
+              placeholder={reposLoading ? "Carregando repositórios" : "Selecione um repositório"}
               searchable
               removable
               contentWidth="trigger"
@@ -286,7 +286,7 @@ function RepositorySection({
         {scope === "project" && canSave ? (
           <div className="flex flex-row">
             <Button onClick={() => void save()} disabled={repoId === null || branch.trim().length === 0 || isSaving}>
-              Save for this project
+              Salvar para este projeto
             </Button>
           </div>
         ) : null}
@@ -326,7 +326,7 @@ function MonitoringSection({
 
   const applyRemoval = async () => {
     if (config.repoId === null) {
-      toast({ variant: "destructive", description: "Pick a repository for this project first." })
+      toast({ variant: "destructive", description: "Selecione primeiro um repositório para este projeto." })
       return
     }
     setIsSwitching(true)
@@ -338,7 +338,7 @@ function MonitoringSection({
       })
       setStagedScope(null)
       await onChanged()
-      toast({ description: "This project now follows the organization" })
+      toast({ description: "Este projeto agora segue o padrão da empresa" })
     } catch (error) {
       toast({ variant: "destructive", description: toUserMessage(error) })
     } finally {
@@ -349,8 +349,8 @@ function MonitoringSection({
   return (
     <ScopedSetting
       idPrefix="github-monitoring"
-      title="Monitoring"
-      description="What Latitude watches for, and which words link or resolve a signal."
+      title="Monitoramento"
+      description="O que o Vigia monitora e quais palavras vinculam ou resolvem um sinal."
       scope={{
         kind: "selectable",
         value: scope,
@@ -359,10 +359,10 @@ function MonitoringSection({
       pendingChange={
         pendingRemoval
           ? {
-              title: "Follow the organization monitoring?",
+              title: "Seguir o monitoramento da empresa?",
               description:
-                "This project will follow the organization default, and its own monitoring settings are discarded. The repository binding is kept.",
-              applyLabel: "Follow organization",
+                "Este projeto passará a seguir o padrão da empresa, e suas configurações próprias de monitoramento serão descartadas. O vínculo com o repositório será mantido.",
+              applyLabel: "Seguir empresa",
               isApplying: isSwitching,
               onApply: () => void applyRemoval(),
               onDiscard: () => setStagedScope(null),
@@ -375,15 +375,15 @@ function MonitoringSection({
           <div className="flex flex-row flex-wrap items-center justify-between gap-4">
             <Text.H6 color="foregroundMuted">
               {config.overrideCount > 0
-                ? `Organization default in effect for ${projectCount - config.overrideCount} of ${projectCount} projects · ${config.overrideCount} override it`
-                : `Organization default in effect for all ${projectCount} projects`}
+                ? `Padrão da empresa em vigor em ${projectCount - config.overrideCount} de ${projectCount} projetos · ${config.overrideCount} usam configuração própria`
+                : `Padrão da empresa em vigor em todos os ${projectCount} projetos`}
             </Text.H6>
             <Button asChild variant="outline">
               <Link
                 to="/projects/$projectSlug/settings/organization/integrations/$integrationSlug"
                 params={{ projectSlug, integrationSlug: "github" }}
               >
-                Edit organization default
+                Editar padrão da empresa
               </Link>
             </Button>
           </div>
@@ -396,7 +396,7 @@ function MonitoringSection({
         key={`${scope}:${config.repoId ?? "none"}:${JSON.stringify(shown)}`}
         initial={shown}
         readOnly={scope === "organization"}
-        submitLabel="Save for this project"
+        submitLabel="Salvar para este projeto"
         submitWhenPristine={storedScope === "organization"}
         submitDisabled={config.repoId === null}
         onSubmit={async (settings) => {
@@ -406,7 +406,7 @@ function MonitoringSection({
           })
           setStagedScope(null)
           await onChanged()
-          toast({ description: "Monitoring saved for this project" })
+          toast({ description: "Monitoramento salvo para este projeto" })
         }}
       />
     </ScopedSetting>

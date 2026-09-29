@@ -56,7 +56,7 @@ function GlobalIntegrationsPage() {
       toast({
         variant: "warning",
         description:
-          "GitHub installation needs approval from an organization admin. Once approved, connect again to finish.",
+          "A instalação do GitHub precisa da aprovação de um administrador da organização no GitHub. Depois da aprovação, conecte novamente para concluir.",
       })
     } else if (search.githubError === "installation_taken") {
       toast({

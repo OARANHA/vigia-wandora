@@ -20,14 +20,12 @@ export const INTEGRATION_CATALOG: readonly IntegrationCatalogEntry[] = [
     label: "Slack",
     icon: SlackIcon,
     summary: "Envie notificações do Vigia para seu workspace do Slack.",
-    docsUrl: "https://docs.latitude.so/more/slack",
   },
   {
     key: "github",
     label: "GitHub",
     icon: GithubIcon,
     summary: "Resolva sinais automaticamente quando um PR ou commit relacionado for integrado.",
-    docsUrl: "https://docs.latitude.so/more/github",
   },
   {
     key: "cursor",

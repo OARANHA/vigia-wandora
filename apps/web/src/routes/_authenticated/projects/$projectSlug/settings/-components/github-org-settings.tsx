@@ -64,8 +64,8 @@ export function GithubOrgSettings({
           <Alert
             variant="warning"
             showIcon
-            title="GitHub installation suspended"
-            description="The GitHub App is suspended for this account. Unsuspend it on GitHub to resume processing."
+            title="Instalação do GitHub suspensa"
+            description="O GitHub App está suspenso nesta conta. Reative-o no GitHub para retomar o processamento."
           />
         ) : null}
 
@@ -99,11 +99,11 @@ function ConnectionSection({
   return (
     <>
       <SettingsCard
-        title="Connection"
-        description="Shared by every project in your organization."
+        title="Conexão"
+        description="Compartilhada por todos os projetos da empresa."
         actions={
           <Button variant="destructive" onClick={() => setConfirmOpen(true)}>
-            Disconnect
+            Desconectar
           </Button>
         }
         footer={<IntegrationDocsFooter integration="github" />}
@@ -119,7 +119,7 @@ function ConnectionSection({
           <div className="flex min-w-0 flex-col gap-0.5">
             <Text.H5 weight="semibold">{accountLogin}</Text.H5>
             <Text.H6 color="foregroundMuted">
-              {repositorySelection === "all" ? "All repositories" : "Selected repositories"} · Connected{" "}
+              {repositorySelection === "all" ? "Todos os repositórios" : "Repositórios selecionados"} · Conectado{" "}
               {relativeTime(new Date(installedAt))}
             </Text.H6>
           </div>
@@ -143,7 +143,7 @@ function DisconnectGithubModal({ onClose }: { readonly onClose: () => void }) {
     try {
       await mutation.mutateAsync()
       await queryClient.invalidateQueries({ queryKey: GITHUB_INTEGRATION_QUERY_KEY })
-      toast({ description: "GitHub disconnected" })
+      toast({ description: "GitHub desconectado" })
       onClose()
     } catch (error) {
       setDisconnecting(false)
@@ -158,12 +158,12 @@ function DisconnectGithubModal({ onClose }: { readonly onClose: () => void }) {
       onOpenChange={(value) => {
         if (!value && !disconnecting) onClose()
       }}
-      title="Disconnect GitHub"
-      description="Latitude will stop processing PR and commit events for every project in the organization. Past PRs and commits are kept for history. To fully remove access, also uninstall the app on GitHub."
+      title="Desconectar GitHub"
+      description="O Vigia deixará de processar eventos de pull requests e commits para todos os projetos da empresa. Pull requests e commits anteriores permanecem no histórico. Para remover totalmente o acesso, desinstale também o app no GitHub."
       footer={
         <div className="flex flex-row items-center gap-2">
           <Button variant="outline" onClick={onClose} disabled={disconnecting}>
-            Cancel
+            Cancelar
           </Button>
           <Button
             variant="destructive"
@@ -171,7 +171,7 @@ function DisconnectGithubModal({ onClose }: { readonly onClose: () => void }) {
             disabled={disconnecting}
             isLoading={disconnecting}
           >
-            {disconnecting ? "Disconnecting…" : "Disconnect GitHub"}
+            {disconnecting ? "Desconectando…" : "Desconectar GitHub"}
           </Button>
         </div>
       }
@@ -199,12 +199,12 @@ function OrgDefaultsSections({ projectCount }: { readonly projectCount: number }
 }
 
 const ownerNotice = (canEdit: boolean) =>
-  canEdit ? null : <Text.H6 color="foregroundMuted">Only organization owners can change this default.</Text.H6>
+  canEdit ? null : <Text.H6 color="foregroundMuted">Somente proprietários da empresa podem alterar este padrão.</Text.H6>
 
 const inEffectFor = (projectCount: number, overrideCount: number): string =>
   overrideCount > 0
-    ? `In effect for ${projectCount - overrideCount} of ${projectCount} projects · ${overrideCount} override it`
-    : `In effect for all ${projectCount} projects`
+    ? `Em vigor em ${projectCount - overrideCount} de ${projectCount} projetos · ${overrideCount} usam configuração própria`
+    : `Em vigor em todos os ${projectCount} projetos`
 
 function useOrgDefaultsSave() {
   const queryClient = useQueryClient()
@@ -259,13 +259,13 @@ function OrgRepositorySection({
           defaultBranch: repoId === null ? null : branch.trim(),
         },
       })
-      await onSaved("Organization repository updated")
+      await onSaved("Repositório padrão da empresa atualizado")
     })
 
   return (
     <SettingsCard
-      title="Watching"
-      description="Which repository and branch projects use unless they bind their own."
+      title="Repositório monitorado"
+      description="Repositório e branch usados pelos projetos que não possuem configuração própria."
       notice={ownerNotice(canEdit)}
       footer={<Text.H6 color="foregroundMuted">{inEffectFor(projectCount, overrideCount)}</Text.H6>}
     >
@@ -274,8 +274,8 @@ function OrgRepositorySection({
           <div className="min-w-[16rem] flex-1">
             <Select
               name="default-repository"
-              label="Repository"
-              placeholder={reposLoading ? "Loading repositories" : "No default (configure per project)"}
+              label="Repositório"
+              placeholder={reposLoading ? "Carregando repositórios" : "Sem padrão (configurar por projeto)"}
               searchable
               removable
               contentWidth="trigger"
@@ -300,7 +300,7 @@ function OrgRepositorySection({
         {canEdit && isDirty ? (
           <div className="flex flex-row">
             <Button onClick={() => void save()} disabled={confirm.isApplying}>
-              Save default
+              Salvar padrão
             </Button>
           </div>
         ) : null}
@@ -334,8 +334,8 @@ function OrgMonitoringSection({
 
   return (
     <SettingsCard
-      title="Monitoring"
-      description="What Latitude watches for, and which words link or resolve a signal."
+      title="Monitoramento"
+      description="O que o Vigia monitora e quais palavras vinculam ou resolvem um sinal."
       notice={ownerNotice(canEdit)}
       footer={<Text.H6 color="foregroundMuted">{inEffectFor(projectCount, overrideCount)}</Text.H6>}
     >
@@ -343,7 +343,7 @@ function OrgMonitoringSection({
         key={`${defaults.integrationId}:${JSON.stringify(defaults.settings)}`}
         initial={defaults.settings}
         readOnly={!canEdit}
-        submitLabel="Save default"
+        submitLabel="Salvar padrão"
         onSubmit={(settings) =>
           confirm.request(async () => {
             await updateGithubOrgDefaults({
@@ -353,7 +353,7 @@ function OrgMonitoringSection({
                 defaultBranch: defaults.defaultRepo?.branch ?? null,
               },
             })
-            await onSaved("Organization monitoring updated")
+            await onSaved("Monitoramento padrão da empresa atualizado")
           })
         }
       />
@@ -381,12 +381,19 @@ function deliveryStatusVariant(status: string | null): StatusProps["variant"] {
 const deliveryEventLabel = (delivery: GithubDeliveryRecord): string =>
   delivery.action ? `${delivery.event} · ${delivery.action}` : delivery.event
 
+function deliveryStatusLabel(status: string | null): string {
+  if (status === "processed") return "Processado"
+  if (status === "failed") return "Falhou"
+  if (status === "skipped") return "Ignorado"
+  return "Pendente"
+}
+
 function deliveryDetail(delivery: GithubDeliveryRecord): string {
   if (delivery.skipReason) return delivery.skipReason
   if (delivery.errorCategory) {
     return delivery.errorDetail ? `${delivery.errorCategory}: ${delivery.errorDetail}` : delivery.errorCategory
   }
-  if (delivery.truncated) return "commits truncated"
+  if (delivery.truncated) return "commits truncados"
   if (delivery.prNumber !== null) return `#${delivery.prNumber}`
   return "—"
 }
@@ -400,10 +407,10 @@ function GithubRecentDeliveriesSection() {
   const repoNameById = new Map((repos ?? []).map((repo) => [repo.id, repo.fullName]))
 
   const columns: InfiniteTableColumn<GithubDeliveryRecord>[] = [
-    { key: "event", header: "Event", width: 160, minWidth: 130, render: (delivery) => deliveryEventLabel(delivery) },
+    { key: "event", header: "Evento", width: 160, minWidth: 130, render: (delivery) => deliveryEventLabel(delivery) },
     {
       key: "repository",
-      header: "Repository",
+      header: "Repositório",
       width: 200,
       minWidth: 140,
       render: (delivery) =>
@@ -417,14 +424,14 @@ function GithubRecentDeliveriesSection() {
       render: (delivery) => (
         <Status
           variant={deliveryStatusVariant(delivery.status)}
-          label={delivery.status ?? "pending"}
+          label={deliveryStatusLabel(delivery.status)}
           className="uppercase"
         />
       ),
     },
     {
       key: "detail",
-      header: "Detail",
+      header: "Detalhe",
       width: 160,
       minWidth: 120,
       render: (delivery) => (
@@ -435,7 +442,7 @@ function GithubRecentDeliveriesSection() {
     },
     {
       key: "receivedAt",
-      header: "Received",
+      header: "Recebido",
       width: 96,
       minWidth: 90,
       align: "end",
@@ -447,10 +454,10 @@ function GithubRecentDeliveriesSection() {
     <section className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <Text.H5 display="block" weight="semibold">
-          Recent deliveries
+          Entregas recentes
         </Text.H5>
         <Text.H6 display="block" color="foregroundMuted">
-          Audit log of webhook deliveries sent by GitHub we are subscribed to.
+          Histórico das entregas de webhook do GitHub recebidas pelo Vigia.
         </Text.H6>
       </div>
       <InfiniteTable
@@ -459,7 +466,7 @@ function GithubRecentDeliveriesSection() {
         columns={columns}
         getRowKey={(delivery) => delivery.id}
         infiniteScroll={infiniteScroll}
-        blankSlate="No deliveries yet. GitHub webhook deliveries will appear here."
+        blankSlate="Nenhuma entrega ainda. As entregas de webhook do GitHub aparecerão aqui."
         scrollAreaLayout="intrinsic"
         className="max-h-[min(32rem,60vh)]"
       />

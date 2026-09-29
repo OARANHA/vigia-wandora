@@ -16,10 +16,10 @@ const KIND_TOP_SYMBOL: Record<IncidentNotificationKey, TopSymbol> = {
 }
 
 export const SEVERITY_LABELS: Record<AlertSeverity, string> = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  urgent: "Urgent",
+  low: "Baixa",
+  medium: "Média",
+  high: "Alta",
+  urgent: "Urgente",
 }
 
 /**

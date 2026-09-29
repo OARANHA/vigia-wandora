@@ -74,9 +74,9 @@ export function SignalSummary({ projectId, signalId }: { readonly projectId: str
     <div className="flex flex-col gap-4 xl:flex-row xl:items-stretch">
       {/* Impact — headline metrics that fill the wide side of the row. */}
       <div className="flex min-w-0 flex-col gap-3 rounded-lg bg-secondary p-4 xl:flex-1">
-        <Text.H6 color="foregroundMuted">Impact</Text.H6>
+        <Text.H6 color="foregroundMuted">Impacto</Text.H6>
         <div className="flex flex-row flex-wrap gap-x-8 gap-y-4">
-          <Tile label="Occurrences">
+          <Tile label="Ocorrências">
             {isLoading ? (
               <Skeleton className="h-5 w-16" />
             ) : (
@@ -86,21 +86,21 @@ export function SignalSummary({ projectId, signalId }: { readonly projectId: str
 
           {isLoading || !issue || !seen ? (
             <>
-              <Tile label="First seen">
+              <Tile label="Primeira ocorrência">
                 <Skeleton className="h-5 w-20" />
               </Tile>
-              <Tile label="Last seen">
+              <Tile label="Última ocorrência">
                 <Skeleton className="h-5 w-20" />
               </Tile>
             </>
           ) : (
             <>
-              <SeenTile label="First seen" iso={issue.firstSeenAt} relative={seen.firstSeenLabel} />
-              <SeenTile label="Last seen" iso={issue.lastSeenAt} relative={seen.lastSeenLabel} />
+              <SeenTile label="Primeira ocorrência" iso={issue.firstSeenAt} relative={seen.firstSeenLabel} />
+              <SeenTile label="Última ocorrência" iso={issue.lastSeenAt} relative={seen.lastSeenLabel} />
             </>
           )}
 
-          <Tile label="Affected sessions">
+          <Tile label="Sessões afetadas">
             {impactLoading ? (
               <Skeleton className="h-5 w-16" />
             ) : impact ? (
@@ -120,7 +120,7 @@ export function SignalSummary({ projectId, signalId }: { readonly projectId: str
             )}
           </Tile>
 
-          <Tile label="Affected traces">
+          <Tile label="Traces afetados">
             {impactLoading ? (
               <Skeleton className="h-5 w-16" />
             ) : impact ? (
@@ -142,7 +142,7 @@ export function SignalSummary({ projectId, signalId }: { readonly projectId: str
           </Tile>
 
           {showUsers ? (
-            <Tile label="Affected users">
+            <Tile label="Usuários afetados">
               {impactLoading ? (
                 <Skeleton className="h-5 w-16" />
               ) : (
@@ -151,7 +151,7 @@ export function SignalSummary({ projectId, signalId }: { readonly projectId: str
             </Tile>
           ) : null}
 
-          <Tile label="Cost impact">
+          <Tile label="Impacto em custo">
             {impactLoading ? (
               <Skeleton className="h-5 w-16" />
             ) : (
@@ -165,7 +165,7 @@ export function SignalSummary({ projectId, signalId }: { readonly projectId: str
 
       {/* Evaluations — kept at its native width so it renders like the drawer. */}
       <div className={`flex min-w-0 flex-col gap-3 rounded-lg bg-secondary p-4 xl:shrink-0 ${EVALUATIONS_PANEL_WIDTH}`}>
-        <Text.H6 color="foregroundMuted">Evaluations</Text.H6>
+        <Text.H6 color="foregroundMuted">Avaliações</Text.H6>
         <SignalDrawerEvaluations
           projectId={projectId}
           signalId={signalId}

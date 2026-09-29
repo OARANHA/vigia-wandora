@@ -29,7 +29,7 @@ export function UserSignalsSection({
   if (!issues || issues.length === 0) {
     return (
       <div className="flex min-h-16 items-center">
-        <Text.H6 color="foregroundMuted">No signals have been seen on this user's traces.</Text.H6>
+        <Text.H6 color="foregroundMuted">Nenhum sinal foi observado nos traces deste usuário.</Text.H6>
       </div>
     )
   }
@@ -43,7 +43,7 @@ export function UserSignalsSection({
             key={issue.signalId}
             to="/projects/$projectSlug/signals/$signalSlug"
             params={{ projectSlug, signalSlug: issue.slug }}
-            aria-label={`Open issue ${issue.name}`}
+            aria-label={`Abrir sinal ${issue.name}`}
             className="-mx-2 flex items-center gap-3 rounded-md px-2 py-2.5 transition-colors hover:bg-background"
           >
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
@@ -60,7 +60,7 @@ export function UserSignalsSection({
               <SignalLifecycleStatuses states={primaryState ? [primaryState] : []} wrap={false} />
               <div className="flex w-24 flex-col items-end gap-0.5">
                 <Text.H5 className="tabular-nums">{formatCount(issue.occurrences)}</Text.H5>
-                <Text.H6 color="foregroundMuted">occurrences</Text.H6>
+                <Text.H6 color="foregroundMuted">ocorrências</Text.H6>
               </div>
               <div className="flex w-16 justify-end">
                 <Text.H6 color="foregroundMuted" noWrap>

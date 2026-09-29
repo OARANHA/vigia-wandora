@@ -34,10 +34,10 @@ const TARGET_LOOKBACK_DAYS = 30
 const TARGET_TREND_BUCKET_SECONDS = 24 * 60 * 60
 
 const SOURCE_OPTIONS: { label: string; value: MonitorSource }[] = [
-  { label: "Saved search", value: "savedSearch" },
-  { label: "Tools", value: "tools" },
-  { label: "Users", value: "users" },
-  { label: "Sessions", value: "sessions" },
+  { label: "Busca salva", value: "savedSearch" },
+  { label: "Ferramentas", value: "tools" },
+  { label: "Usuários", value: "users" },
+  { label: "Sessões", value: "sessions" },
 ]
 
 const userLabel = (user: { readonly userId: string; readonly userEmail?: string | null }) =>
@@ -167,11 +167,11 @@ export function MonitorCreateModal({
       return
     }
     if (source === "savedSearch" && selectedSavedSearchId.length === 0) {
-      setSourceError("Select a saved search")
+      setSourceError("Selecione uma busca salva")
       return
     }
     if (alert.target === null && alert.sourceId === null) {
-      setAlertErrors({ source: ["Select a saved search"] })
+      setAlertErrors({ source: ["Selecione uma busca salva"] })
       return
     }
     const target = draftToTarget(alert)
@@ -182,7 +182,7 @@ export function MonitorCreateModal({
         rule: draftToAlertDraft(alert),
         ...(target ? { target } : {}),
       })
-      toast({ description: "Monitor created." })
+      toast({ description: "Monitor criado." })
       onClose()
       onCreated?.(monitor.slug)
     } catch (error) {
@@ -206,13 +206,13 @@ export function MonitorCreateModal({
       onOpenChange={(next) => {
         if (!next) onClose()
       }}
-      title="New monitor"
+      title="Novo monitor"
       description={modalDescription}
       footer={
         <>
           <CloseTrigger />
           <Button disabled={create.isPending} isLoading={create.isPending} onClick={() => void onSubmit()}>
-            {create.isPending ? "Creating" : "Create monitor"}
+            {create.isPending ? "Criando" : "Criar monitor"}
           </Button>
         </>
       }
@@ -221,8 +221,8 @@ export function MonitorCreateModal({
         <Input
           required
           autoFocus
-          label="Name"
-          placeholder="Tool error spikes"
+          label="Nome"
+          placeholder="Picos de erro em ferramentas"
           value={name}
           onChange={(event) => {
             setName(event.target.value)
@@ -231,15 +231,15 @@ export function MonitorCreateModal({
           {...(nameError ? { errors: [nameError] } : {})}
         />
         <Textarea
-          label="Description"
-          placeholder="What is this monitor for?"
+          label="Descrição"
+          placeholder="Qual é o objetivo deste monitor?"
           value={description}
           onChange={(event) => setDescription(event.target.value)}
           minRows={2}
         />
         {!sourceLocked ? (
           <div className="flex flex-col gap-1.5">
-            <Text.H5M>Source</Text.H5M>
+            <Text.H5M>Origem</Text.H5M>
             <Select<MonitorSource>
               name="monitor-source"
               width="full"
@@ -252,7 +252,7 @@ export function MonitorCreateModal({
         ) : null}
         {!sourceLocked && source === "savedSearch" ? (
           <div className="flex flex-col gap-1.5">
-            <Text.H5M>Saved search</Text.H5M>
+            <Text.H5M>Busca salva</Text.H5M>
             <Select<string>
               name="monitor-saved-search"
               width="full"
@@ -262,11 +262,11 @@ export function MonitorCreateModal({
                 value: search.id,
               }))}
               value={selectedSavedSearchId}
-              placeholder="Select a saved search"
+              placeholder="Selecione uma busca salva"
               onChange={onSavedSearchChange}
               searchable
-              searchPlaceholder="Search saved searches…"
-              searchableEmptyMessage="No saved searches found"
+              searchPlaceholder="Buscar buscas salvas…"
+              searchableEmptyMessage="Nenhuma busca salva encontrada"
               loading={savedSearchesLoading}
             />
             {sourceError ? <Text.H6 color="destructive">{sourceError}</Text.H6> : null}
@@ -274,7 +274,7 @@ export function MonitorCreateModal({
         ) : null}
         {!sourceLocked && source === "tools" ? (
           <div className="flex flex-col gap-1.5">
-            <Text.H5M>Tool</Text.H5M>
+            <Text.H5M>Ferramenta</Text.H5M>
             <Select<string>
               name="monitor-tool"
               width="full"
@@ -284,19 +284,19 @@ export function MonitorCreateModal({
                 value: tool.name,
               }))}
               value={selectedToolName || undefined}
-              placeholder="All tools"
+              placeholder="Todas as ferramentas"
               onChange={onToolChange}
               loading={toolsLoading}
               removable
               searchable
-              searchPlaceholder="Search tools…"
-              searchableEmptyMessage="No tools found"
+              searchPlaceholder="Buscar ferramentas…"
+              searchableEmptyMessage="Nenhuma ferramenta encontrada"
             />
           </div>
         ) : null}
         {!sourceLocked && source === "users" ? (
           <div className="flex flex-col gap-1.5">
-            <Text.H5M>User</Text.H5M>
+            <Text.H5M>Usuário</Text.H5M>
             <Select<string>
               name="monitor-user"
               width="full"
@@ -306,13 +306,13 @@ export function MonitorCreateModal({
                 value: user.userId,
               }))}
               value={selectedUserId || undefined}
-              placeholder="All users"
+              placeholder="Todos os usuários"
               onChange={onUserChange}
               loading={usersLoading}
               removable
               searchable
-              searchPlaceholder="Search users…"
-              searchableEmptyMessage="No users found"
+              searchPlaceholder="Buscar usuários…"
+              searchableEmptyMessage="Nenhum usuário encontrado"
             />
           </div>
         ) : null}

@@ -5,16 +5,16 @@ import type { DestinationSyncRunRecord } from "../../../../../../domains/destina
 
 const RUN_STATUS_BADGE: Record<DestinationSyncRunRecord["status"], { label: string; variant: StatusProps["variant"] }> =
   {
-    succeeded: { label: "Succeeded", variant: "success" },
-    failed: { label: "Failed", variant: "destructive" },
+    succeeded: { label: "Sucesso", variant: "success" },
+    failed: { label: "Falhou", variant: "destructive" },
   }
 
 const RUN_TRIGGER_BADGE: Record<
   DestinationSyncRunRecord["trigger"],
   { label: string; variant: StatusProps["variant"] }
 > = {
-  live: { label: "Live", variant: "neutral" },
-  backfill: { label: "Backfill", variant: "warning" },
+  live: { label: "Em tempo real", variant: "neutral" },
+  backfill: { label: "Histórico", variant: "warning" },
 }
 
 const numberFormatter = new Intl.NumberFormat("en-US")
@@ -22,7 +22,7 @@ const numberFormatter = new Intl.NumberFormat("en-US")
 const columns: InfiniteTableColumn<DestinationSyncRunRecord>[] = [
   {
     key: "ran",
-    header: "Ran",
+    header: "Execução",
     width: 130,
     minWidth: 110,
     render: (run) => (
@@ -40,14 +40,14 @@ const columns: InfiniteTableColumn<DestinationSyncRunRecord>[] = [
   },
   {
     key: "source",
-    header: "Source",
+    header: "Origem",
     width: 100,
     minWidth: 80,
     render: (run) => <span className="capitalize">{run.source}</span>,
   },
   {
     key: "trigger",
-    header: "Type",
+    header: "Tipo",
     width: 100,
     minWidth: 80,
     render: (run) => (
@@ -56,7 +56,7 @@ const columns: InfiniteTableColumn<DestinationSyncRunRecord>[] = [
   },
   {
     key: "recordsRead",
-    header: "Records read",
+    header: "Registros lidos",
     width: 120,
     minWidth: 100,
     align: "end",
@@ -64,7 +64,7 @@ const columns: InfiniteTableColumn<DestinationSyncRunRecord>[] = [
   },
   {
     key: "eventsSent",
-    header: "Events sent",
+    header: "Eventos enviados",
     width: 110,
     minWidth: 90,
     align: "end",
@@ -72,7 +72,7 @@ const columns: InfiniteTableColumn<DestinationSyncRunRecord>[] = [
   },
   {
     key: "eventsDropped",
-    header: "Dropped",
+    header: "Descartados",
     width: 90,
     minWidth: 80,
     align: "end",
@@ -88,7 +88,7 @@ const columns: InfiniteTableColumn<DestinationSyncRunRecord>[] = [
   },
   {
     key: "error",
-    header: "Error",
+    header: "Erro",
     width: 280,
     minWidth: 160,
     render: (run) => (
@@ -117,7 +117,7 @@ export function DestinationRunsTable({ destinationId }: { readonly destinationId
       getRowKey={(run) => run.id}
       infiniteScroll={infiniteScroll}
       scrollAreaLayout="fill"
-      blankSlate="No sync runs yet."
+      blankSlate="Nenhuma sincronização ainda."
     />
   )
 }

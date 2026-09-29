@@ -88,7 +88,7 @@ describe("Business Events Routes Integration", () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          trace: { by: "id", id: traceId },
+          traceId,
           event: "sale_completed",
           success: true,
           label: "Venda concluída",
@@ -181,7 +181,7 @@ describe("Business Events Routes Integration", () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          trace: { by: "id", id: traceId },
+          traceId,
           event: "appointment_failed",
           success: false,
           label: "Agendamento não concluído",

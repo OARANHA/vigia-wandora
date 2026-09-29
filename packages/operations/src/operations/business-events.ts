@@ -17,7 +17,6 @@ import {
   jsonBody,
   PROTECTED_SECURITY,
   ProjectParamsSchema,
-  TraceRefSchema,
   traceIdSchema,
   typedResponses,
 } from "../openapi/schemas.ts"
@@ -42,7 +41,7 @@ const BusinessEventMetadataSchema = z.record(z.string(), z.unknown()).default({}
 
 const CreateBusinessEventBodySchema = z
   .object({
-    trace: TraceRefSchema.describe("Trace that produced or influenced this business result."),
+    traceId: traceIdSchema.describe("Trace that produced or influenced this business result."),
     event: BusinessEventNameSchema,
     success: z.boolean().describe("Whether this event represents success for the agent's business objective."),
     label: z
@@ -130,7 +129,7 @@ const createBusinessEvent = businessEventEndpoint({
       const score = (yield* submitApiScoreUseCase({
         source: "custom",
         sourceId,
-        trace: body.trace,
+        trace: { by: "id", id: body.traceId },
         value: body.success ? 1 : 0,
         passed: body.success,
         feedback: label,

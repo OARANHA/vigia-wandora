@@ -77,3 +77,27 @@ Estado de produção confirmado após essas validações:
 - HTTPS válido e primeiro trace OTLP público continuam pendentes.
 
 O próximo passo operacional é adaptar o runtime canônico para a VPS standalone, instalar a camada de borda/Portainer próprios e só então criar a stack Git com segredos exclusivos do Vigia.
+
+## Checkpoint 2026-09-29 — tradução profunda do núcleo do cliente
+
+Concluído no slice do PR #34:
+
+- [x] Sessões em PT-BR: lista, filtros, estados vazios e detalhe;
+- [x] Usuários em PT-BR: lista, estatísticas e detalhe;
+- [x] Ferramentas em PT-BR: lista, estatísticas e detalhe;
+- [x] Memória em PT-BR: lista, estatísticas e armazenamento;
+- [x] Remover referências visíveis a `docs.latitude.so` nas superfícies cobertas;
+- [x] Preservar trace/span/TTFT e demais termos técnicos quando úteis.
+
+Próximo slice da área do cliente:
+
+- [ ] Sinais;
+- [ ] Comportamentos;
+- [ ] Experimentos;
+- [ ] Monitores;
+- [ ] Conjuntos de dados;
+- [ ] Configurações;
+- [ ] Custos e Pontuação do agente quando habilitados.
+
+Depois de a área do cliente ficar satisfatória, tratar o `/backoffice` como **Administração Vigia** em slice próprio.
+

@@ -162,7 +162,7 @@ export function UploadBlankSlate({
         open={addRowModalOpen}
         onOpenChange={setAddRowModalOpen}
         title="Adicionar linha"
-        description="Enter input, output, and metadata for your first row. This creates a new dataset version."
+        description="Informe entrada, saída e metadados para a primeira linha. Isso cria uma nova versão do conjunto de dados."
         dismissible
         footer={
           <>

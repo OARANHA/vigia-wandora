@@ -20,8 +20,8 @@ export function DeleteRowsModal({
 }: DeleteRowsModalProps) {
   const title = isAllSelected ? "Excluir todas as linhas" : "Excluir linhas selecionadas"
   const description = isAllSelected
-    ? "You are about to delete all rows in this dataset."
-    : `You are about to delete ${selectedCount} row${selectedCount === 1 ? "" : "s"}.`
+    ? "Você está prestes a excluir todas as linhas deste conjunto de dados."
+    : `Você está prestes a excluir ${selectedCount} linha${selectedCount === 1 ? "" : "s"}.`
   const buttonLabel = isAllSelected ? "Excluir todas as linhas" : `Excluir ${selectedCount} linha${selectedCount === 1 ? "" : "s"}`
 
   return (

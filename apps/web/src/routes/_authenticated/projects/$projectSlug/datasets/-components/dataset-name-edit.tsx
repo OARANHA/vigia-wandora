@@ -64,7 +64,7 @@ function DatasetEditModal({
         }
       }}
       title="Editar conjunto de dados"
-      description="Update the dataset name and description."
+      description="Atualize o nome e a descrição do conjunto de dados."
       dismissible
       footer={
         <div className="flex flex-row items-center gap-2 justify-end">
@@ -130,7 +130,7 @@ export function DatasetTitleBlock({ dataset }: { dataset: DatasetRecord }) {
       <Text.H3M className="min-w-0">{dataset.name}</Text.H3M>
       <div className="flex flex-row items-center gap-2 min-w-0">
         <div className="flex min-w-0 max-w-max shrink-0">
-          <CopyableText value={dataset.slug} size="sm" tooltip="Copy dataset slug" />
+          <CopyableText value={dataset.slug} size="sm" tooltip="Copiar slug do conjunto de dados" />
         </div>
         {dataset.description ? (
           <Tooltip
@@ -223,7 +223,7 @@ export function DatasetActionsMenu({ dataset, onSuccess }: { dataset: DatasetRec
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         title="Remover conjunto de dados"
-        description="This will remove the dataset from the project. Row data will no longer be available. This cannot be undone."
+        description="Isso removerá o conjunto de dados do projeto. Os dados das linhas deixarão de estar disponíveis. Esta ação não pode ser desfeita."
         dismissible
         footer={
           <div className="flex flex-row items-center gap-2 justify-end">

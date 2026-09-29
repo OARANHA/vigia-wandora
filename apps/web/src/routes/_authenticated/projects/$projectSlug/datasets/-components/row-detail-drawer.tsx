@@ -53,7 +53,7 @@ export function RowDetailDrawer({
                 className="w-8 h-8 p-0"
                 disabled={!canNavigateNext}
                 onClick={onNavigateNext}
-                aria-label="Next row"
+                aria-label="Próxima linha"
                 type="button"
               >
                 <ArrowDownIcon className="w-4 h-4 text-muted-foreground" />
@@ -71,7 +71,7 @@ export function RowDetailDrawer({
                 className="w-8 h-8 p-0"
                 disabled={!canNavigatePrev}
                 onClick={onNavigatePrev}
-                aria-label="Previous row"
+                aria-label="Linha anterior"
                 type="button"
               >
                 <ArrowUpIcon className="w-4 h-4 text-muted-foreground" />

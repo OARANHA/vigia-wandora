@@ -48,22 +48,22 @@ export function CsvPreviewTable({ csvRows, totalRows, mapping, options }: CsvPre
               </TableHead>
               {mapping.expectedOutput.length > 0 && (
                 <TableHead>
-                  <ColumnBadge label="Expected output" color="violet" />
+                  <ColumnBadge label="Saída esperada" color="violet" />
                 </TableHead>
               )}
               {mapping.input.length > 0 && (
                 <TableHead>
-                  <ColumnBadge label="Input" color="blue" />
+                  <ColumnBadge label="Entrada" color="blue" />
                 </TableHead>
               )}
               {mapping.output.length > 0 && (
                 <TableHead>
-                  <ColumnBadge label="Output" color="green" />
+                  <ColumnBadge label="Saída" color="green" />
                 </TableHead>
               )}
               {mapping.metadata.length > 0 && (
                 <TableHead>
-                  <ColumnBadge label="Metadata" color="amber" />
+                  <ColumnBadge label="Metadados" color="amber" />
                 </TableHead>
               )}
             </TableRow>

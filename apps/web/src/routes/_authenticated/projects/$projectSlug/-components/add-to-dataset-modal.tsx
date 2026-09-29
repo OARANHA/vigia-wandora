@@ -146,7 +146,7 @@ export function AddToDatasetModal({
       open={open}
       onOpenChange={onOpenChange}
       title={`Adicionar ${itemLabel}s ao conjunto de dados`}
-      description={description ?? `${selectedCount} ${itemLabel}${selectedCount === 1 ? "" : "s"} selected`}
+      description={description ?? `${selectedCount} ${itemLabel}${selectedCount === 1 ? "" : "s"} selecionada${selectedCount === 1 ? "" : "s"}`}
       dismissible
       footer={
         <div className="flex flex-row items-center gap-2">
@@ -163,13 +163,13 @@ export function AddToDatasetModal({
           <Alert
             variant="destructive"
             title="Seleção muito grande"
-            description={`You selected ${selectedCount} ${itemLabel}s, but the maximum allowed is ${MAX_TRACES_PER_DATASET_IMPORT.toLocaleString()}. Please narrow your selection.`}
+            description={`Você selecionou ${selectedCount} ${itemLabel}s, mas o máximo permitido é ${MAX_TRACES_PER_DATASET_IMPORT.toLocaleString()}. Reduza a seleção.`}
           />
         )}
         {creatingNew ? (
           <div className="flex flex-col gap-2">
             <Input
-              label="New dataset name"
+              label="Nome do novo conjunto de dados"
               placeholder="Meu conjunto de dados"
               value={newDatasetName}
               onChange={(e) => setNewDatasetName(e.target.value)}

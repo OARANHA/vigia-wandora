@@ -216,7 +216,7 @@ function ColumnList({
             ) : null}
             <button
               type="button"
-              aria-label={`Reorder ${column.name}`}
+              aria-label={`Reordenar ${column.name}`}
               draggable
               onDragStart={(e) => {
                 e.dataTransfer.effectAllowed = "move"
@@ -236,7 +236,7 @@ function ColumnList({
             </span>
             <button
               type="button"
-              aria-label={`Rename ${column.name}`}
+              aria-label={`Renomear ${column.name}`}
               disabled={busy}
               onClick={() => onEdit(column)}
               className="flex items-center text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
@@ -271,7 +271,7 @@ function ColumnList({
                 </span>
                 <button
                   type="button"
-                  aria-label={`Re-add ${column.name}`}
+                  aria-label={`Adicionar novamente ${column.name}`}
                   disabled={busy}
                   onClick={() => onRestore(column.identifier)}
                   className="flex items-center gap-1 text-muted-foreground hover:text-foreground"

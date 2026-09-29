@@ -1,5 +1,5 @@
 import { Button, DatabaseAddIcon, Icon, Text } from "@repo/ui"
-import { DatabaseIcon, ExternalLinkIcon } from "lucide-react"
+import { DatabaseIcon } from "lucide-react"
 
 export function DatasetsEmptyState({
   onCreate,
@@ -17,20 +17,14 @@ export function DatasetsEmptyState({
         <div className="flex flex-col items-center gap-2">
           <Text.H3 centered>Nenhum conjunto de dados ainda</Text.H3>
           <Text.H5 color="foregroundMuted" centered>
-            Datasets let you curate traces for evaluation and regression testing.
+            Conjuntos de dados permitem organizar traces para avaliação e testes de regressão.
           </Text.H5>
         </div>
         <div className="flex items-center gap-2">
           <Button onClick={onCreate} disabled={creating} isLoading={creating}>
             <Icon size="sm" icon={DatabaseAddIcon} />
-            Dataset
+            Conjunto de dados
           </Button>
-          <a href="#" target="_blank" rel="noopener noreferrer">
-            <Button variant="outline">
-              <Icon size="sm" icon={ExternalLinkIcon} />
-              Read the docs
-            </Button>
-          </a>
         </div>
       </div>
     </div>

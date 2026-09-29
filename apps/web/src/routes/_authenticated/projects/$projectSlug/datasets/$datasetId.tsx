@@ -780,7 +780,7 @@ function DatasetRowsView({
               sorting={sorting}
               defaultSorting={DEFAULT_ROW_SORTING}
               onSortChange={handleSortChange}
-              blankSlate="No rows found."
+              blankSlate="Nenhuma linha encontrada."
             />
           </Layout.List>
         </Layout.Content>

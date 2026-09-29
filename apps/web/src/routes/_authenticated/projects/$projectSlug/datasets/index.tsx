@@ -88,7 +88,7 @@ function DatasetsPage() {
       <Link
         to="/projects/$projectSlug/datasets/$datasetId"
         params={{ projectSlug, datasetId: d.id }}
-        aria-label={`Open dataset ${d.name}`}
+        aria-label={`Abrir conjunto de dados ${d.name}`}
         {...props}
       />
     ),
@@ -157,7 +157,7 @@ function DatasetsPage() {
             sorting={sorting}
             defaultSorting={DEFAULT_SORTING}
             onSortChange={handleSortChange}
-            blankSlate="There are no datasets yet."
+            blankSlate="Nenhum conjunto de dados ainda."
           />
         </Layout.List>
       </Layout.Content>

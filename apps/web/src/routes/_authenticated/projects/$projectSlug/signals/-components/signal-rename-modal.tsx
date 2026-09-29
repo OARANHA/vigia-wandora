@@ -31,7 +31,7 @@ export function SignalRenameModal({
       async (value) => update.mutateAsync({ name: value.name.trim(), description: value.description.trim() }),
       {
         onSuccess: () => {
-          toast({ description: "Signal updated." })
+          toast({ description: "Sinal atualizado." })
           onClose()
         },
         onError: (error) => toast({ variant: "destructive", description: toUserMessage(error) }),
@@ -46,13 +46,13 @@ export function SignalRenameModal({
       onOpenChange={(next) => {
         if (!next) onClose()
       }}
-      title="Edit signal"
-      description="Rename the signal or change its description"
+      title="Editar sinal"
+      description="Renomeie o sinal ou altere sua descrição"
       footer={
         <>
           <CloseTrigger />
           <Button type="submit" onClick={() => void form.handleSubmit()}>
-            Save
+            Salvar
           </Button>
         </>
       }
@@ -66,13 +66,13 @@ export function SignalRenameModal({
       >
         <form.Field
           name="name"
-          validators={{ onSubmit: ({ value }) => (value.trim().length === 0 ? "Name is required" : undefined) }}
+          validators={{ onSubmit: ({ value }) => (value.trim().length === 0 ? "Nome é obrigatório" : undefined) }}
         >
           {(field) => (
             <Input
               required
               autoFocus
-              label="Name"
+              label="Nome"
               value={field.state.value}
               onChange={(event) => field.handleChange(event.target.value)}
               errors={fieldErrorsAsStrings(field.state.meta.errors)}
@@ -81,11 +81,11 @@ export function SignalRenameModal({
         </form.Field>
         <form.Field
           name="description"
-          validators={{ onSubmit: ({ value }) => (value.trim().length === 0 ? "Description is required" : undefined) }}
+          validators={{ onSubmit: ({ value }) => (value.trim().length === 0 ? "Descrição é obrigatória" : undefined) }}
         >
           {(field) => (
             <Textarea
-              label="Description"
+              label="Descrição"
               minRows={2}
               value={field.state.value}
               onChange={(event) => field.handleChange(event.target.value)}

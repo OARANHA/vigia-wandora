@@ -221,11 +221,13 @@ function injectLatitudeSdkValues(snippet: string, projectSlug: string, apiKey: s
   let resolved = snippet
     .replaceAll("process.env.LATITUDE_PROJECT_SLUG!", JSON.stringify(projectSlug))
     .replaceAll('os.environ["LATITUDE_PROJECT_SLUG"]', JSON.stringify(projectSlug))
+    .replaceAll("process.env.VIGIA_PROJECT!", JSON.stringify(projectSlug))
 
   if (apiKey) {
     resolved = resolved
       .replaceAll("process.env.LATITUDE_API_KEY!", JSON.stringify(apiKey))
       .replaceAll('os.environ["LATITUDE_API_KEY"]', JSON.stringify(apiKey))
+      .replaceAll("process.env.VIGIA_API_KEY!", JSON.stringify(apiKey))
   }
 
   return resolved
@@ -1517,10 +1519,10 @@ export default defineInstrumentation({
     registerOTel({
       serviceName: agentName,
       traceExporter: new OTLPTraceExporter({
-        url: "https://ingest.latitude.so/v1/traces",
+        url: "${OTLP_TRACES_ENDPOINT}",
         headers: {
-          Authorization: \`Bearer \${process.env.LATITUDE_API_KEY!}\`,
-          "X-Latitude-Project": process.env.LATITUDE_PROJECT_SLUG!,
+          Authorization: \`Bearer \${process.env.VIGIA_API_KEY!}\`,
+          "X-Vigia-Project": process.env.VIGIA_PROJECT!,
         },
       }),
     }),
@@ -1622,7 +1624,8 @@ async def chat_completions(request: Request):
 `
 }
 
-const OTLP_TRACES_ENDPOINT = "https://ingest.latitude.so/v1/traces"
+const VIGIA_TELEMETRY_BASE_URL = "https://vigia.wandora.com.br"
+const OTLP_TRACES_ENDPOINT = `${VIGIA_TELEMETRY_BASE_URL}/v1/traces`
 
 function sdkEnvExtras(id: OnboardingProviderId): string {
   switch (id) {
@@ -1694,11 +1697,15 @@ WATSONX_URL=https://us-south.ml.cloud.ibm.com`
 
 /** Latitude SDK + provider keys for the TypeScript / Python tabs (not the OTLP exporter page). */
 export function getEnvBlock(id: OnboardingProviderId, projectSlug: string, apiKey: string | null): string {
-  const slugLine = `LATITUDE_PROJECT_SLUG=${projectSlug}`
-  const commonSdk = `LATITUDE_API_KEY=${apiKey ?? "your-api-key"}
-${slugLine}`
-
   const extra = sdkEnvExtras(id)
+
+  if (id === "eve") {
+    const vigiaOtel = `VIGIA_API_KEY=${apiKey ?? "your-api-key"}\nVIGIA_PROJECT=${projectSlug}`
+    return extra ? `${vigiaOtel}\n${extra}` : vigiaOtel
+  }
+
+  const slugLine = `LATITUDE_PROJECT_SLUG=${projectSlug}`
+  const commonSdk = `LATITUDE_API_KEY=${apiKey ?? "your-api-key"}\n${slugLine}\nLATITUDE_TELEMETRY_URL=${VIGIA_TELEMETRY_BASE_URL}`
   return extra ? `${commonSdk}\n${extra}` : commonSdk
 }
 
@@ -1721,7 +1728,7 @@ export const OTEL_EXPORTER_LANGUAGE_OPTIONS: ReadonlyArray<{
 export function getOtelCurlVerifySnippet(projectSlug: string, apiKey: string | null): string {
   return `curl -X POST ${OTLP_TRACES_ENDPOINT} \\
   -H "Authorization: Bearer ${apiKey ?? "YOUR_API_KEY"}" \\
-  -H "X-Latitude-Project: ${projectSlug}" \\
+  -H "X-Vigia-Project: ${projectSlug}" \\
   -H "Content-Type: application/json" \\
   -d '{
     "resourceSpans": [{
@@ -1762,7 +1769,7 @@ exporter, err := otlptracehttp.New(ctx,
     otlptracehttp.WithEndpointURL("${OTLP_TRACES_ENDPOINT}"),
     otlptracehttp.WithHeaders(map[string]string{
         "Authorization":      ${authHeader},
-        "X-Latitude-Project":   ${slug},
+        "X-Vigia-Project":   ${slug},
     }),
 )
 
@@ -1780,7 +1787,7 @@ import io.opentelemetry.sdk.trace.export.BatchSpanProcessor;
 OtlpHttpSpanExporter exporter = OtlpHttpSpanExporter.builder()
     .setEndpoint("${OTLP_TRACES_ENDPOINT}")
     .addHeader("Authorization", ${authHeader})
-    .addHeader("X-Latitude-Project", ${slug})
+    .addHeader("X-Vigia-Project", ${slug})
     .build();
 
 SdkTracerProvider provider = SdkTracerProvider.builder()
@@ -1795,7 +1802,7 @@ function rubyOtelSnippet(projectSlug: string, apiKey: string | null): string {
 require "opentelemetry-exporter-otlp"
 
 ENV["OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"] = "${OTLP_TRACES_ENDPOINT}"
-ENV["OTEL_EXPORTER_OTLP_TRACES_HEADERS"] = "Authorization=Bearer ${authHeader},X-Latitude-Project=${projectSlug}"
+ENV["OTEL_EXPORTER_OTLP_TRACES_HEADERS"] = "Authorization=Bearer ${authHeader},X-Vigia-Project=${projectSlug}"
 
 OpenTelemetry::SDK.configure do |c|
   c.add_span_processor(
@@ -1809,8 +1816,8 @@ end
 
 function dotnetOtelSnippet(projectSlug: string, apiKey: string | null): string {
   const authHeader = apiKey
-    ? JSON.stringify(`Authorization=Bearer ${apiKey},X-Latitude-Project=${projectSlug}`)
-    : `"Authorization=Bearer " + apiKey + ",X-Latitude-Project=${projectSlug}"`
+    ? JSON.stringify(`Authorization=Bearer ${apiKey},X-Vigia-Project=${projectSlug}`)
+    : `"Authorization=Bearer " + apiKey + ",X-Vigia-Project=${projectSlug}"`
   return `using OpenTelemetry;
 using OpenTelemetry.Trace;
 using OpenTelemetry.Exporter;
@@ -1849,7 +1856,7 @@ export function cloudflareAiGatewayConfig(projectSlug: string, apiKey: string | 
     endpoint: OTLP_TRACES_ENDPOINT,
     contentType: "JSON",
     headers: [
-      { key: "x-latitude-project", value: projectSlug },
+      { key: "x-vigia-project", value: projectSlug },
       { key: "Authorization", value: `Bearer ${apiKey ?? "YOUR_API_KEY"}` },
     ],
   }
@@ -1860,8 +1867,9 @@ export function cloudflareAiGatewayConfig(projectSlug: string, apiKey: string | 
  * (https://docs.latitude.so/telemetry/overview#ask-your-coding-agent), with the
  * project slug + API key pre-filled so the agent doesn't need to ask.
  */
-export function getCodingAgentTelemetryPrompt(): string {
-  return "Install the `latitude-telemetry` skill from `github.com/latitude-dev/skills`, and use it to add Latitude tracing to this app following best practices."
+export function getCodingAgentTelemetryPrompt(projectSlug: string, apiKey: string | null): string {
+  const key = apiKey ?? "YOUR_API_KEY"
+  return `Instrument this app with OpenTelemetry tracing and export OTLP/HTTP traces to ${OTLP_TRACES_ENDPOINT}. Use the header Authorization: Bearer ${key} and X-Vigia-Project: ${projectSlug}. Preserve any existing telemetry setup, avoid changing unrelated application behavior, and verify the integration by sending one test trace to Vigia.`
 }
 
 /** Mirrors the memory-tracing docs prompt (docs.latitude.so/telemetry/memory). */
@@ -1891,6 +1899,7 @@ export function getPiTelemetryInstallCommand(projectSlug: string, apiKey: string
     "npx -y @latitude-data/pi-telemetry install \\",
     `  --api-key=${key} \\`,
     `  --project=${slug} \\`,
+    `  --base-url=${VIGIA_TELEMETRY_BASE_URL} \\`,
     "  --yes",
   ].join("\n")
 }
@@ -1902,7 +1911,7 @@ export function getHermesConfigYamlBlock(): string {
 export function getHermesEnvBlock(projectSlug: string, apiKey: string | null): string {
   const slug = projectSlug.trim() || "your-project-slug"
   const key = apiKey ?? "lat_xxx"
-  return `LATITUDE_API_KEY=${key}\nLATITUDE_PROJECT=${slug}`
+  return `LATITUDE_API_KEY=${key}\nLATITUDE_PROJECT=${slug}\nLATITUDE_TELEMETRY_URL=${VIGIA_TELEMETRY_BASE_URL}`
 }
 
 export function getCodingMachineInstallDescription(agent: CodingMachineAgentId): string {

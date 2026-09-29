@@ -1,8 +1,9 @@
-import { Button, cn, Icon, LatitudeLogo, LatitudeWordmark, Text, Tooltip } from "@repo/ui"
+import { Button, cn, Icon, Text, Tooltip } from "@repo/ui"
 import { extractLeadingEmoji } from "@repo/utils"
 import { Link } from "@tanstack/react-router"
 import { ChevronDown, ChevronRight, ChevronsUp } from "lucide-react"
 import { type ReactElement, type ReactNode, useState } from "react"
+import { VIGIA_PRODUCT } from "../../lib/product.ts"
 import { SidebarCollapseToggleButton, useSidebarCollapse } from "./sidebar-collapse.tsx"
 
 type NavItemIcon = React.ComponentType<React.SVGProps<SVGSVGElement>>
@@ -247,7 +248,7 @@ export function AppSidebar({
 }: {
   title?: string
   subtitle?: ReactNode
-  /** When true, renders the Latitude brand lockup instead of `title`/`subtitle`, and hides the collapse toggle while collapsed (an equivalent toggle is expected elsewhere, e.g. the top bar). */
+  /** When true, renders the Vigia brand lockup instead of `title`/`subtitle`, and hides the collapse toggle while collapsed (an equivalent toggle is expected elsewhere, e.g. the top bar). */
   brand?: boolean
   children: (props: { collapsed: boolean }) => ReactNode
   footer?: (props: { collapsed: boolean }) => ReactNode
@@ -271,10 +272,22 @@ export function AppSidebar({
             })}
           >
             {collapsed ? (
-              <LatitudeLogo className="h-5 w-5 shrink-0" />
+              <img
+                src={VIGIA_PRODUCT.logoPath}
+                alt={VIGIA_PRODUCT.name}
+                width={220}
+                height={100}
+                className="h-8 w-auto max-w-[44px] shrink-0 object-contain"
+              />
             ) : (
               <div className="flex min-w-0 flex-1 items-center">
-                <LatitudeWordmark className="h-5 w-auto shrink-0" />
+                <img
+                  src={VIGIA_PRODUCT.logoPath}
+                  alt={VIGIA_PRODUCT.signature}
+                  width={220}
+                  height={100}
+                  className="h-8 w-auto max-w-[150px] shrink-0 object-contain"
+                />
               </div>
             )}
             {showToggle && <SidebarCollapseToggleButton />}

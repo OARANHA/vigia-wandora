@@ -16,6 +16,7 @@ import { useAnalyticsTimeWindow } from "../../../../../domains/projects/use-anal
 import { useProjectFirstTraceAt, useProjectLastTraceAt } from "../../../../../domains/traces/traces.collection.ts"
 import { ListingLayout as Layout } from "../../../../../layouts/ListingLayout/index.tsx"
 import { useParamState } from "../../../../../lib/hooks/useParamState.ts"
+import { ptBR } from "../../../../../lib/i18n/pt-BR.ts"
 import { BreadcrumbText } from "../../../-components/breadcrumb-ui.tsx"
 import { SectionHeader } from "../-components/section-header.tsx"
 import { useRouteProject } from "../-route-data.ts"
@@ -39,7 +40,7 @@ import { ModelUsagePanel } from "./-components/model-usage-panel.tsx"
 import { PricingCoverageBadge } from "./-components/pricing-coverage-badge.tsx"
 
 function CostBreadcrumb() {
-  return <BreadcrumbText variant="current">Cost</BreadcrumbText>
+  return <BreadcrumbText variant="current">{ptBR.clientShell.sections.cost}</BreadcrumbText>
 }
 
 /**

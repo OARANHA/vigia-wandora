@@ -210,7 +210,7 @@ function GithubDefaultRow({
             to="/projects/$projectSlug/settings/organization/integrations/$integrationSlug"
             params={{ projectSlug, integrationSlug: "github" }}
           >
-            Edit default
+            Editar padrão
           </Link>
         </Button>
       }

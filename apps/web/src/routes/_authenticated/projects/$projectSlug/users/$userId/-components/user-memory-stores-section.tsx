@@ -28,7 +28,7 @@ export function UserMemoryStoresSection({
   if (!stores || stores.length === 0) {
     return (
       <div className="flex min-h-16 items-center">
-        <Text.H6 color="foregroundMuted">No memory stores accessed by this user yet.</Text.H6>
+        <Text.H6 color="foregroundMuted">Este usuário ainda não acessou nenhum armazenamento de memória.</Text.H6>
       </div>
     )
   }
@@ -40,7 +40,7 @@ export function UserMemoryStoresSection({
           key={store.storeId}
           to="/projects/$projectSlug/memory/$store"
           params={{ projectSlug, store: encodeStoreSegment(store.storeId) }}
-          aria-label={`Open store ${storeDisplayLabel(store.storeId)}`}
+          aria-label={`Abrir armazenamento ${storeDisplayLabel(store.storeId)}`}
           className="-mx-2 flex items-center gap-3 rounded-md px-2 py-2.5 transition-colors hover:bg-background"
         >
           <DatabaseIcon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />

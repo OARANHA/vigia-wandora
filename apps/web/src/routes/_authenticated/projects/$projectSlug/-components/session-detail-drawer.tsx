@@ -250,7 +250,7 @@ export function SessionDetailDrawer({
       onClose={handleClose}
       closeLabel={
         <>
-          Close <HotkeyBadge hotkey="Escape" />
+          Fechar <HotkeyBadge hotkey="Escape" />
         </>
       }
       actions={
@@ -265,7 +265,7 @@ export function SessionDetailDrawer({
               </Button>
             }
           >
-            View session <HotkeyBadge hotkey="Escape" />
+            Ver sessão <HotkeyBadge hotkey="Escape" />
           </Tooltip>
         ) : undefined
       }

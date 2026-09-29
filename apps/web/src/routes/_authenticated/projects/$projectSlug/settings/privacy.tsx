@@ -138,7 +138,7 @@ function ProjectPrivacySettingsPage() {
       await updateProjectRedactionMutation(currentProject.id, toSetting(view))
       setStagedScope(null)
       reset()
-      toast({ description: "Redaction settings updated" })
+      toast({ description: "Configurações de privacidade atualizadas" })
     } catch (error) {
       toast({ variant: "destructive", description: toUserMessage(error) })
     } finally {
@@ -153,7 +153,7 @@ function ProjectPrivacySettingsPage() {
       await updateProjectRedactionMutation(currentProject.id, null)
       setStagedScope(null)
       reset()
-      toast({ description: "This project now follows the organization" })
+      toast({ description: "Este projeto agora segue a política da empresa" })
     } catch (error) {
       toast({ variant: "destructive", description: toUserMessage(error) })
     } finally {
@@ -176,15 +176,15 @@ function ProjectPrivacySettingsPage() {
   useDirtyGuard({
     hasDirty: valueDirty || pendingRemoval,
     isApplying,
-    confirmMessage: "You have unsaved redaction changes. Leave anyway?",
+    confirmMessage: "Há alterações de privacidade não salvas. Sair mesmo assim?",
     onApply: pendingRemoval ? applyRemoval : apply,
     onDiscard: discard,
   })
 
   return (
     <SettingsPage
-      title="Privacy"
-      description="Strip personal data out of span content before it is stored"
+      title="Privacidade"
+      description="Remova dados pessoais do conteúdo dos spans antes do armazenamento"
       actions={
         <DirtyActions
           dirtyCount={valueDirty ? Math.max(dirtyCount, 1) : 0}
@@ -198,14 +198,14 @@ function ProjectPrivacySettingsPage() {
       <div className="flex w-full flex-col gap-8">
         {/* The irreversibility and shape-matching caveats live on the card, next to the controls they qualify. */}
         <Text.H6 color="foregroundMuted">
-          Matching values are replaced with a labelled placeholder before the span is stored. A change takes effect
-          within a minute.
+          Os valores encontrados são substituídos por marcadores identificados antes de o span ser armazenado. Alterações entram em vigor
+          em até um minuto.
         </Text.H6>
 
         <ScopedSetting
           idPrefix="project-redaction"
-          title="Redact PII in this project"
-          description="Scans messages, tool calls, and span attributes as they are ingested."
+          title="Remover PII neste projeto"
+          description="Analisa mensagens, chamadas de ferramentas e atributos do span durante a ingestão."
           isDirty={valueDirty}
           scope={{
             kind: "selectable",
@@ -217,9 +217,9 @@ function ProjectPrivacySettingsPage() {
           pendingChange={
             pendingRemoval
               ? {
-                  title: "Follow the organization redaction policy?",
-                  description: `This project will follow the organization default${orgPolicy.mode === "off" ? ", which is off — it will stop redacting PII" : ""}. Its own policy is discarded. Existing spans are unaffected either way.`,
-                  applyLabel: "Follow organization",
+                  title: "Seguir a política de privacidade da empresa?",
+                  description: `Este projeto passará a seguir o padrão da empresa${orgPolicy.mode === "off" ? ", que está desativado — a remoção de PII será interrompida" : ""}. A política própria do projeto será descartada. Spans existentes não são alterados.`,
+                  applyLabel: "Seguir empresa",
                   isApplying,
                   onApply: () => void applyRemoval(),
                   onDiscard: discard,
@@ -229,17 +229,17 @@ function ProjectPrivacySettingsPage() {
           notice={
             isLocked ? (
               <Text.H6 color="foregroundMuted">
-                Locked by the organization default, so this project cannot change it. Ask an organization owner if it
-                needs to be different here.
+                Bloqueado pelo padrão da empresa; este projeto não pode alterá-lo. Peça a um proprietário da empresa se
+                precisar de uma política diferente aqui.
               </Text.H6>
             ) : !canEditProject ? (
               <Text.H6 color="foregroundMuted">
-                Only organization owners and admins can change the redaction policy.
+                Somente proprietários e admins da empresa podem alterar a política de privacidade.
               </Text.H6>
             ) : pendingOverride ? (
               <Text.H6 color="foregroundMuted">
-                This project has no policy of its own yet. Apply to copy these values into one, so later changes to the
-                organization default won’t reach this project.
+                Este projeto ainda não tem uma política própria. Aplique para copiar estes valores e criar uma configuração própria,
+                evitando que futuras alterações no padrão da empresa afetem este projeto.
               </Text.H6>
             ) : null
           }
@@ -247,15 +247,15 @@ function ProjectPrivacySettingsPage() {
             <div className="flex flex-row flex-wrap items-center justify-between gap-4">
               <Text.H6 color="foregroundMuted">
                 {overrideCount > 0
-                  ? `Organization default in effect for ${projectCount - overrideCount} of ${projectCount} projects · ${overrideCount} override it`
-                  : `Organization default in effect for all ${projectCount} projects`}
+                  ? `Padrão da empresa em vigor em ${projectCount - overrideCount} de ${projectCount} projetos · ${overrideCount} usam configuração própria`
+                  : `Padrão da empresa em vigor em todos os ${projectCount} projetos`}
               </Text.H6>
               {isOwner ? (
                 <Button variant="outline" onClick={() => setEditingDefault(true)} disabled={isApplying}>
-                  Edit organization default
+                  Editar padrão da empresa
                 </Button>
               ) : scope === "organization" ? (
-                <Text.H6 color="foregroundMuted">Ask an owner to change the default.</Text.H6>
+                <Text.H6 color="foregroundMuted">Peça a um proprietário para alterar o padrão.</Text.H6>
               ) : null}
             </div>
           }

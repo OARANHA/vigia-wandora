@@ -55,5 +55,5 @@ export function MagicLinkEmail({ magicLinkUrl }: MagicLinkEmailProps) {
 
 MagicLinkEmail.PreviewProps = {
   userName: "Alex",
-  magicLinkUrl: "https://vigia.wandora.com.br/auth/verify#[REDACTED]",
+  magicLinkUrl: "https://vigia.wandora.com.br/auth/verify#preview",
 } satisfies MagicLinkEmailProps

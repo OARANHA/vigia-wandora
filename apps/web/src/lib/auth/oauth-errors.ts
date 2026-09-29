@@ -17,7 +17,8 @@ const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   email_not_verified: "Seu e-mail não está verificado nesse provedor. Verifique-o e tente novamente.",
 }
 
-const GENERIC_OAUTH_ERROR_MESSAGE = "Não foi possível concluir o acesso. Tente novamente ou continue com seu e-mail abaixo."
+const GENERIC_OAUTH_ERROR_MESSAGE =
+  "Não foi possível concluir o acesso. Tente novamente ou continue com seu e-mail abaixo."
 
 export function oauthCallbackErrorMessage(code: string | undefined): string | undefined {
   if (!code) return undefined

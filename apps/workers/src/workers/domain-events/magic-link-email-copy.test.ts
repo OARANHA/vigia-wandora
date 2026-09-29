@@ -5,7 +5,7 @@ describe("magic link email copy", () => {
   it("uses Vigia branding and PT-BR copy", async () => {
     const rendered = await magicLinkTemplate({
       userName: "there",
-      magicLinkUrl: "https://vigia.wandora.com.br/auth/verify#[REDACTED]",
+      magicLinkUrl: "https://vigia.wandora.com.br/auth/verify#preview",
     })
 
     expect(rendered.subject).toBe("Seu link de acesso ao Vigia")

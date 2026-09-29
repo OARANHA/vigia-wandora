@@ -18,8 +18,7 @@ export const ptBR = {
     requestError: "Não foi possível enviar o link de acesso. Tente novamente.",
     verifyTitle: "Confirme seu acesso",
     verifyDescription: "Revise sua solicitação antes de continuar para o Vigia.",
-    verifyCard:
-      "Clique em continuar para verificar este link de acesso e concluir o login com segurança.",
+    verifyCard: "Clique em continuar para verificar este link de acesso e concluir o login com segurança.",
     verifyButton: "Continuar para o Vigia",
     invalidLink: "Este link de acesso está ausente ou inválido. Solicite um novo link e tente novamente.",
     backToSignIn: "Voltar para entrar",

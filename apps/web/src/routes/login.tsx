@@ -57,7 +57,7 @@ function LoginPage() {
   const [email, setEmail] = useState(prefilledEmail ?? "")
   const captchaTokenRef = useRef<string | undefined>(undefined)
 
-  const handleCaptchaVerify = useCallback(([REDACTED] => {
+  const handleCaptchaVerify = useCallback((token: string) => {
     captchaTokenRef.current = token
   }, [])
   const handleCaptchaExpire = useCallback(() => {
@@ -169,7 +169,7 @@ function LoginPage() {
 
   return (
     <AuthScreen title={ptBR.auth.loginTitle} description={ptBR.auth.loginDescription}>
-      <div className="flex flex-col gap-4 rounded-xl overflow-hidden shadow-none bg-muted/50 border border-border p-6">
+      <div className="flex flex-col gap-4 rounded-xl overflow-hidden shadow-none bg-muted/50 border border-border p-6>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input
             name="email"
@@ -185,7 +185,7 @@ function LoginPage() {
 
           {TURNSTILE_SITE_KEY && (
             <Turnstile
-[REDACTED]
+              siteKey={TURNSTILE_SITE_KEY}
               onVerify={handleCaptchaVerify}
               onExpire={handleCaptchaExpire}
               onError={handleCaptchaExpire}

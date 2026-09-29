@@ -388,7 +388,7 @@ function ChangeSlugForm({ projectId, currentSlug }: { projectId: string; current
             </form.Field>
             <Input
               type="text"
-              label={`Type the current slug "${currentSlug}" to confirm`}
+              label={`Digite o slug atual "${currentSlug}" para confirmar`}
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
               placeholder={currentSlug}

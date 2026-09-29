@@ -38,19 +38,19 @@ describe("FlaggerObservationStatus", () => {
   it("keeps the recent observation summary compact by default", () => {
     render(<FlaggerObservationStatus flaggerSlug="frustration" coverage={coverage} coverageWindow={coverageWindow} />)
 
-    expect(screen.getByText("Observed 120 of 1,000 sessions · 28 days")).toBeDefined()
-    expect(screen.queryByText("Eligible sessions")).toBeNull()
+    expect(screen.getByText("Observadas 120 de 1.000 sessões · 28 dias")).toBeDefined()
+    expect(screen.queryByText("Sessões elegíveis")).toBeNull()
   })
 
   it("reveals the diagnostic breakdown on request", () => {
     render(<FlaggerObservationStatus flaggerSlug="frustration" coverage={coverage} coverageWindow={coverageWindow} />)
 
-    fireEvent.click(screen.getByRole("button", { name: /Observed 120/ }))
+    fireEvent.click(screen.getByRole("button", { name: /Observadas 120/ }))
 
     expect(screen.getByText("Eligible sessions")).toBeDefined()
     expect(screen.getByText("110 (11%)")).toBeDefined()
-    expect(screen.getByText("Hinted 20 · Random sample 980")).toBeDefined()
-    expect(screen.getByText("Incomplete sampling data 10")).toBeDefined()
+    expect(screen.getByText("Com indício 20 · Amostra aleatória 980")).toBeDefined()
+    expect(screen.getByText("Dados de amostragem incompletos 10")).toBeDefined()
   })
 
   it("only elevates a concrete rate-limit problem", () => {
@@ -65,7 +65,7 @@ describe("FlaggerObservationStatus", () => {
       />,
     )
 
-    expect(screen.getByText("· Rate limited").className).toContain("text-warning-muted-foreground")
+    expect(screen.getByText("· Limitado por taxa").className).toContain("text-warning-muted-foreground")
   })
 
   it("labels the window screening records actually cover, not the one requested", () => {
@@ -82,12 +82,12 @@ describe("FlaggerObservationStatus", () => {
       />,
     )
 
-    expect(screen.getByText("Observed 831 of 834 sessions · 3 days")).toBeDefined()
+    expect(screen.getByText("Observadas 831 de 834 sessões · 3 dias")).toBeDefined()
 
-    fireEvent.click(screen.getByRole("button", { name: /Observed 831/ }))
+    fireEvent.click(screen.getByRole("button", { name: /Observadas 831/ }))
 
-    expect(screen.getByText(/Not yet screened 3/)).toBeDefined()
-    expect(screen.getByText(/1,022 older sessions in the requested window are not counted/)).toBeDefined()
+    expect(screen.getByText(/Ainda não avaliadas 3/)).toBeDefined()
+    expect(screen.getByText(/1.022 sessões mais antigas na janela solicitada não foram contabilizadas/)).toBeDefined()
   })
 
   it("reports a window shorter than a day in hours", () => {
@@ -104,7 +104,7 @@ describe("FlaggerObservationStatus", () => {
       />,
     )
 
-    expect(screen.getByText("Observed 12 of 12 sessions · 6 hours")).toBeDefined()
+    expect(screen.getByText("Observadas 12 de 12 sessões · 6 horas")).toBeDefined()
   })
 
   it("does not turn an empty project into an analytics report", () => {
@@ -116,6 +116,6 @@ describe("FlaggerObservationStatus", () => {
       />,
     )
 
-    expect(screen.getByText("Waiting for production sessions")).toBeDefined()
+    expect(screen.getByText("Aguardando sessões de produção")).toBeDefined()
   })
 })

@@ -375,3 +375,22 @@ IDs, slugs, modos, listas de slugs dos presets, mutations, sampling, schemas, pe
 - billing, quando habilitado e após decisão comercial canônica.
 
 Depois disso, verificar na aplicação real se **Custos** e **Pontuação do agente** estão habilitados antes de iniciar um novo slice. O `/backoffice` permanece separado como futura **Administração Vigia**.
+
+## Checkpoint — onboarding público Vigia implantado — 2026-09-29
+
+O PR #44, `fix: alinhar onboarding de telemetria ao contrato Vigia`, foi integrado ao `main` e implantado no runtime público no commit `417b322c23f06d6c6d17e4839ec437e679c97219`.
+
+Validação operacional pós-deploy:
+
+- workflow `Vigia container images` #74 concluído com sucesso para o commit implantado;
+- stack Portainer `vigia` ativa com `ConfigHash` igual ao commit;
+- `web`, `api`, `ingest`, `workers`, `workflows`, Postgres, ClickHouse e Redis saudáveis;
+- migrations concluídas com exit 0;
+- `https://vigia.wandora.com.br/login` respondendo HTTP 200 com TLS válido;
+- smoke OTLP público pós-deploy retornando HTTP 200 no ingest e HTTP 200 na leitura do trace pelo produto;
+- nenhuma credencial exposta no chat ou no repositório.
+
+O contrato público visível ao cliente está consolidado em `https://vigia.wandora.com.br/v1/traces`, `Authorization: Bearer <API key>` e `X-Vigia-Project`. Compatibilidades Latitude permanecem internas ou restritas a integrações upstream que tecnicamente as exigem.
+
+Próximo slice: investigar capabilities já existentes no motor e definir o menor contrato de **Business Events** que responda à pergunta **“o que significa sucesso para este agente?”**.
+

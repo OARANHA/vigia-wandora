@@ -32,6 +32,7 @@ import {
   listingLayoutIntrinsicScroll,
 } from "../../../../../../layouts/ListingLayout/index.tsx"
 import { useListRowKeyboardNav } from "../../../../../../lib/hooks/useListRowKeyboardNav.ts"
+import { ptBR } from "../../../../../../lib/i18n/pt-BR.ts"
 import { formatPercent, formatSeenAgeParts, getPrimaryLifecycleState } from "./signal-formatters.ts"
 import { SignalLifecycleStatuses } from "./signal-lifecycle-statuses.tsx"
 import { SignalTrendBar } from "./signal-trend-bar.tsx"
@@ -49,14 +50,14 @@ function SeenAtCell({
     <div className="flex min-w-0 items-center gap-1 whitespace-nowrap">
       <Tooltip asChild trigger={<span className="truncate">{lastSeenLabel}</span>}>
         <div className="flex flex-col gap-0.5">
-          <Text.H6 color="foregroundMuted">Last seen at</Text.H6>
+          <Text.H6 color="foregroundMuted">{ptBR.clientPages.signals.lastSeen}</Text.H6>
           <Text.H6B>{new Date(lastSeenAtIso).toLocaleString()}</Text.H6B>
         </div>
       </Tooltip>
       <span className="text-muted-foreground">/</span>
       <Tooltip asChild trigger={<span className="truncate">{firstSeenLabel}</span>}>
         <div className="flex flex-col gap-0.5">
-          <Text.H6 color="foregroundMuted">First seen at</Text.H6>
+          <Text.H6 color="foregroundMuted">{ptBR.clientPages.signals.firstSeen}</Text.H6>
           <Text.H6B>{new Date(firstSeenAtIso).toLocaleString()}</Text.H6B>
         </div>
       </Tooltip>
@@ -76,7 +77,7 @@ function AssigneeCell({
       <div className="flex min-w-0 items-center gap-1.5">
         <Icon icon={CircleDashedIcon} size="sm" color="foregroundMuted" />
         <Text.H6 color="foregroundMuted" noWrap ellipsis>
-          Unassigned
+          {ptBR.clientPages.signals.unassigned}
         </Text.H6>
       </div>
     )
@@ -89,7 +90,7 @@ function AssigneeCell({
     <div className="flex min-w-0 items-center gap-1.5">
       <Avatar size="xs" name={displayName ?? "?"} imageSrc={member?.image ?? null} />
       <Text.H5 className="min-w-0" noWrap ellipsis>
-        {displayName ?? "Former member"}
+        {displayName ?? ptBR.clientPages.signals.formerMember}
       </Text.H5>
     </div>
   )
@@ -120,7 +121,7 @@ function PriorityGroupHeader({ group, count }: { readonly group: SignalPriorityG
 function EvaluatedByTooltip({ evaluationNames }: { readonly evaluationNames: readonly string[] }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <Text.H6 color="foregroundMuted">Evaluated by</Text.H6>
+      <Text.H6 color="foregroundMuted">{ptBR.clientPages.signals.evaluatedBy}</Text.H6>
       {evaluationNames.map((evaluationName) => (
         <Text.H6B key={evaluationName}>{evaluationName}</Text.H6B>
       ))}
@@ -186,7 +187,7 @@ export function SignalsView({
   const columns: InfiniteTableColumn<SignalRecord>[] = [
     {
       key: "issue",
-      header: "Signal",
+      header: ptBR.clientPages.signals.columns.signal,
       width: 360,
       minWidth: 280,
       render: (issue) => (
@@ -202,7 +203,7 @@ export function SignalsView({
                 extraStatuses={[
                   {
                     key: "monitored",
-                    label: "Evaluated",
+                    label: ptBR.clientPages.signals.evaluated,
                     variant: "success",
                     tooltip: (
                       <EvaluatedByTooltip evaluationNames={issue.evaluations.map((evaluation) => evaluation.name)} />
@@ -217,7 +218,7 @@ export function SignalsView({
     },
     {
       key: "status",
-      header: "Status",
+      header: ptBR.clientPages.signals.columns.status,
       width: 110,
       minWidth: 110,
       sortKey: "state",
@@ -232,7 +233,7 @@ export function SignalsView({
     },
     {
       key: "dimensions",
-      header: "Dimensions",
+      header: ptBR.clientPages.signals.columns.dimensions,
       width: 190,
       minWidth: 150,
       render: (issue) => (
@@ -241,13 +242,13 @@ export function SignalsView({
     },
     {
       key: "tags",
-      header: "Tags",
+      header: ptBR.clientPages.signals.columns.tags,
       width: 150,
       render: (issue) => <TagList tags={issue.tags} />,
     },
     {
       key: "assignee",
-      header: "Assignee",
+      header: ptBR.clientPages.signals.columns.assignee,
       width: 140,
       minWidth: 110,
       render: (issue) => (
@@ -259,7 +260,7 @@ export function SignalsView({
     },
     {
       key: "trend",
-      header: "Trend",
+      header: ptBR.clientPages.signals.columns.trend,
       width: 176,
       minWidth: 176,
       render: (issue) => {
@@ -286,23 +287,23 @@ export function SignalsView({
     },
     {
       key: "seenAt",
-      header: "Seen at",
+      header: ptBR.clientPages.signals.columns.seenAt,
       width: 114,
       minWidth: 114,
       sortKey: "lastSeen",
       render: (issue) => {
         const metrics = rowMetricsBySignalId[issue.id]
         if (!metrics) return <AnalyticsCellSkeleton />
-        if (metrics.occurrences === 0) return <span className="truncate text-muted-foreground">Never</span>
+        if (metrics.occurrences === 0) return <span className="truncate text-muted-foreground">{ptBR.clientPages.signals.never}</span>
         if (!metrics.lastSeenAt || !metrics.firstSeenAt) {
-          return <span className="truncate text-muted-foreground">Never</span>
+          return <span className="truncate text-muted-foreground">{ptBR.clientPages.signals.never}</span>
         }
         return <SeenAtCell lastSeenAtIso={metrics.lastSeenAt} firstSeenAtIso={metrics.firstSeenAt} />
       },
     },
     {
       key: "occurrences",
-      header: "Occurrences",
+      header: ptBR.clientPages.signals.columns.occurrences,
       width: 76,
       minWidth: 76,
       align: "end",
@@ -322,7 +323,7 @@ export function SignalsView({
     },
     {
       key: "affectedTraces",
-      header: "Affected sessions",
+      header: ptBR.clientPages.signals.columns.affectedSessions,
       width: 76,
       minWidth: 76,
       align: "end",
@@ -357,7 +358,7 @@ export function SignalsView({
             <Link
               to="/projects/$projectSlug/signals/$signalSlug"
               params={{ projectSlug, signalSlug: issue.slug }}
-              aria-label={`Open ${issue.name}`}
+              aria-label={`Abrir ${issue.name}`}
               {...props}
             />
           )}
@@ -370,7 +371,7 @@ export function SignalsView({
               direction: nextSorting.direction as SignalsTableSorting["direction"],
             })
           }
-          blankSlate="No issues match the current filters"
+          blankSlate={ptBR.clientPages.signals.noMatches}
         />
       </Layout.List>
     </Layout.Body>

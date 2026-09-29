@@ -3,6 +3,7 @@ import { useForm } from "@tanstack/react-form"
 import { setActiveOrganization } from "../../../domains/auth/auth.functions.ts"
 import { createOrganization } from "../../../domains/organizations/organizations.functions.ts"
 import { toUserMessage } from "../../../lib/errors.ts"
+import { ptBR } from "../../../lib/i18n/pt-BR.ts"
 import { createFormSubmitHandler, fieldErrorsAsStrings } from "../../../lib/form-server-action.ts"
 
 interface CreateOrganizationModalProps {
@@ -25,7 +26,7 @@ export function CreateOrganizationModal({ open, onOpenChange }: CreateOrganizati
       },
       {
         onSuccess: async () => {
-          toast({ description: "Organization created" })
+          toast({ description: ptBR.clientShell.organizationModal.success })
           onOpenChange(false)
           window.location.href = "/"
         },
@@ -41,13 +42,13 @@ export function CreateOrganizationModal({ open, onOpenChange }: CreateOrganizati
       open={open}
       dismissible
       onOpenChange={onOpenChange}
-      title="Create Organization"
-      description="Create a new organization to manage your projects and team members."
+      title={ptBR.clientShell.organizationModal.title}
+      description={ptBR.clientShell.organizationModal.description}
       footer={
         <>
           <CloseTrigger />
           <Button form="create-organization-form" type="submit" disabled={form.state.isSubmitting}>
-            Create
+            {ptBR.clientShell.organizationModal.create}
           </Button>
         </>
       }
@@ -65,11 +66,11 @@ export function CreateOrganizationModal({ open, onOpenChange }: CreateOrganizati
               <Input
                 required
                 type="text"
-                label="Organization Name"
+                label={ptBR.clientShell.organizationModal.nameLabel}
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value)}
                 errors={fieldErrorsAsStrings(field.state.meta.errors)}
-                placeholder="My Organization"
+                placeholder={ptBR.clientShell.organizationModal.namePlaceholder}
               />
             )}
           </form.Field>

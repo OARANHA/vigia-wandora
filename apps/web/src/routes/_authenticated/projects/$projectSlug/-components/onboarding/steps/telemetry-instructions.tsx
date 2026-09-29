@@ -25,6 +25,7 @@ import {
   getCodingAgentTelemetryPrompt,
   getCodingMachineInstallDescription,
   getCodingMachineTelemetryInstallCommand,
+  getCodingMachineVigiaRoutingConfig,
   getEnvBlock,
   getHermesConfigYamlBlock,
   getHermesEnvBlock,
@@ -242,13 +243,13 @@ function SdkIntegrationInstructions({
       <div className="flex flex-col gap-2">
         <Text.H5M>Install</Text.H5M>
         <Text.H5 color="foregroundMuted">
-          Follow these instructions to integrate Latitude telemetry into an application that uses {providerDisplayName}.
+          Follow these instructions to send telemetry from an application that uses {providerDisplayName} to Vigia.
         </Text.H5>
       </div>
 
       {showLatitudeSdk ? (
         <div className="flex flex-col gap-2">
-          <Text.H5 color="foregroundMuted">Latitude SDK</Text.H5>
+          <Text.H5 color="foregroundMuted">Telemetry SDK (upstream compatibility)</Text.H5>
           <InstallCommandField
             command={latInstall}
             isTs={isTs}
@@ -276,8 +277,8 @@ function SdkIntegrationInstructions({
       <div className="flex flex-col gap-2">
         <Text.H5M>Environment variables</Text.H5M>
         <Text.H5 color="foregroundMuted">
-          Set these in your <code className="text-xs">.env</code> or runtime environment. Use a Latitude API key from
-          organization settings.
+          Set these in your <code className="text-xs">.env</code> or runtime environment. Use a Vigia API key from
+          organization settings. The upstream SDK variable names are preserved only for technical compatibility.
         </Text.H5>
         <CodeBlock value={getEnvBlock(selectedProviderId, slugForSnippets, defaultApiKeyToken)} copyable />
       </div>
@@ -322,7 +323,7 @@ function CodingMachineInstructions({
         <div className="flex flex-col gap-2">
           <Text.H5M>Credentials in `~/.hermes/.env`</Text.H5M>
           <Text.H5 color="foregroundMuted">
-            Hermes loads this file at startup. Send a message after setup and check Traces in Latitude.
+            Hermes loads this file at startup. Send a message after setup and check Traces in Vigia.
           </Text.H5>
           <CodeBlock value={getHermesEnvBlock(projectSlugForCopy, defaultApiKeyToken)} copyable />
         </div>
@@ -342,13 +343,15 @@ function CodingMachineInstructions({
         <div className="flex flex-col gap-2">
           <Text.H5M>Restart and verify</Text.H5M>
           <Text.H5 color="foregroundMuted">
-            Restart pi to load the extension, send a prompt that uses the model or a tool, then open Traces in Latitude.
+            Restart pi to load the extension, send a prompt that uses the model or a tool, then open Traces in Vigia.
             Your first trace should appear within a few seconds.
           </Text.H5>
         </div>
       </>
     )
   }
+
+  const vigiaRouting = getCodingMachineVigiaRoutingConfig(agent)
 
   return (
     <>
@@ -358,9 +361,20 @@ function CodingMachineInstructions({
         <CodeBlock value={getCodingMachineTelemetryInstallCommand(agent)} copyable />
       </div>
 
+      {vigiaRouting ? (
+        <div className="flex flex-col gap-2">
+          <Text.H5M>Route telemetry to Vigia</Text.H5M>
+          <Text.H5 color="foregroundMuted">
+            The compatibility installer defaults to its upstream cloud. After it finishes, add the field below{" "}
+            {vigiaRouting.target}, preserving the existing API key, project, and other settings.
+          </Text.H5>
+          <CodeBlock value={vigiaRouting.value} copyable />
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
-          <Text.H5M>Latitude API key</Text.H5M>
+          <Text.H5M>Vigia API key</Text.H5M>
           <Text.H5 color="foregroundMuted">
             Default organization key (<code className="text-xs">{DEFAULT_API_KEY_NAME}</code>). Paste it when the
             installer asks for your API key.
@@ -376,7 +390,7 @@ function CodingMachineInstructions({
         </div>
         <div className="flex flex-col gap-2">
           <Text.H5M>Project slug</Text.H5M>
-          <Text.H5 color="foregroundMuted">Use this value when the installer asks for your Latitude project.</Text.H5>
+          <Text.H5 color="foregroundMuted">Use this value when the installer asks for your project in Vigia.</Text.H5>
           {projectSlugForCopy ? (
             <CodeBlock value={projectSlugForCopy} copyable />
           ) : (
@@ -408,10 +422,10 @@ function CloudflareAiGatewayInstructions({
           your gateway's <span className="font-medium">Settings → OpenTelemetry</span>, click{" "}
           <span className="font-medium">Add Otel Destination</span> and fill in the fields below.{" "}
           {defaultApiKeyToken ? (
-            "The Authorization header is prefilled with your default Latitude API key."
+            "The Authorization header is prefilled with your default Vigia API key."
           ) : (
             <>
-              Replace <code className="text-xs">YOUR_API_KEY</code> in the Authorization header with a Latitude API key
+              Replace <code className="text-xs">YOUR_API_KEY</code> in the Authorization header with a Vigia API key
               from Settings.
             </>
           )}
@@ -452,7 +466,7 @@ function CloudflareAiGatewayInstructions({
         >
           Cloudflare's OpenTelemetry docs
         </a>{" "}
-        for where to add the destination. Traces appear in Latitude within a few seconds of your next request.
+        for where to add the destination. Traces appear in Vigia within a few seconds of your next request.
       </Text.H5>
     </div>
   )
@@ -500,7 +514,7 @@ export function TelemetryInstructions({
   const slugForSnippets = resolvedProjectSlug || "your-project-slug"
   const projectSlugForCopy = resolvedProjectSlug
 
-  const codingAgentPrompt = getCodingAgentTelemetryPrompt()
+  const codingAgentPrompt = getCodingAgentTelemetryPrompt(slugForSnippets)
 
   const integrationTabOptions = useMemo(() => {
     if (isCodingMachineProvider(selectedProvider.id)) return []
@@ -574,31 +588,13 @@ export function TelemetryInstructions({
             <Badge variant="accent">Recommended</Badge>
           </span>
           <Text.H5 color="foregroundMuted">
-            Paste this into your coding agent's chat (Cursor, Claude Code, Codex, or anything else) to set up Latitude
-            telemetry in your project.
+            Paste this into your coding agent's chat (Cursor, Claude Code, Codex, or anything else) to configure
+            OpenTelemetry for Vigia using this project's endpoint, API key, and project header.
           </Text.H5>
           <CodeBlock value={codingAgentPrompt} copyable wrapLines />
           <Text.H5 color="foregroundMuted">
-            Install both the{" "}
-            <a
-              href="https://github.com/latitude-dev/skills"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary underline-offset-2 hover:underline"
-            >
-              Latitude telemetry skill
-            </a>{" "}
-            and the{" "}
-            <a
-              href="https://docs.latitude.so/getting-started/mcp"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary underline-offset-2 hover:underline"
-            >
-              Latitude MCP server
-            </a>{" "}
-            in your agent. The MCP lets the agent create projects and look up API keys directly; the skill wires tracing
-            into your codebase.
+            This path uses standard OpenTelemetry and the public Vigia ingest contract. No extra vendor-specific skill
+            or MCP setup is required.
           </Text.H5>
         </div>
       ) : (
@@ -643,7 +639,7 @@ export function TelemetryInstructions({
                       <Text.H5M>OpenTelemetry (OTLP)</Text.H5M>
                       <Text.H5 color="foregroundMuted">
                         Send a standard OTLP <code className="text-xs">ExportTraceServiceRequest</code> over HTTP.
-                        Successful ingest returns <code className="text-xs">202</code> with{" "}
+                        Successful ingest returns <code className="text-xs">200</code> with{" "}
                         <code className="text-xs">{"{}"}</code>.
                       </Text.H5>
                     </div>
@@ -651,14 +647,14 @@ export function TelemetryInstructions({
                     <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/40 p-2 font-mono text-xs leading-relaxed text-muted-foreground">
                       <div>
                         <span className="text-foreground">POST</span>{" "}
-                        <span className="break-all">https://ingest.latitude.so/v1/traces</span>
+                        <span className="break-all">https://vigia.wandora.com.br/v1/traces</span>
                       </div>
                       <div>
                         <span className="text-foreground">Authorization:</span> Bearer{" "}
                         {defaultApiKeyToken ?? "<api-key>"}
                       </div>
                       <div>
-                        <span className="text-foreground">X-Latitude-Project:</span> {slugForSnippets}
+                        <span className="text-foreground">X-Vigia-Project:</span> {slugForSnippets}
                       </div>
                       <div>
                         <span className="text-foreground">Content-Type:</span> application/json or
@@ -672,14 +668,13 @@ export function TelemetryInstructions({
                         <Text.H5 color="foregroundMuted">
                           POST a minimal OTLP JSON trace.{" "}
                           {defaultApiKeyToken ? (
-                            "The authorization header is prefilled with your default Latitude API key."
+                            "The authorization header is prefilled with your default Vigia API key."
                           ) : (
                             <>
-                              Replace <code className="text-xs">YOUR_API_KEY</code> with a Latitude API key from
-                              Settings.
+                              Replace <code className="text-xs">YOUR_API_KEY</code> with a Vigia API key from Settings.
                             </>
                           )}{" "}
-                          Expect <code className="text-xs">202</code> and an empty JSON body on success. Project slug is
+                          Expect <code className="text-xs">200</code> and an empty JSON body on success. Project slug is
                           prefilled on the header line.
                         </Text.H5>
                         <CodeBlock value={getOtelCurlVerifySnippet(slugForSnippets, defaultApiKeyToken)} copyable />

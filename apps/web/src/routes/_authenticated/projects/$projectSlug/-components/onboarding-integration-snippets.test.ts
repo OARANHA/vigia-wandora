@@ -1,7 +1,14 @@
 import { describe, expect, it } from "vitest"
 import {
   cloudflareAiGatewayConfig,
+  getCodingAgentTelemetryPrompt,
+  getCodingMachineVigiaRoutingConfig,
+  getEnvBlock,
+  getHermesEnvBlock,
   getOnboardingSnippet,
+  getOtelCurlVerifySnippet,
+  getOtelExporterLanguageSnippet,
+  getPiTelemetryInstallCommand,
   getProviderSdkPyInstallCommand,
   ONBOARDING_PROVIDER_SNIPPET_CONFIG,
   providerUsesLatitudeSdk,
@@ -71,8 +78,8 @@ describe("Cloudflare AI Gateway onboarding integration", () => {
   describe("exporter config", () => {
     const config = cloudflareAiGatewayConfig("my-project", "lat-key")
 
-    it("points at the Latitude OTLP traces endpoint", () => {
-      expect(config.endpoint).toBe("https://ingest.latitude.so/v1/traces")
+    it("points at the Vigia OTLP traces endpoint", () => {
+      expect(config.endpoint).toBe("https://vigia.wandora.com.br/v1/traces")
     })
 
     it("uses a JSON content type", () => {
@@ -81,7 +88,7 @@ describe("Cloudflare AI Gateway onboarding integration", () => {
 
     it("injects the API key and project slug into the custom headers", () => {
       expect(config.headers).toContainEqual({ key: "Authorization", value: "Bearer lat-key" })
-      expect(config.headers).toContainEqual({ key: "x-latitude-project", value: "my-project" })
+      expect(config.headers).toContainEqual({ key: "x-vigia-project", value: "my-project" })
     })
 
     it("falls back to a placeholder when no API key is available", () => {
@@ -90,5 +97,66 @@ describe("Cloudflare AI Gateway onboarding integration", () => {
         value: "Bearer YOUR_API_KEY",
       })
     })
+  })
+})
+
+describe("Vigia public telemetry contract", () => {
+  it("uses the Vigia endpoint and project header in the cURL verifier", () => {
+    const snippet = getOtelCurlVerifySnippet("my-project", "vig-key")
+    expect(snippet).toContain("https://vigia.wandora.com.br/v1/traces")
+    expect(snippet).toContain("X-Vigia-Project: my-project")
+    expect(snippet).not.toContain("X-Latitude-Project")
+  })
+
+  it.each(["go", "java", "ruby", "dotnet"] as const)("uses the Vigia contract in the %s exporter example", (lang) => {
+    const snippet = getOtelExporterLanguageSnippet(lang, "my-project", "vig-key")
+    expect(snippet).toContain("https://vigia.wandora.com.br/v1/traces")
+    expect(snippet).toContain("X-Vigia-Project")
+    expect(snippet).not.toContain("X-Latitude-Project")
+  })
+
+  it("routes upstream SDK integrations to the Vigia ingest base URL", () => {
+    const env = getEnvBlock("openai", "my-project", "vig-key")
+    expect(env).toContain("LATITUDE_TELEMETRY_URL=https://vigia.wandora.com.br")
+    expect(env).toContain("LATITUDE_PROJECT_SLUG=my-project")
+  })
+
+  it("uses Vigia-native variables for Eve direct OTLP", () => {
+    const env = getEnvBlock("eve", "my-project", "vig-key")
+    const snippet = getOnboardingSnippet("eve", "typescript", "my-project", "vig-key")
+
+    expect(env).toContain("VIGIA_API_KEY=vig-key")
+    expect(env).toContain("VIGIA_PROJECT=my-project")
+    expect(snippet).toContain('url: "https://vigia.wandora.com.br/v1/traces"')
+    expect(snippet).toContain('"X-Vigia-Project": "my-project"')
+    expect(snippet).not.toContain("ingest.latitude.so")
+  })
+
+  it("routes Hermes and pi compatibility installers to Vigia", () => {
+    expect(getHermesEnvBlock("my-project", "vig-key")).toContain("LATITUDE_BASE_URL=https://vigia.wandora.com.br")
+    expect(getPiTelemetryInstallCommand("my-project", "vig-key")).toContain("--base-url=https://vigia.wandora.com.br")
+  })
+
+  it("provides non-destructive Vigia routing overrides for Claude Code and OpenClaw", () => {
+    expect(getCodingMachineVigiaRoutingConfig("claude-code")).toEqual({
+      target: "no objeto env de ~/.claude/settings.json",
+      value: '"LATITUDE_BASE_URL": "https://vigia.wandora.com.br"',
+    })
+    expect(getCodingMachineVigiaRoutingConfig("openclaw")).toEqual({
+      target: 'em plugins.entries["@latitude-data/openclaw-telemetry"].config no ~/.openclaw/openclaw.json',
+      value: '"baseUrl": "https://vigia.wandora.com.br"',
+    })
+    expect(getCodingMachineVigiaRoutingConfig("hermes")).toBeNull()
+    expect(getCodingMachineVigiaRoutingConfig("pi")).toBeNull()
+  })
+
+  it("gives coding agents the public Vigia OTLP contract without requiring Latitude setup", () => {
+    const prompt = getCodingAgentTelemetryPrompt("my-project")
+    expect(prompt).toContain("https://vigia.wandora.com.br/v1/traces")
+    expect(prompt).toContain("X-Vigia-Project: my-project")
+    expect(prompt).toContain("VIGIA_API_KEY")
+    expect(prompt).not.toContain("vig-key")
+    expect(prompt).not.toContain("latitude-telemetry")
+    expect(prompt).not.toContain("Latitude MCP")
   })
 })

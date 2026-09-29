@@ -9,11 +9,74 @@ interface FlaggerUseCasePreset {
   readonly enabledSlugs: ReadonlyArray<FlaggerPresetSlug>
 }
 
+export const FLAGGER_DISPLAY_PT_BR = {
+  frustration: {
+    name: "Frustração",
+    description: "A conversa mostra frustração ou insatisfação clara do usuário.",
+  },
+  nsfw: {
+    name: "NSFW",
+    description: "Aparece conteúdo impróprio, tóxico ou inadequado para o ambiente de trabalho.",
+  },
+  refusal: {
+    name: "Recusa indevida",
+    description: "O agente recusa uma solicitação que deveria conseguir atender.",
+  },
+  laziness: {
+    name: "Baixo esforço",
+    description: "O agente evita executar o trabalho solicitado ou entrega apenas uma parte superficial.",
+  },
+  jailbreaking: {
+    name: "Tentativa de jailbreak",
+    description: "Há tentativas de contornar instruções do sistema ou restrições de segurança.",
+  },
+  forgetting: {
+    name: "Esquecimento de contexto",
+    description: "O agente perde contexto ou instruções relevantes já estabelecidas na conversa.",
+  },
+  trashing: {
+    name: "Ciclo sem progresso",
+    description: "O agente alterna ou repete ferramentas sem avançar de forma útil.",
+  },
+  bluffing: {
+    name: "Falso sucesso",
+    description: "O agente segue adiante após uma falha de ferramenta como se a operação tivesse funcionado.",
+  },
+  "pii-leakage": {
+    name: "Vazamento de PII",
+    description: "A resposta do agente expõe dados pessoais que não deveriam ter sido revelados.",
+  },
+  incompletion: {
+    name: "Tarefa incompleta",
+    description: "O agente não conclui a tarefa atribuída e força o usuário a pedir continuidade ou correção.",
+  },
+  "tool-call-errors": {
+    name: "Erros em chamadas de ferramenta",
+    description: "Detecta respostas de ferramenta malformadas, duplicadas ou com falha explícita sem chamar um LLM.",
+  },
+  "output-schema-validation": {
+    name: "Validação de schema de saída",
+    description: "Detecta saída estruturada malformada ou truncada sem chamar um LLM.",
+  },
+  "empty-response": {
+    name: "Resposta vazia",
+    description: "Detecta respostas vazias, compostas apenas por espaços ou degeneradas sem chamar um LLM.",
+  },
+  "low-cache-hit-rate": {
+    name: "Baixa taxa de acerto de cache",
+    description: "Detecta traces longos em que o cache está ativo, mas reaproveita poucos tokens de entrada.",
+  },
+  "task-failure": {
+    name: "Falha na tarefa",
+    description: "A sessão termina com um objetivo relevante do usuário ainda não resolvido.",
+  },
+} as const satisfies Record<FlaggerPresetSlug, { readonly name: string; readonly description: string }>
+
 export const FLAGGER_USE_CASE_PRESETS = [
   {
     id: "support-agent",
-    label: "Support agent",
-    description: "Customer-facing assistants handling questions, escalations, and account workflows.",
+    label: "Agente de suporte",
+    description: "Assistentes que atendem clientes, respondem dúvidas, tratam escaladas e executam fluxos de conta.",
     enabledSlugs: [
       "task-failure",
       "frustration",
@@ -29,8 +92,8 @@ export const FLAGGER_USE_CASE_PRESETS = [
   },
   {
     id: "coding-agent",
-    label: "Coding agent",
-    description: "Agents that edit files, call tools, and work through multi-step implementation tasks.",
+    label: "Agente de programação",
+    description: "Agentes que editam arquivos, usam ferramentas e executam tarefas de implementação em várias etapas.",
     enabledSlugs: [
       "task-failure",
       "laziness",
@@ -50,8 +113,8 @@ export const FLAGGER_USE_CASE_PRESETS = [
   },
   {
     id: "sales-agent",
-    label: "Sales agent",
-    description: "Lead qualification and buyer-facing assistants where tone and follow-through matter.",
+    label: "Agente de vendas",
+    description: "Assistentes de qualificação e vendas em que tom, continuidade e conclusão importam.",
     enabledSlugs: [
       "task-failure",
       "frustration",
@@ -66,8 +129,8 @@ export const FLAGGER_USE_CASE_PRESETS = [
   },
   {
     id: "tool-workflow-agent",
-    label: "Tool workflow agent",
-    description: "Agents that coordinate tools, APIs, and structured workflows.",
+    label: "Agente de fluxos com ferramentas",
+    description: "Agentes que coordenam ferramentas, APIs e fluxos estruturados.",
     enabledSlugs: [
       "task-failure",
       "tool-call-errors",
@@ -84,8 +147,8 @@ export const FLAGGER_USE_CASE_PRESETS = [
   },
   {
     id: "knowledge-base-agent",
-    label: "Knowledge-base agent",
-    description: "RAG and documentation assistants that need to preserve context and answer directly.",
+    label: "Agente de base de conhecimento",
+    description: "Assistentes de RAG e documentação que precisam preservar contexto e responder de forma direta.",
     enabledSlugs: [
       "task-failure",
       "forgetting",
@@ -101,8 +164,8 @@ export const FLAGGER_USE_CASE_PRESETS = [
   },
   {
     id: "structured-extraction-agent",
-    label: "Structured extraction",
-    description: "Extraction and classification agents that return machine-readable output.",
+    label: "Extração estruturada",
+    description: "Agentes de extração e classificação que retornam saídas estruturadas para consumo por sistemas.",
     enabledSlugs: [
       "task-failure",
       "output-schema-validation",
@@ -115,8 +178,8 @@ export const FLAGGER_USE_CASE_PRESETS = [
   },
   {
     id: "safety-agent",
-    label: "Safety agent",
-    description: "Moderation and policy-sensitive assistants exposed to adversarial or unsafe inputs.",
+    label: "Agente de segurança",
+    description: "Assistentes de moderação ou sensíveis a políticas, expostos a entradas adversariais ou inseguras.",
     enabledSlugs: ["task-failure", "nsfw", "jailbreaking", "refusal", "frustration", "empty-response", "pii-leakage"],
   },
 ] as const satisfies ReadonlyArray<FlaggerUseCasePreset>
@@ -131,32 +194,32 @@ interface FlaggerGroup {
 export const FLAGGER_GROUPS = [
   {
     id: "response-validity",
-    label: "Response validity",
-    description: "Free deterministic checks; always run on every trace.",
+    label: "Validade da resposta",
+    description: "Verificações determinísticas sem custo de LLM, executadas em todos os traces.",
     slugs: ["empty-response", "tool-call-errors", "output-schema-validation"],
   },
   {
     id: "cost-efficiency",
-    label: "Cost & efficiency",
-    description: "Free deterministic checks for token waste and broken caching.",
+    label: "Custo e eficiência",
+    description: "Verificações determinísticas sem custo de LLM para desperdício de tokens e problemas de cache.",
     slugs: ["low-cache-hit-rate"],
   },
   {
     id: "user-signals",
-    label: "User-side signals",
-    description: "LLM-based detection of risky or unhappy user behavior.",
+    label: "Sinais do usuário",
+    description: "Detecção com LLM de comportamento de risco ou insatisfação do usuário.",
     slugs: ["frustration", "jailbreaking", "nsfw"],
   },
   {
     id: "task-outcome",
-    label: "Task outcome",
-    description: "The LLM reference judge behind the Outcome score.",
+    label: "Resultado da tarefa",
+    description: "Avaliador de referência com LLM usado para medir o resultado da tarefa.",
     slugs: ["task-failure"],
   },
   {
     id: "agent-behavior",
-    label: "Agent behavior",
-    description: "LLM-based detection of failure modes in the agent's own output.",
+    label: "Comportamento do agente",
+    description: "Detecção com LLM de padrões de falha na própria saída do agente.",
     slugs: ["refusal", "laziness", "forgetting", "incompletion", "trashing", "bluffing", "pii-leakage"],
   },
 ] as const satisfies ReadonlyArray<FlaggerGroup>

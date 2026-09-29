@@ -328,3 +328,28 @@ A revisão preserva os contratos técnicos existentes do motor: OAuth, instalaç
 - billing, quando habilitado e após decisão comercial canônica.
 
 Depois dessas superfícies, verificar na aplicação real se **Custos** e **Pontuação do agente** estão habilitados. O `/backoffice` permanece separado como futura **Administração Vigia**.
+
+
+## Configurações avançadas — Padrões e avaliadores — 2026-09-29
+
+Este slice conclui a revisão de **Padrões** e **Avaliadores** nas Configurações do cliente.
+
+A capability já existia no Latitude e foi reutilizada integralmente. Não foi criada lógica paralela para herança de configurações, presets, sampling, persistência, cobertura ou detecção.
+
+Superfícies cobertas:
+
+- visão dos padrões da empresa e contagem de projetos que herdam ou sobrescrevem cada padrão;
+- padrão de privacidade/remoção de PII e monitoramento do GitHub;
+- presets de avaliadores por caso de uso;
+- grupos, nomes e descrições dos avaliadores em PT-BR;
+- ativação, amostragem, estados de alteração e confirmação de saída;
+- métricas de cobertura, caminhos de seleção e limitações de observação em PT-BR.
+
+IDs, slugs, modos, listas de slugs dos presets, mutations, sampling, schemas, persistência e contratos do motor permanecem inalterados. A localização foi aplicada somente na camada de apresentação do web.
+
+**Configurações fica agora pendente apenas nas superfícies condicionais/comerciais:**
+
+- SSO, quando habilitado e após decisão comercial canônica;
+- billing, quando habilitado e após decisão comercial canônica.
+
+Depois disso, verificar na aplicação real se **Custos** e **Pontuação do agente** estão habilitados antes de iniciar um novo slice. O `/backoffice` permanece separado como futura **Administração Vigia**.

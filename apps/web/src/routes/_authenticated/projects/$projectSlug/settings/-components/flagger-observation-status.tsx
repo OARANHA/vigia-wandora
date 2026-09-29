@@ -7,9 +7,9 @@ const HOUR_MS = 60 * 60 * 1000
 const DAY_MS = 24 * HOUR_MS
 const SUB_DAY_WINDOW_MS = 36 * HOUR_MS
 
-const formatCount = (value: number) => new Intl.NumberFormat().format(value)
+const formatCount = (value: number) => new Intl.NumberFormat("pt-BR").format(value)
 const formatShare = (value: number) => `${Math.round(value * 100)}%`
-const formatDay = (iso: string) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+const formatDay = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { month: "short", day: "numeric" })
 
 export interface FlaggerCoverageWindow {
   readonly fromIso: string
@@ -22,10 +22,10 @@ const formatWindow = ({ fromIso, toIso }: FlaggerCoverageWindow): string => {
   const span = Math.max(0, Date.parse(toIso) - Date.parse(fromIso))
   if (span < SUB_DAY_WINDOW_MS) {
     const hours = Math.max(1, Math.round(span / HOUR_MS))
-    return `${hours} ${hours === 1 ? "hour" : "hours"}`
+    return `${hours} ${hours === 1 ? "hora" : "horas"}`
   }
   const days = Math.round(span / DAY_MS)
-  return `${days} ${days === 1 ? "day" : "days"}`
+  return `${days} ${days === 1 ? "dia" : "dias"}`
 }
 
 function CoverageMetric({
@@ -48,23 +48,23 @@ function CoverageMetric({
 
 const selectionSummary = (row: FlaggerCoverageRow): string => {
   const selections = [
-    { label: "Deterministic", count: row.selectionPaths.deterministic },
-    { label: "Hinted", count: row.selectionPaths.hinted },
-    { label: "Uniform sample", count: row.selectionPaths.uniformSample },
-    { label: "Random sample", count: row.selectionPaths.ordinarySample },
+    { label: "Determinística", count: row.selectionPaths.deterministic },
+    { label: "Com indício", count: row.selectionPaths.hinted },
+    { label: "Amostra uniforme", count: row.selectionPaths.uniformSample },
+    { label: "Amostra aleatória", count: row.selectionPaths.ordinarySample },
   ]
     .filter(({ count }) => count > 0)
     .map(({ label, count }) => `${label} ${formatCount(count)}`)
 
-  return selections.length > 0 ? selections.join(" · ") : "No selections recorded"
+  return selections.length > 0 ? selections.join(" · ") : "Nenhuma seleção registrada"
 }
 
 const limitationSummary = (row: FlaggerCoverageRow): string | null => {
   const limitations = [
-    { label: "Skipped", count: row.selectionPaths.skipped },
-    { label: "Rate-limited", count: row.selectionPaths.rateLimited },
-    { label: "Not yet screened", count: row.unscreenedSessions },
-    { label: "Incomplete sampling data", count: row.unknownSelectionProbability },
+    { label: "Ignoradas", count: row.selectionPaths.skipped },
+    { label: "Limitadas por taxa", count: row.selectionPaths.rateLimited },
+    { label: "Ainda não avaliadas", count: row.unscreenedSessions },
+    { label: "Dados de amostragem incompletos", count: row.unknownSelectionProbability },
   ]
     .filter(({ count }) => count > 0)
     .map(({ label, count }) => `${label} ${formatCount(count)}`)
@@ -74,7 +74,7 @@ const limitationSummary = (row: FlaggerCoverageRow): string | null => {
 
 const recordingNote = (coverageWindow: FlaggerCoverageWindow): string | null => {
   if (coverageWindow.sessionsBeforeRecording === 0 || coverageWindow.recordingSinceIso === null) return null
-  return `Screening records start ${formatDay(coverageWindow.recordingSinceIso)}; ${formatCount(coverageWindow.sessionsBeforeRecording)} older sessions in the requested window are not counted`
+  return `Os registros de avaliação começam em ${formatDay(coverageWindow.recordingSinceIso)}; ${formatCount(coverageWindow.sessionsBeforeRecording)} sessões mais antigas na janela solicitada não foram contabilizadas`
 }
 
 export function FlaggerObservationStatus({
@@ -93,8 +93,8 @@ export function FlaggerObservationStatus({
   const note = recordingNote(coverageWindow)
   const observationSummary =
     coverage.eligibleSessions === 0
-      ? "Waiting for production sessions"
-      : `Observed ${formatCount(coverage.examinedSessions)} of ${formatCount(coverage.eligibleSessions)} sessions · ${formatWindow(coverageWindow)}`
+      ? "Aguardando sessões de produção"
+      : `Observadas ${formatCount(coverage.examinedSessions)} de ${formatCount(coverage.eligibleSessions)} sessões · ${formatWindow(coverageWindow)}`
 
   return (
     <div className="flex flex-col gap-2">
@@ -111,43 +111,43 @@ export function FlaggerObservationStatus({
             onClick={() => setExpanded((current) => !current)}
           >
             <span className="tabular-nums">{observationSummary}</span>
-            {rateLimited ? <span className="text-warning-muted-foreground">· Rate limited</span> : null}
+            {rateLimited ? <span className="text-warning-muted-foreground">· Limitado por taxa</span> : null}
             <Icon icon={expanded ? ChevronDownIcon : ChevronRightIcon} size="xs" color="foregroundMuted" />
           </Button>
         }
       >
-        Shows how much eligible traffic this flagger inspected; open for details.
+        Mostra quanto tráfego elegível este avaliador inspecionou; abra para ver os detalhes.
       </Tooltip>
 
       {expanded ? (
         <div id={detailsId} className="flex flex-col gap-3 border-t border-border pt-3">
           <div className="flex flex-row flex-wrap gap-x-8 gap-y-3">
-            <CoverageMetric label="Eligible sessions" value={formatCount(coverage.eligibleSessions)} />
-            <CoverageMetric label="Examined" value={formatCount(coverage.examinedSessions)} />
+            <CoverageMetric label="Sessões elegíveis" value={formatCount(coverage.eligibleSessions)} />
+            <CoverageMetric label="Avaliadas" value={formatCount(coverage.examinedSessions)} />
             <CoverageMetric
-              label="Usable evidence"
+              label="Evidência utilizável"
               value={`${formatCount(coverage.readableSessions)} (${formatShare(coverage.readableShare)})`}
-              context="Complete result and sampling data"
+              context="Resultado completo e dados de amostragem"
             />
             <CoverageMetric
-              label="Findings"
+              label="Achados"
               value={formatCount(coverage.positiveFindings)}
               {...(coverage.positiveFindings > 0
                 ? {
-                    context: `${formatCount(coverage.calibrationReadyFindings)} with complete sampling data`,
+                    context: `${formatCount(coverage.calibrationReadyFindings)} com dados completos de amostragem`,
                   }
                 : {})}
             />
           </div>
           <div className="flex flex-col gap-0.5">
-            <Text.H7 color="foregroundMuted">Screening paths</Text.H7>
+            <Text.H7 color="foregroundMuted">Caminhos de avaliação</Text.H7>
             <Text.H6 color="foregroundMuted" className="tabular-nums">
               {selectionSummary(coverage)}
             </Text.H6>
           </div>
           {limitations ? (
             <div className="flex flex-col gap-0.5">
-              <Text.H7 color="foregroundMuted">Unavailable observations</Text.H7>
+              <Text.H7 color="foregroundMuted">Observações indisponíveis</Text.H7>
               <Text.H6 color={rateLimited ? "warningMutedForeground" : "foregroundMuted"} className="tabular-nums">
                 {limitations}
               </Text.H6>

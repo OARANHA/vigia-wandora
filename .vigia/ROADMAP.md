@@ -138,7 +138,7 @@ Configurações permanece **parcialmente concluída**.
 - [x] remover links visíveis para `docs.latitude.so` nas superfícies de dispatch e destinos de dados cobertas;
 - [x] privacidade/redaction avançada;
 - [x] GitHub/Slack avançados;
-- [ ] defaults e flaggers;
+- [x] defaults e flaggers;
 - [ ] SSO e billing, quando habilitados e após decisão comercial canônica quando necessária.
 
 Depois:
@@ -162,7 +162,7 @@ Concluído no PR #38:
 Próximos itens de Configurações:
 
 - [ ] GitHub/Slack avançados;
-- [ ] defaults e flaggers;
+- [x] defaults e flaggers;
 - [ ] SSO e billing, quando habilitados e após decisão comercial canônica quando necessária.
 
 Depois, verificar na aplicação real se Custos e Pontuação do agente estão habilitados. O `/backoffice` continua separado como **Administração Vigia**.
@@ -182,7 +182,27 @@ Enums, schemas, OAuth, tokens, webhooks, persistence, eventos e demais contratos
 
 Próximos itens de Configurações:
 
-- [ ] defaults e flaggers;
+- [x] defaults e flaggers;
 - [ ] SSO e billing, quando habilitados e após decisão comercial canônica quando necessária.
 
 Depois, verificar na aplicação real se Custos e Pontuação do agente estão habilitados. O `/backoffice` continua separado como **Administração Vigia**.
+
+
+## Checkpoint 2026-09-29 — padrões e avaliadores
+
+Concluído neste slice:
+
+- [x] página de Padrões da empresa em PT-BR, incluindo herança, overrides e estados de erro;
+- [x] padrão de privacidade/remoção de PII e monitoramento do GitHub apresentados em PT-BR;
+- [x] presets e grupos de Avaliadores em PT-BR;
+- [x] nomes e descrições visíveis dos avaliadores localizados sem alterar os slugs técnicos;
+- [x] ações, sampling e estados de alteração em PT-BR;
+- [x] cobertura, caminhos de seleção e limitações de observação em PT-BR;
+- [x] preservação de mutations, schemas, persistência, modos, slugs e demais contratos técnicos do Latitude.
+
+Próximos itens de Configurações:
+
+- [ ] SSO, quando habilitado e após decisão comercial canônica;
+- [ ] billing, quando habilitado e após decisão comercial canônica.
+
+Depois, verificar na aplicação real se **Custos** e **Pontuação do agente** estão habilitados. O `/backoffice` continua separado como **Administração Vigia**.

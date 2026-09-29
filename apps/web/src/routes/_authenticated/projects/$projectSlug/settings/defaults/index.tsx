@@ -43,14 +43,14 @@ function OrganizationDefaultsPage() {
 
   return (
     <SettingsPage
-      title="Defaults"
-      description="Organization-wide defaults that projects inherit unless they set their own."
+      title="Padrões"
+      description="Padrões da empresa herdados pelos projetos, exceto quando um projeto define sua própria configuração."
     >
       <div className="flex w-full flex-col gap-6">
         <Text.H6 color="foregroundMuted">
           {isOwner
-            ? "Each project can override these on its own settings pages. Changing a default here applies immediately to every project still inheriting it, and leaves projects that override it untouched."
-            : "Each project can override these on its own settings pages. Only organization owners can change a default."}
+            ? "Cada projeto pode substituir estes padrões em suas próprias configurações. Alterar um padrão aqui afeta imediatamente os projetos que ainda o herdam e preserva os projetos com configuração própria."
+            : "Cada projeto pode substituir estes padrões em suas próprias configurações. Somente proprietários da empresa podem alterar um padrão."}
         </Text.H6>
 
         <div className="flex flex-col divide-y divide-border overflow-hidden rounded-lg border border-border">
@@ -97,8 +97,8 @@ function DefaultRow({
       <div className="flex shrink-0 flex-row items-center gap-4">
         <Text.H6 color="foregroundMuted">
           {overrideCount > 0
-            ? `${projectCount - overrideCount} of ${projectCount} inherit · ${overrideCount} override`
-            : `All ${projectCount} inherit`}
+            ? `${projectCount - overrideCount} de ${projectCount} herdam · ${overrideCount} com configuração própria`
+            : `Todos os ${projectCount} projetos herdam`}
         </Text.H6>
         {action}
       </div>
@@ -111,7 +111,7 @@ function DefaultRowError({ title }: { readonly title: string }) {
   return (
     <div className="flex flex-row flex-wrap items-center justify-between gap-4 p-4">
       <Text.H5 weight="semibold">{title}</Text.H5>
-      <Text.H6 color="destructive">Couldn't load this default. Reload to try again.</Text.H6>
+      <Text.H6 color="destructive">Não foi possível carregar este padrão. Recarregue a página para tentar novamente.</Text.H6>
     </div>
   )
 }
@@ -133,21 +133,21 @@ function RedactionDefaultRow({
 
   const value =
     policy.mode === "off"
-      ? "Off"
-      : `Enforced · ${policy.entities.size} ${policy.entities.size === 1 ? "category" : "categories"}${redaction?.locked ? " · locked" : ""}`
+      ? "Desativada"
+      : `Ativa · ${policy.entities.size} ${policy.entities.size === 1 ? "categoria" : "categorias"}${redaction?.locked ? " · bloqueada" : ""}`
 
   return (
     <>
       <DefaultRow
         icon={EyeOffIcon}
-        title="PII redaction"
+        title="Redação de PII"
         value={value}
         projectCount={projectCount}
         overrideCount={overrideCount}
         action={
           canEdit ? (
             <Button variant="outline" onClick={() => setEditing(true)}>
-              Edit default
+              Editar padrão
             </Button>
           ) : undefined
         }
@@ -189,7 +189,7 @@ function GithubDefaultRow({
       </div>
     )
   }
-  if (isError) return <DefaultRowError title="GitHub monitoring" />
+  if (isError) return <DefaultRowError title="Monitoramento do GitHub" />
   if (!defaults) return null
 
   const watched = [
@@ -200,8 +200,8 @@ function GithubDefaultRow({
   return (
     <DefaultRow
       icon={integrationEntry("github").icon}
-      title="GitHub monitoring"
-      value={watched.length > 0 ? `Watches ${watched.join(" and ")}` : "Nothing watched"}
+      title="Monitoramento do GitHub"
+      value={watched.length > 0 ? `Monitora ${watched.join(" e ")}` : "Nada monitorado"}
       projectCount={projectCount}
       overrideCount={defaults.overrideCount}
       action={

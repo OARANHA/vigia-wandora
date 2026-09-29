@@ -26,7 +26,7 @@ function ConnectAction({
       <Button asChild size="sm" variant="outline">
         <a href={href}>
           <Icon icon={Plus} size="sm" />
-          Connect
+          Conectar
         </a>
       </Button>
     )
@@ -35,7 +35,7 @@ function ConnectAction({
   return (
     <Button size="sm" variant="outline" onClick={() => onConnectDispatchKind(entry.key)}>
       <Icon icon={Plus} size="sm" />
-      Connect
+      Conectar
     </Button>
   )
 }

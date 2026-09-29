@@ -77,9 +77,9 @@ export function useConnectedIntegrations(): ConnectedIntegrations {
           {
             entry: integrationEntry("slack"),
             identity: slack.teamName,
-            detail: `Connected ${relativeTime(new Date(slack.installedAt))}`,
+            detail: `Conectado ${relativeTime(new Date(slack.installedAt))}`,
             needsAttention: slack.needsReconnect,
-            attentionLabel: slack.needsReconnect ? "Reconnect needed" : undefined,
+            attentionLabel: slack.needsReconnect ? "Reconexão necessária" : undefined,
           },
         ]
       : []),
@@ -88,16 +88,16 @@ export function useConnectedIntegrations(): ConnectedIntegrations {
           {
             entry: integrationEntry("github"),
             identity: github.accountLogin,
-            detail: `${github.repositorySelection === "all" ? "All repositories" : "Selected repositories"} · Connected ${relativeTime(new Date(github.installedAt))}`,
+            detail: `${github.repositorySelection === "all" ? "Todos os repositórios" : "Repositórios selecionados"} · Conectado ${relativeTime(new Date(github.installedAt))}`,
             needsAttention: github.suspendedAt !== null,
-            attentionLabel: github.suspendedAt !== null ? "Suspended" : undefined,
+            attentionLabel: github.suspendedAt !== null ? "Suspensa" : undefined,
           },
         ]
       : []),
     ...dispatchIntegrations.map((integration: AgentDispatchIntegrationRecord) => ({
       entry: integrationEntry(integration.kind),
       identity: integration.vendorAccountId,
-      detail: `Connected ${relativeTime(new Date(integration.installedAt))}`,
+      detail: `Conectado ${relativeTime(new Date(integration.installedAt))}`,
       needsAttention: false,
     })),
   ])

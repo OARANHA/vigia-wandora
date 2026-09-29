@@ -131,16 +131,18 @@ Concluído neste slice:
 - [x] Configurações essenciais de projeto, conta, empresa, membros, chaves, sinais, importações e integrações básicas em PT-BR;
 - [x] Remover referências comerciais visíveis ao Latitude e links `docs.latitude.so` nas superfícies de Configurações cobertas.
 
-Configurações permanece **parcialmente concluída**. Próximo slice:
+Configurações permanece **parcialmente concluída**.
 
-- [ ] dispatch de agentes;
-- [ ] destinos de dados;
+- [x] dispatch de agentes em PT-BR/Vigia, preservando contratos técnicos necessários;
+- [x] destinos de dados em PT-BR, incluindo PostHog, histórico, backfill/importação histórica e estados operacionais;
+- [x] remover links visíveis para `docs.latitude.so` nas superfícies de dispatch e destinos de dados cobertas;
 - [ ] privacidade/redaction avançada;
 - [ ] GitHub/Slack avançados;
 - [ ] defaults e flaggers;
-- [ ] SSO e billing, quando habilitados.
+- [ ] SSO e billing, quando habilitados e após decisão comercial canônica quando necessária.
 
 Depois:
 
-- [ ] Custos e Pontuação do agente quando habilitados;
+- [ ] verificar na aplicação real se Custos e Pontuação do agente estão habilitados;
+- [ ] traduzir/revisar Custos e Pontuação do agente quando habilitados;
 - [ ] `/backoffice` como **Administração Vigia** em slice separado.

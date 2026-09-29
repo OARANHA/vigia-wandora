@@ -52,7 +52,7 @@ export function OrganizationRedactionModal({
         locked,
       }
       await updateOrganizationRedactionMutation(setting)
-      toast({ description: "Organization default updated" })
+      toast({ description: "Padrão de privacidade da empresa atualizado" })
       onClose()
     } catch (error) {
       setIsSaving(false)
@@ -67,12 +67,12 @@ export function OrganizationRedactionModal({
       onOpenChange={(next) => {
         if (!next && !isSaving) onClose()
       }}
-      title="Organization default"
-      description="The redaction policy every project inherits unless it sets its own."
+      title="Padrão de privacidade da empresa"
+      description="A política que cada projeto herda, salvo quando possui configuração própria."
       footer={
         <div className="flex flex-row items-center gap-2">
           <Button variant="outline" onClick={onClose} disabled={isSaving}>
-            Cancel
+            Cancelar
           </Button>
           <Button onClick={() => void save()} isLoading={isSaving} disabled={isSaving}>
             {confirm.submitLabel}
@@ -96,10 +96,10 @@ export function OrganizationRedactionModal({
 
         <div className="flex flex-row items-start justify-between gap-4 border-border border-t pt-6">
           <div className="flex flex-col gap-1">
-            <Label htmlFor="org-redaction-locked">Prevent projects from changing this</Label>
+            <Label htmlFor="org-redaction-locked">Impedir que projetos alterem esta política</Label>
             <Text.H6 color="foregroundMuted">
-              When locked, project settings are ignored entirely rather than merged, and only an owner can change the
-              policy back.
+              Quando bloqueada, as configurações dos projetos são ignoradas por completo, em vez de combinadas com o padrão,
+              e somente um proprietário pode liberar alterações novamente.
             </Text.H6>
           </div>
           <Switch id="org-redaction-locked" checked={locked} onCheckedChange={setLocked} />

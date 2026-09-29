@@ -47,7 +47,7 @@ export function ExperimentBreadcrumb() {
   return (
     <>
       <BreadcrumbLink to="/projects/$projectSlug/experiments" params={{ projectSlug }}>
-        Experiments
+        Experimentos
       </BreadcrumbLink>
       <BreadcrumbSeparator />
       <BreadcrumbText variant="current">{experimentSlug}</BreadcrumbText>
@@ -132,15 +132,15 @@ export function ExperimentDetailPage() {
                 asChild
                 side="bottom"
                 trigger={
-                  <Button asChild variant="ghost" size="sm" className="w-fit" aria-label="Back to experiments">
+                  <Button asChild variant="ghost" size="sm" className="w-fit" aria-label="Voltar para experimentos">
                     <Link to="/projects/$projectSlug/experiments" params={{ projectSlug: project.slug }}>
                       <Icon icon={ArrowLeftIcon} size="sm" />
-                      Back
+                      Voltar
                     </Link>
                   </Button>
                 }
               >
-                Back to experiments
+                Voltar para experimentos
               </Tooltip>
               {experiment ? (
                 <Text.H4M className="min-w-0 truncate">{experiment.name}</Text.H4M>
@@ -160,14 +160,14 @@ export function ExperimentDetailPage() {
                     disabled={atMaxVariants || actions.isPending}
                   >
                     <Icon icon={PlusIcon} size="sm" />
-                    Variant
+                    Variante
                   </Button>
                   <DropdownMenuRoot modal={false}>
                     <DropdownMenuTrigger asChild>
                       <Button
                         className="rounded-l-none border-l border-primary-foreground/25 px-1.5 before:hidden"
                         disabled={atMaxVariants || actions.isPending}
-                        aria-label="More add-variant options"
+                        aria-label="Mais opções para adicionar variante"
                       >
                         <Icon icon={ChevronDownIcon} size="sm" />
                       </Button>
@@ -179,7 +179,7 @@ export function ExperimentDetailPage() {
                           onSelect={() => setImportOpen(true)}
                         >
                           <Icon icon={BookmarkPlusIcon} size="sm" color="foregroundMuted" />
-                          <Text.H5>Import from search</Text.H5>
+                          <Text.H5>Importar de busca</Text.H5>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenuPortal>
@@ -187,7 +187,7 @@ export function ExperimentDetailPage() {
                 </ButtonGroup>
                 <DropdownMenuRoot modal={false}>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" className="h-8 w-8 p-0" aria-label="Experiment actions">
+                    <Button variant="outline" className="h-8 w-8 p-0" aria-label="Ações do experimento">
                       <Icon icon={EllipsisVerticalIcon} size="sm" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -198,7 +198,7 @@ export function ExperimentDetailPage() {
                         onSelect={() => setRenameOpen(true)}
                       >
                         <Icon icon={PencilIcon} size="sm" color="foregroundMuted" />
-                        <Text.H5>Rename</Text.H5>
+                        <Text.H5>Renomear</Text.H5>
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
@@ -206,7 +206,7 @@ export function ExperimentDetailPage() {
                         onSelect={() => setDeleteOpen(true)}
                       >
                         <Icon icon={Trash2Icon} size="sm" color="destructive" />
-                        <Text.H5 color="destructive">Remove</Text.H5>
+                        <Text.H5 color="destructive">Remover</Text.H5>
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenuPortal>
@@ -264,9 +264,9 @@ export function ExperimentDetailPage() {
         {importOpen ? (
           <VariantImportFromSearchModal
             projectId={project.id}
-            title="Add variant from a saved search"
-            description="Create a new variant from a saved search's filters and query."
-            confirmLabel="Add variant"
+            title="Adicionar variante a partir de busca salva"
+            description="Crie uma nova variante usando os filtros e a consulta de uma busca salva."
+            confirmLabel="Adicionar variante"
             onImport={(filterSet, query, timeRange) => actions.addVariantFromSearch(filterSet, query, timeRange)}
             onClose={() => setImportOpen(false)}
           />

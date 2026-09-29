@@ -8,7 +8,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Icon,
-  LatitudeLogo,
   Select,
   Skeleton,
   Status,
@@ -24,6 +23,7 @@ import {
   EllipsisVerticalIcon,
   ExternalLinkIcon,
   PencilIcon,
+  ShieldCheckIcon,
   Trash2Icon,
 } from "lucide-react"
 import { type ReactNode, useMemo, useRef, useState } from "react"
@@ -52,9 +52,9 @@ const DAY_MS = 24 * HOUR_MS
 
 type RangeKey = "1h" | "24h" | "7d"
 const RANGE_OPTIONS: { label: string; value: RangeKey }[] = [
-  { label: "Last hour", value: "1h" },
-  { label: "Last 24 hours", value: "24h" },
-  { label: "Last 7 days", value: "7d" },
+  { label: "Última hora", value: "1h" },
+  { label: "Últimas 24 horas", value: "24h" },
+  { label: "Últimos 7 dias", value: "7d" },
 ]
 const RANGE_SPEC: Record<RangeKey, { rangeMs: number; bucketMs: number }> = {
   "1h": { rangeMs: HOUR_MS, bucketMs: 2 * MINUTE_MS },
@@ -68,7 +68,7 @@ function MonitorBreadcrumb() {
   return (
     <>
       <BreadcrumbLink to="/projects/$projectSlug/monitors/search" params={{ projectSlug }}>
-        Monitors
+        Monitores
       </BreadcrumbLink>
       <BreadcrumbSeparator />
       <BreadcrumbText variant="current">{monitorSlug}</BreadcrumbText>
@@ -84,8 +84,8 @@ export const Route = createFileRoute("/_authenticated/projects/$projectSlug/moni
 function SystemTag() {
   return (
     <span className="inline-flex items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground select-none">
-      <LatitudeLogo className="h-3 w-3" />
-      System
+      <ShieldCheckIcon className="h-3 w-3" />
+      Sistema
     </span>
   )
 }
@@ -129,10 +129,10 @@ function MonitorDetailPage() {
       <Layout>
         <Layout.Content>
           <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8">
-            <Text.H4M>Monitor not found</Text.H4M>
+            <Text.H4M>Monitor não encontrado</Text.H4M>
             <Button asChild variant="outline" size="sm" className="w-auto">
               <Link to="/projects/$projectSlug/monitors/search" params={{ projectSlug }}>
-                Back to monitors
+                Voltar para monitores
               </Link>
             </Button>
           </div>
@@ -146,9 +146,9 @@ function MonitorDetailPage() {
   const muted = monitor?.mutedAt != null
   const description = describeMonitorTarget(target)
   const savedSearchTarget = target?.savedSearchId
-    ? { slug: monitor?.targetSavedSearchSlug ?? null, name: monitor?.targetSavedSearchName ?? "Saved search" }
+    ? { slug: monitor?.targetSavedSearchSlug ?? null, name: monitor?.targetSavedSearchName ?? "Busca salva" }
     : rule?.source?.type === "savedSearch"
-      ? { slug: rule.sourceSlug, name: rule.sourceName ?? "Saved search" }
+      ? { slug: rule.sourceSlug, name: rule.sourceName ?? "Busca salva" }
       : null
   const sessionTarget = target?.stream === "sessions" && !savedSearchTarget ? targetToSessionFilters(target) : null
   const sessionTargetFilters = sessionTarget ? serializeFilters(sessionTarget.filters) : undefined
@@ -176,15 +176,15 @@ function MonitorDetailPage() {
                 asChild
                 side="bottom"
                 trigger={
-                  <Button asChild variant="ghost" size="sm" className="w-fit" aria-label="Back to monitors">
+                  <Button asChild variant="ghost" size="sm" className="w-fit" aria-label="Voltar para monitores">
                     <Link to="/projects/$projectSlug/monitors/search" params={{ projectSlug }}>
                       <Icon icon={ArrowLeftIcon} size="sm" />
-                      Back
+                      Voltar
                     </Link>
                   </Button>
                 }
               >
-                Back to monitors
+                Voltar para monitores
               </Tooltip>
               {isLoading ? (
                 <Skeleton className="h-7 w-56" />
@@ -210,12 +210,12 @@ function MonitorDetailPage() {
                 />
                 <Button variant="outline" size="sm" className="w-auto" onClick={() => setMuteConfirmOpen(true)}>
                   <Icon icon={muted ? BellIcon : BellOffIcon} size="sm" />
-                  {muted ? "Unmute" : "Mute"}
+                  {muted ? "Reativar" : "Silenciar"}
                 </Button>
                 {canEditRule || canDeleteMonitor ? (
                   <DropdownMenuRoot modal={false}>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-7 w-7 p-0" aria-label="Monitor actions">
+                      <Button variant="outline" size="sm" className="h-7 w-7 p-0" aria-label="Ações do monitor">
                         <Icon icon={EllipsisVerticalIcon} size="sm" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -224,7 +224,7 @@ function MonitorDetailPage() {
                         {canEditRule ? (
                           <DropdownMenuItem className="cursor-pointer items-center gap-2" onSelect={onEditRule}>
                             <Icon icon={PencilIcon} size="sm" color="foregroundMuted" />
-                            <Text.H5>Edit monitor</Text.H5>
+                            <Text.H5>Editar monitor</Text.H5>
                           </DropdownMenuItem>
                         ) : null}
                         {canEditRule ? <DropdownMenuSeparator /> : null}
@@ -234,7 +234,7 @@ function MonitorDetailPage() {
                           onSelect={() => setDeleteConfirmOpen(true)}
                         >
                           <Icon icon={Trash2Icon} size="sm" color="destructive" />
-                          <Text.H5 color="destructive">Remove monitor</Text.H5>
+                          <Text.H5 color="destructive">Remover monitor</Text.H5>
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenuPortal>
@@ -254,13 +254,13 @@ function MonitorDetailPage() {
             <>
               <div className="flex shrink-0 flex-col gap-4 p-6 pt-2">
                 <div className="flex min-w-0 flex-col gap-3 rounded-lg bg-secondary p-4">
-                  <Text.H6 color="foregroundMuted">Configuration</Text.H6>
+                  <Text.H6 color="foregroundMuted">Configuração</Text.H6>
                   <div className="flex flex-row flex-wrap content-start items-start gap-x-8 gap-y-4">
                     <ConfigField label="Status">
-                      {muted ? <Status variant="neutral" label="Muted" /> : <Status variant="success" label="Live" />}
+                      {muted ? <Status variant="neutral" label="Silenciado" /> : <Status variant="success" label="Ativo" />}
                     </ConfigField>
                     {description || savedSearchTarget ? (
-                      <ConfigField label="Target">
+                      <ConfigField label="Alvo">
                         {savedSearchTarget?.slug ? (
                           <Link
                             to="/projects/$projectSlug"
@@ -291,16 +291,16 @@ function MonitorDetailPage() {
                       </ConfigField>
                     ) : null}
                     {rule ? (
-                      <ConfigField label="Trigger">
+                      <ConfigField label="Disparo">
                         <Text.H5 color="foreground">{INCIDENT_NOTIFICATION_KEY_LABEL[rule.kind]}</Text.H5>
                       </ConfigField>
                     ) : null}
                     {rule ? (
-                      <ConfigField label="Severity">
+                      <ConfigField label="Severidade">
                         <SeverityStatus severity={rule.severity} />
                       </ConfigField>
                     ) : null}
-                    <ConfigField label="Incidents">
+                    <ConfigField label="Incidentes">
                       <Text.H5 color="foreground">{incidentStats ? formatCount(incidentStats.total) : "—"}</Text.H5>
                     </ConfigField>
                   </div>
@@ -319,7 +319,7 @@ function MonitorDetailPage() {
               </div>
 
               <div className="flex min-w-0 flex-col gap-3 px-6 pb-6">
-                <Text.H6 color="foregroundMuted">Incidents</Text.H6>
+                <Text.H6 color="foregroundMuted">Incidentes</Text.H6>
                 <MonitorIncidentsTable
                   projectId={project.id}
                   projectSlug={projectSlug}

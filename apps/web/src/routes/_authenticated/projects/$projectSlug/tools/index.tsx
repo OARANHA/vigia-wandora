@@ -176,18 +176,18 @@ function ToolsPageContent() {
                 variant="bordered"
                 size="sm"
                 options={[
-                  { id: "all", label: "All", icon: <LayoutGridIcon className="w-4 h-4" /> },
+                  { id: "all", label: ptBR.clientPages.tools.tabs.all, icon: <LayoutGridIcon className="w-4 h-4" /> },
                   {
                     id: "unused",
-                    label: "Unused",
+                    label: ptBR.clientPages.tools.tabs.unused,
                     icon: <CircleSlashIcon className="w-4 h-4" />,
-                    tooltip: "Tools offered to the model in this window but never called.",
+                    tooltip: ptBR.clientPages.tools.unusedHelp,
                   },
                   {
                     id: "failing",
-                    label: "Failing",
+                    label: ptBR.clientPages.tools.tabs.failing,
                     icon: <TriangleAlertIcon className="w-4 h-4" />,
-                    tooltip: "Tools with an error rate of 5% or more in this window.",
+                    tooltip: ptBR.clientPages.tools.failingHelp,
                   },
                 ]}
                 active={statusTab}
@@ -199,7 +199,7 @@ function ToolsPageContent() {
                 <Input
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
-                  placeholder="Search tools"
+                  placeholder={ptBR.clientPages.tools.searchPlaceholder}
                   size="sm"
                   className="w-64 pl-8 rounded-lg"
                 />
@@ -209,7 +209,7 @@ function ToolsPageContent() {
                 projectId={project.id}
                 projectSlug={project.slug}
                 target={allToolsMonitorTarget()}
-                label="Monitor tools"
+                label={ptBR.clientPages.tools.monitor}
               />
             </Layout.ActionRowItem>
           </Layout.ActionsRow>

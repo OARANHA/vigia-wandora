@@ -26,8 +26,8 @@ export const Route = createFileRoute("/_authenticated/projects/$projectSlug/sett
   component: IntegrationsSettingsPage,
 })
 
-const FOLLOWS_ORGANIZATION = "Following the organization default"
-const OVERRIDES_ORGANIZATION = "Overrides the organization default"
+const FOLLOWS_ORGANIZATION = "Segue o padrão da empresa"
+const OVERRIDES_ORGANIZATION = "Substitui o padrão da empresa"
 
 /**
  * This project's half of the split: what each connected integration does *here*.
@@ -92,11 +92,11 @@ function IntegrationsSettingsPage() {
             </div>
             <div className="flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2">
               <Text.H6 color="foregroundMuted">
-                Connections, and the defaults these settings inherit, are organization-wide.
+                As conexões e os padrões herdados por estas configurações são definidos para toda a empresa.
               </Text.H6>
               <Button asChild variant="ghost">
                 <Link to="/projects/$projectSlug/settings/organization/integrations" params={{ projectSlug }}>
-                  Manage for the organization →
+                  Gerenciar para a empresa →
                 </Link>
               </Button>
             </div>
@@ -105,12 +105,12 @@ function IntegrationsSettingsPage() {
           <div className="flex flex-col items-start gap-3 rounded-lg border border-border p-6">
             <Text.H5M>Nenhuma integração para configurar ainda</Text.H5M>
             <Text.H6 color="foregroundMuted">
-              Integrations are connected once for the whole organization. Connect one, then come back to tune it for
-              this project.
+              As integrações são conectadas uma única vez para toda a empresa. Conecte uma e volte aqui para ajustar
+              este projeto.
             </Text.H6>
             <Button asChild variant="outline">
               <Link to="/projects/$projectSlug/settings/organization/integrations" params={{ projectSlug }}>
-                Manage for the organization
+                Gerenciar para a empresa
               </Link>
             </Button>
           </div>

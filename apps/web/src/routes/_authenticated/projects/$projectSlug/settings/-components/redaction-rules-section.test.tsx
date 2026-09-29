@@ -51,13 +51,13 @@ describe("RedactionRulesSection", () => {
   it("names the kind and what the rule matches", () => {
     setup()
 
-    expect(screen.getByText(/Exact terms/)).toBeDefined()
+    expect(screen.getByText(/Termos exatos/)).toBeDefined()
     expect(screen.getByText("ACME-1234")).toBeDefined()
   })
 
   it("removes a rule", () => {
     const { written } = setup([TERMS, { ...TERMS, id: "r2", label: "STAFF_ID" }])
-    screen.getByRole("button", { name: "Remove ACCOUNT_NUMBER" }).click()
+    screen.getByRole("button", { name: "Remover ACCOUNT_NUMBER" }).click()
 
     expect(written().map((rule) => rule.id)).toEqual(["r2"])
   })
@@ -65,13 +65,13 @@ describe("RedactionRulesSection", () => {
   it("warns when two rules share a label, since their counts are reported together", () => {
     setup([TERMS, { ...TERMS, id: "r2" }])
 
-    expect(screen.getAllByText(/reported together/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/contagens de correspondências são somadas/).length).toBeGreaterThan(0)
   })
 
   it("offers no editing controls at all when disabled", () => {
     setup([TERMS], true)
 
-    expect(screen.queryByRole("button", { name: "Add rule" })).toBeNull()
+    expect(screen.queryByRole("button", { name: "Adicionar regra" })).toBeNull()
     expect(screen.queryByRole("button", { name: "Remove ACCOUNT_NUMBER" })).toBeNull()
     expect(screen.getByRole<HTMLInputElement>("checkbox", { name: "ACCOUNT_NUMBER" }).disabled).toBe(true)
   })
@@ -79,6 +79,6 @@ describe("RedactionRulesSection", () => {
   it("says so when there are no rules rather than rendering an empty list", () => {
     setup([])
 
-    expect(screen.getByText("No custom rules yet.")).toBeDefined()
+    expect(screen.getByText("Nenhuma regra personalizada ainda.")).toBeDefined()
   })
 })

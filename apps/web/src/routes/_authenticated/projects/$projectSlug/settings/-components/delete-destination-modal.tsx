@@ -51,7 +51,7 @@ export function DeleteDestinationModal({
       footer={
         <div className="flex flex-row items-center gap-2">
           <Button variant="outline" onClick={onClose} disabled={deleting}>
-            Cancel
+            Cancelar
           </Button>
           <Button variant="destructive" onClick={() => void handleConfirm()} disabled={deleting} isLoading={deleting}>
             <Icon icon={Trash2} size="sm" />

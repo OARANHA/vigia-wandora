@@ -531,7 +531,7 @@ export function BehavioursTreeBody({
                   {...(tw.pickerStartFrom ? { startTimeFrom: tw.pickerStartFrom } : {})}
                   {...(tw.pickerStartTo ? { startTimeTo: tw.pickerStartTo } : {})}
                   {...(coverage ? { minTime: coverage.fromIso, maxTime: coverage.toIso } : {})}
-                  placeholder={coverage ? "Covered range" : "All time"}
+                  placeholder={coverage ? "Período coberto" : "Todo o período"}
                   onChange={tw.onTimeChange}
                 />
                 {coverage ? <CoverageNote coverage={coverage} /> : null}

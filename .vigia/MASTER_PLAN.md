@@ -305,7 +305,7 @@ Decisão consolidada em 2026-09-28:
 - `vigia.wandora.com.br` continua como entrada pública do produto;
 - a VPS dedicada do Vigia terá Docker, Traefik e Portainer próprios;
 - a rede de borda do Vigia será própria e não reutilizará `wandora-edge`;
-- `ops.vigia.wandora.com.br` é o hostname administrativo preferido para o Portainer/console operacional;
+- `ops-vigia.wandora.com.br` é o hostname administrativo canônico para o Portainer/console operacional;\n- `ops.vigia.wandora.com.br` permanece apenas como alias temporário durante a migração de DNS e deve ser removido após a validação pública do novo hostname;\n- a escolha por um hostname de primeiro nível preserva o proxy TLS da Cloudflare no plano atual, sem exigir certificado pago para subdomínio aninhado;
 - `mcp.wandora.com.br` permanece somente como control plane externo da corporação, sem participar do caminho de runtime do Vigia.
 
 O runtime do Vigia deve continuar funcional mesmo se a VPS da Wandora estiver indisponível.
@@ -372,7 +372,7 @@ O diferencial que merece código próprio é a combinação de:
 
 ## 14. Próxima ação objetiva
 
-**Fazer o primeiro deploy executável do Vigia, publicar `vigia.wandora.com.br` pelo Traefik e validar um trace OTLP real ponta a ponta.**
+**Concluir a migração administrativa para `ops-vigia.wandora.com.br` e validar o primeiro trace OTLP real ponta a ponta pelo runtime público já implantado.**
 
 Depois do smoke test público, avançar para a definição de sucesso por agente e Business Events.
 

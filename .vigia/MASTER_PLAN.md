@@ -198,12 +198,11 @@ Marca:
 
 URLs:
 
-- `vigia.wandora.com.br` — **domínio já existente** e entrada pública inicial do Vigia;
-- `app.vigia.wandora.com.br` — opcional/futuro se houver necessidade real de separar site e aplicação;
-- `api.vigia.wandora.com.br` — planejado;
-- `ingest.vigia.wandora.com.br` — planejado.
+- `vigia.wandora.com.br` — entrada pública canônica do produto e, no MVP, endpoint único para web/API/ingest;
+- `ops-vigia.wandora.com.br` — console operacional/Portainer do Vigia;
+- `app-vigia.wandora.com.br`, `docs-vigia.wandora.com.br`, `ingest-vigia.wandora.com.br`, `status-vigia.wandora.com.br` e `vigia-infrastructure.wandora.com.br` — nomes já reservados no DNS/Cloudflare para separação futura, sem rota de produto ativa enquanto não houver necessidade real.
 
-Para o primeiro produto executável, preferir a simplicidade de usar `vigia.wandora.com.br` como URL principal em vez de criar subdomínios adicionais antes da necessidade.
+Para o primeiro produto executável, manter a simplicidade de `vigia.wandora.com.br` como endpoint público único da aplicação. Subdomínios reservados não devem criar componentes ou rotas adicionais por antecipação.
 
 ## 9. Estratégia de upstream Latitude
 
@@ -306,8 +305,7 @@ Decisão consolidada em 2026-09-28:
 - a VPS dedicada do Vigia terá Docker, Traefik e Portainer próprios;
 - a rede de borda do Vigia será própria e não reutilizará `wandora-edge`;
 - `ops-vigia.wandora.com.br` é o hostname administrativo canônico para o Portainer/console operacional;
-- `ops.vigia.wandora.com.br` permanece apenas como alias temporário durante a migração de DNS e deve ser removido após a validação pública do novo hostname;
-- a escolha por um hostname de primeiro nível preserva o proxy TLS da Cloudflare no plano atual, sem exigir certificado pago para subdomínio aninhado;
+- `ops-vigia.wandora.com.br` foi validado publicamente em 2026-09-29 e substitui definitivamente o hostname aninhado anterior; a escolha por um hostname de primeiro nível preserva o proxy TLS da Cloudflare no plano atual, sem exigir certificado pago para subdomínio aninhado;
 - `mcp.wandora.com.br` permanece somente como control plane externo da corporação, sem participar do caminho de runtime do Vigia.
 
 O runtime do Vigia deve continuar funcional mesmo se a VPS da Wandora estiver indisponível.

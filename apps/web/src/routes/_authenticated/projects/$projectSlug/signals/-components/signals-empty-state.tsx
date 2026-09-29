@@ -1,5 +1,6 @@
 import { Button, Icon, Text } from "@repo/ui"
-import { ExternalLinkIcon, PlusIcon, SearchAlert } from "lucide-react"
+import { PlusIcon, SearchAlert } from "lucide-react"
+import { ptBR } from "../../../../../../lib/i18n/pt-BR.ts"
 
 export function SignalsEmptyState({
   isLoading = false,
@@ -15,11 +16,11 @@ export function SignalsEmptyState({
           <Icon icon={SearchAlert} size="lg" color="foregroundMuted" />
         </div>
         <div className="flex flex-col items-center gap-2">
-          <Text.H3 centered>{isLoading ? "Loading signals" : "No signals yet"}</Text.H3>
+          <Text.H3 centered>{isLoading ? ptBR.clientPages.signals.loadingTitle : ptBR.clientPages.signals.emptyTitle}</Text.H3>
           <Text.H5 color="foregroundMuted" centered>
             {isLoading
-              ? "Preparing your signals view."
-              : "Latitude finds signals automatically by grouping failed annotations on your traces. Start annotating traces and recurring problems will show up here."}
+              ? ptBR.clientPages.signals.loadingDescription
+              : ptBR.clientPages.signals.emptyDescription}
           </Text.H5>
         </div>
         {!isLoading ? (
@@ -27,15 +28,9 @@ export function SignalsEmptyState({
             {onCreate ? (
               <Button onClick={onCreate}>
                 <Icon size="sm" icon={PlusIcon} />
-                New signal
+                {ptBR.clientPages.signals.create}
               </Button>
             ) : null}
-            <a href="https://docs.latitude.so/signals/overview" target="_blank" rel="noopener noreferrer">
-              <Button variant="outline">
-                <Icon size="sm" icon={ExternalLinkIcon} />
-                Read the docs
-              </Button>
-            </a>
           </div>
         ) : null}
       </div>

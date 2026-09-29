@@ -6,7 +6,7 @@ import { Link } from "@tanstack/react-router"
 import { ChevronDown, History, Pause, Play, Trash2 } from "lucide-react"
 import { useRef, useState } from "react"
 import {
-  cancelDestinationBackfill,
+  cancelDestinationImportar histórico,
   type DestinationRecord,
   type DestinationSyncRunRecord,
   getDestinationFreshness,
@@ -15,7 +15,7 @@ import {
   resumeDestination,
 } from "../../../../../../domains/destinations/destinations.functions.ts"
 import { toUserMessage } from "../../../../../../lib/errors.ts"
-import { BackfillDestinationModal } from "./backfill-destination-modal.tsx"
+import { Importar históricoDestinationModal } from "./backfill-destination-modal.tsx"
 import { DeleteDestinationModal } from "./delete-destination-modal.tsx"
 import { DESTINATION_HEALTH_BADGE, DESTINATION_KIND_LABEL, formatLag } from "./destination-display.ts"
 import { DestinationFormModal } from "./destination-form-modal.tsx"
@@ -26,12 +26,12 @@ const eventCountFormatter = new Intl.NumberFormat("en-US")
 
 function LastRunSummary({ run }: { run: DestinationSyncRunRecord | null | undefined }) {
   if (!run) {
-    return <Text.H6 color="foregroundMuted">Not synced yet · waiting for the next run</Text.H6>
+    return <Text.H6 color="foregroundMuted">Ainda não sincronizado · aguardando a próxima execução</Text.H6>
   }
 
   return (
     <Text.H6 color="foregroundMuted">
-      {`Last synced ${relativeTime(new Date(run.finishedAt))} · ${eventCountFormatter.format(run.eventsSent)} events`}
+      {`Última sincronização ${relativeTime(new Date(run.finishedAt))} · ${eventCountFormatter.format(run.eventsSent)} eventos`}
     </Text.H6>
   )
 }
@@ -60,7 +60,7 @@ export function DestinationCard({
   const [editing, setEditing] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [showSources, setShowSources] = useState(false)
-  const [backfillOpen, setBackfillOpen] = useState(false)
+  const [backfillOpen, setImportar históricoOpen] = useState(false)
   // Until this instant, poll freshness even before the worker flips it in-progress, so a
   // just-triggered backfill is picked up within a tick or two instead of after staleTime.
   const pollUntil = useRef(0)
@@ -108,23 +108,23 @@ export function DestinationCard({
       if (result.backfillsFailed > 0) {
         toast({
           variant: "destructive",
-          description: "Resumed, but the gap backfill couldn't start for some sources. Retry it from Backfill.",
+          description: "Retomado, mas não foi possível importar a lacuna para algumas origens. Tente novamente em Importar histórico.",
         })
       } else if (result.backfillsStarted > 0) {
-        toast({ description: "Resumed. Backfilling the window it missed while paused." })
+        toast({ description: "Retomado. Importando o período não sincronizado durante a pausa." })
       } else {
-        toast({ description: "Destination resumed." })
+        toast({ description: "Destino retomado." })
       }
     },
     onError: (error) => toast({ variant: "destructive", description: toUserMessage(error) }),
   })
 
-  const cancelBackfill = useMutation({
-    mutationFn: () => cancelDestinationBackfill({ data: { projectId, destinationId: destination.id } }),
+  const cancelImportar histórico = useMutation({
+    mutationFn: () => cancelDestinationImportar histórico({ data: { projectId, destinationId: destination.id } }),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: destinationsQueryKey(projectId) })
       void queryClient.invalidateQueries({ queryKey: ["destination-freshness", destination.id] })
-      toast({ description: "Backfill cancelled." })
+      toast({ description: "Importação histórica cancelada." })
     },
     onError: (error) => toast({ variant: "destructive", description: toUserMessage(error) }),
   })
@@ -159,7 +159,7 @@ export function DestinationCard({
                   onClick={() => setShowSources((open) => !open)}
                   className="flex flex-row items-center gap-0.5 transition-opacity hover:opacity-80"
                 >
-                  <Text.H6 color="foregroundMuted">{showSources ? "Hide sources" : "By source"}</Text.H6>
+                  <Text.H6 color="foregroundMuted">{showSources ? "Ocultar origens" : "Por origem"}</Text.H6>
                   <Icon
                     icon={ChevronDown}
                     size="sm"
@@ -172,14 +172,14 @@ export function DestinationCard({
           {latestRun?.status === "failed" ? (
             <>
               <Text.H6 color="foregroundMuted">·</Text.H6>
-              <Text.H6 color="destructiveMutedForeground">last run failed</Text.H6>
+              <Text.H6 color="destructiveMutedForeground">última execução falhou</Text.H6>
             </>
           ) : null}
           {health.eventsDropped > 0 ? (
             <>
               <Text.H6 color="foregroundMuted">·</Text.H6>
               <Text.H6 color="warningMutedForeground">
-                {`${eventCountFormatter.format(health.eventsDropped)} dropped`}
+                {`${eventCountFormatter.format(health.eventsDropped)} descartados`}
               </Text.H6>
             </>
           ) : null}
@@ -195,11 +195,11 @@ export function DestinationCard({
           <Alert
             variant="destructive"
             showIcon
-            title="Destination quarantined"
+            title="Destino em quarentena"
             description={
               destination.lastFailureMessage
-                ? `Sync stopped after repeated failures: ${destination.lastFailureMessage}. Update the API key to reconnect.`
-                : "Sync stopped after repeated failures. Update the API key to reconnect."
+                ? `A sincronização parou após falhas repetidas: ${destination.lastFailureMessage}. Atualize a chave de API para reconectar.`
+                : "A sincronização parou após falhas repetidas. Atualize a chave de API para reconectar."
             }
           />
         </div>
@@ -238,29 +238,29 @@ export function DestinationCard({
                 <Button variant="outline" size="sm" disabled>
                   <Icon icon={History} size="sm" />
                   {freshness?.backfillProgress != null
-                    ? `Backfilling… ${Math.round(freshness.backfillProgress * 100)}%`
-                    : "Backfilling…"}
+                    ? `Importando histórico… ${Math.round(freshness.backfillProgress * 100)}%`
+                    : "Importando histórico…"}
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={cancelBackfill.isPending}
-                  onClick={() => cancelBackfill.mutate()}
+                  disabled={cancelImportar histórico.isPending}
+                  onClick={() => cancelImportar histórico.mutate()}
                 >
                   Cancel
                 </Button>
               </>
             ) : freshness?.backfillAvailable ? (
-              <Button variant="outline" size="sm" onClick={() => setBackfillOpen(true)}>
+              <Button variant="outline" size="sm" onClick={() => setImportar históricoOpen(true)}>
                 <Icon icon={History} size="sm" />
-                Backfill
+                Importar histórico
               </Button>
             ) : null
           ) : null}
           {destination.status === "paused" ? (
             <Button variant="outline" size="sm" disabled={togglePending} onClick={() => resume.mutate()}>
               <Icon icon={Play} size="sm" />
-              Resume
+              Retomar
             </Button>
           ) : (
             <Button
@@ -299,10 +299,10 @@ export function DestinationCard({
         <DeleteDestinationModal projectId={projectId} destination={destination} onClose={() => setDeleting(false)} />
       ) : null}
       {backfillOpen ? (
-        <BackfillDestinationModal
+        <Importar históricoDestinationModal
           projectId={projectId}
           destination={destination}
-          onClose={() => setBackfillOpen(false)}
+          onClose={() => setImportar históricoOpen(false)}
           onStarted={() => {
             pollUntil.current = Date.now() + 60_000
             void queryClient.invalidateQueries({ queryKey: ["destination-freshness", destination.id] })

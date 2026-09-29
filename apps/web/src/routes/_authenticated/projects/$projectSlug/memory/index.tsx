@@ -11,6 +11,7 @@ import { useAnalyticsTimeWindow } from "../../../../../domains/projects/use-anal
 import { useProjectFirstTraceAt, useProjectLastTraceAt } from "../../../../../domains/traces/traces.collection.ts"
 import { ListingLayout as Layout } from "../../../../../layouts/ListingLayout/index.tsx"
 import { useParamState } from "../../../../../lib/hooks/useParamState.ts"
+import { ptBR } from "../../../../../lib/i18n/pt-BR.ts"
 import { BreadcrumbText } from "../../../-components/breadcrumb-ui.tsx"
 import { ColumnsSelector } from "../-components/columns-selector.tsx"
 import { useTableColumnSettings } from "../-components/table-column-settings.ts"
@@ -57,7 +58,7 @@ function parseSorting(raw: string): MemoryStoresSorting {
 }
 
 function MemoryBreadcrumb() {
-  return <BreadcrumbText variant="current">Memory</BreadcrumbText>
+  return <BreadcrumbText variant="current">{ptBR.clientShell.sections.memory}</BreadcrumbText>
 }
 
 export const Route = createFileRoute("/_authenticated/projects/$projectSlug/memory/")({

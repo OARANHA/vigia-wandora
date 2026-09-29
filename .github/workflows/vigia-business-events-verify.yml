@@ -27,6 +27,8 @@ jobs:
         run: npm install -g pnpm@10.33.0
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Build telemetry workspace dependency
+        run: pnpm --filter @latitude-data/telemetry build
       - name: Typecheck operations
         run: pnpm --filter @repo/operations typecheck
       - name: Test business events API

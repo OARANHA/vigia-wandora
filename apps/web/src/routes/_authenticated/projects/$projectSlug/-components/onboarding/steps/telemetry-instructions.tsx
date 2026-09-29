@@ -514,7 +514,7 @@ export function TelemetryInstructions({
   const slugForSnippets = resolvedProjectSlug || "your-project-slug"
   const projectSlugForCopy = resolvedProjectSlug
 
-  const codingAgentPrompt = getCodingAgentTelemetryPrompt(slugForSnippets, defaultApiKeyToken)
+  const codingAgentPrompt = getCodingAgentTelemetryPrompt(slugForSnippets)
 
   const integrationTabOptions = useMemo(() => {
     if (isCodingMachineProvider(selectedProvider.id)) return []
@@ -593,8 +593,8 @@ export function TelemetryInstructions({
           </Text.H5>
           <CodeBlock value={codingAgentPrompt} copyable wrapLines />
           <Text.H5 color="foregroundMuted">
-            This path uses standard OpenTelemetry and the public Vigia ingest contract. No Latitude skill or Latitude
-            MCP setup is required.
+            This path uses standard OpenTelemetry and the public Vigia ingest contract. No extra vendor-specific skill
+            or MCP setup is required.
           </Text.H5>
         </div>
       ) : (

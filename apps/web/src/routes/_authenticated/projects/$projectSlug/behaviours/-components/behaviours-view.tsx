@@ -334,7 +334,7 @@ export function BehaviourDetailDrawer({
                 </Badge>
               ) : null}
               <Badge variant="muted" ellipsis iconProps={{ icon: TagIcon, placement: "start" }}>
-                {`${formatCount(node.subtreeSessionCount)} sessions`}
+                {`${formatCount(node.subtreeSessionCount)} sessões`}
               </Badge>
               <Badge
                 variant={trendBadgeVariant(node.trend.status)}
@@ -345,18 +345,18 @@ export function BehaviourDetailDrawer({
               </Badge>
               {node.firstSeenLabel === "older" || node.firstSeenLabel === "unknown" ? null : (
                 <Badge variant="muted" ellipsis iconProps={{ icon: SparklesIcon, placement: "start" }}>
-                  {`First seen ${node.firstSeenLabel.replaceAll("_", " ")}`}
+                  {`Primeira ocorrência ${node.firstSeenLabel.replaceAll("_", " ")}`}
                 </Badge>
               )}
             </div>
             <Text.H6 color="foregroundMuted">
-              First seen {node.firstSeenLabel === "unknown" ? "on or before " : ""}
-              {formatDate(cluster.firstObservedAt)} · Last seen {relativeTime(new Date(cluster.lastObservedAt))}
+              Primeira ocorrência {node.firstSeenLabel === "unknown" ? "em ou antes de " : ""}
+              {formatDate(cluster.firstObservedAt)} · Última ocorrência {relativeTime(new Date(cluster.lastObservedAt))}
             </Text.H6>
             <div className="flex flex-col gap-2">
               <Text.H2>{cluster.name}</Text.H2>
               <Text.H5 color="foregroundMuted">
-                {cluster.description || "This behavior has not been named in detail yet."}
+                {cluster.description || "Este comportamento ainda não tem uma descrição detalhada."}
               </Text.H5>
             </div>
           </div>
@@ -403,7 +403,7 @@ export function BehaviourDetailDrawer({
                           }}
                         >
                           <Icon icon={XIcon} size="xs" />
-                          Clear filters
+                          Limpar filtros
                         </Button>
                       ) : null}
                     </div>
@@ -421,14 +421,14 @@ export function BehaviourDetailDrawer({
                       {momentRange
                         ? selectedMomentRangeLabel(momentRange)
                         : sessionFilter === "all"
-                          ? "All sessions for this behavior"
-                          : `Sessions matching ${sessionFilter.replaceAll("_", " ")}`}
+                          ? "Todas as sessões deste comportamento"
+                          : `Sessões correspondentes a ${sessionFilter.replaceAll("_", " ")}`}
                     </Text.H6>
                     {sessionSelection.selectedCount > 0 ? (
                       <div className="flex items-center gap-2">
                         <Button variant="outline" size="sm" onClick={() => setAddToDatasetOpen(true)}>
                           <Icon icon={DatabaseIcon} size="xs" />
-                          Add to dataset ({sessionSelection.selectedCount.toLocaleString()})
+                          Adicionar ao conjunto de dados ({sessionSelection.selectedCount.toLocaleString()})
                         </Button>
                       </div>
                     ) : null}
@@ -609,7 +609,7 @@ function BehaviourSessionsTable({
       },
       {
         key: "signals",
-        header: "Moments",
+        header: "Momentos",
         width: 220,
         render: (session) =>
           session.momentKinds.length > 0 ? session.momentKinds.join(", ").replaceAll("_", " ") : "-",
@@ -632,7 +632,7 @@ function BehaviourSessionsTable({
         getRowKey={getRowKey}
         selection={selection}
         onRowClick={onSessionClick}
-        getRowAriaLabel={(session) => `Open session ${session.sessionId} in the session panel`}
+        getRowAriaLabel={(session) => `Abrir sessão ${session.sessionId} no painel de sessões`}
         rowInteractionRole="button"
         {...(activeRowKey ? { activeRowKey } : {})}
         scrollAreaLayout="intrinsic"
@@ -993,7 +993,7 @@ export function BehavioursView({
   const columns: InfiniteTableColumn<BehaviourTableRow>[] = [
     {
       key: "behaviour",
-      header: "Behavior",
+      header: "Comportamento",
       width: 420,
       minWidth: 300,
       render: (row) => (
@@ -1006,14 +1006,14 @@ export function BehavioursView({
     },
     {
       key: "sessions",
-      header: "Sessions",
+      header: "Sessões",
       width: 110,
       align: "end",
       render: (row) => formatCount(row.node.subtreeSessionCount),
     },
     {
       key: "signals",
-      header: "Moments",
+      header: "Momentos",
       width: 240,
       render: (row) => {
         const signals = row.node.intelligence.signals.filter((signal) => signal.rate > 0)
@@ -1023,7 +1023,7 @@ export function BehavioursView({
     },
     {
       key: "trend",
-      header: "Trend",
+      header: "Tendência",
       width: 130,
       render: (row) => {
         const status = row.hasChildren ? subtreeTrendStatus(row.node) : row.node.trend.status
@@ -1040,7 +1040,7 @@ export function BehavioursView({
     },
     {
       key: "seen",
-      header: "First seen",
+      header: "Primeira ocorrência",
       width: 170,
       render: (row) => {
         const firstObservedAt = row.node.cluster.firstObservedAt
@@ -1053,13 +1053,13 @@ export function BehavioursView({
           <Tooltip
             asChild
             trigger={
-              <span>{bounded ? `Before ${formatDate(firstObservedAt)}` : relativeTime(new Date(firstObservedAt))}</span>
+              <span>{bounded ? `Antes de ${formatDate(firstObservedAt)}` : relativeTime(new Date(firstObservedAt))}</span>
             }
           >
             <div className="flex flex-col gap-1">
               <Text.H6 color="foregroundMuted">Primeira ocorrência</Text.H6>
               <Text.H6B>
-                {bounded ? `On or before ${formatDate(firstObservedAt)}` : formatDate(firstObservedAt)}
+                {bounded ? `Em ou antes de ${formatDate(firstObservedAt)}` : formatDate(firstObservedAt)}
               </Text.H6B>
               {bounded ? (
                 <Text.H6 color="foregroundMuted">O agrupamento não alcança períodos anteriores, então pode ser mais antigo.</Text.H6>

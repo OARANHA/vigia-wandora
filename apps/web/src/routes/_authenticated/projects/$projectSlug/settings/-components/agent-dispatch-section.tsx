@@ -80,24 +80,29 @@ export interface DispatchConfigFormValues {
 const KIND_LABELS = AGENT_DISPATCH_KIND_LABELS
 
 const DEEP_LINK_LABELS: Record<AgentDispatchKindKey, string> = {
-  cursor: "View in Cursor",
-  claude_code: "View in Claude",
-  linear: "View Linear issue",
-  webhook: "View delivery",
+  cursor: "Abrir no Cursor",
+  claude_code: "Abrir no Claude",
+  linear: "Abrir issue no Linear",
+  webhook: "Abrir entrega",
 }
 
 export const DISPATCH_ERROR_TITLES: Record<string, string> = {
-  auth: "Authentication error",
-  config: "Dispatch request rejected",
-  rate_limited: "Rate limited",
-  transport: "Network error",
+  auth: "Erro de autenticação",
+  config: "Envio rejeitado",
+  rate_limited: "Limite de requisições atingido",
+  transport: "Erro de rede",
+}
+
+const DISPATCH_STATUS_LABELS: Record<string, string> = {
+  dispatched: "Enviado",
+  failed: "Falhou",
 }
 
 const DISPATCH_ERROR_FALLBACKS: Record<string, string> = {
-  auth: "The integration credentials were rejected. Reconnect the integration and try again.",
-  config: "The provider rejected the dispatch request. New failures include the provider response here.",
-  rate_limited: "The provider rate-limited this dispatch. It should retry automatically.",
-  transport: "The provider could not be reached. It should retry automatically.",
+  auth: "As credenciais da integração foram rejeitadas. Reconecte a integração e tente novamente.",
+  config: "O provedor rejeitou o envio. Novas falhas exibem aqui a resposta do provedor.",
+  rate_limited: "O provedor limitou este envio. Uma nova tentativa deve ocorrer automaticamente.",
+  transport: "Não foi possível acessar o provedor. Uma nova tentativa deve ocorrer automaticamente.",
 }
 
 function getDispatchErrorTitle(dispatch: AgentDispatchRecord): string | null {
@@ -131,12 +136,12 @@ function DispatchErrorDetailModal({
       dismissible
       onOpenChange={(next) => (!next ? onClose() : undefined)}
       title={title}
-      description="Full error response from the provider."
+      description="Resposta completa de erro do provedor."
       footer={<CloseTrigger />}
     >
       <div className="group relative">
         <div className="absolute top-0 right-0 z-10 rounded-tr-md rounded-bl-lg bg-muted p-0.5">
-          <CopyButton value={detail} tooltip="Copy" />
+          <CopyButton value={detail} tooltip="Copiar" />
         </div>
         <textarea
           readOnly
@@ -156,29 +161,29 @@ const ACTIVE_DISPATCH_TRIGGERS = [
 ] as const
 
 export const DISPATCH_TRIGGER_TITLES: Record<string, string> = {
-  "signal.discovered": "New signal",
-  "incident.opened": "Escalating signal",
-  "signal.regressed": "Regressed signal",
-  "monitor.incident": "Monitor incident",
-  manual: "Manual send",
+  "signal.discovered": "Novo sinal",
+  "incident.opened": "Sinal em escalada",
+  "signal.regressed": "Sinal regredido",
+  "monitor.incident": "Incidente de monitor",
+  manual: "Envio manual",
 }
 
 const TRIGGER_LABELS: Record<(typeof ACTIVE_DISPATCH_TRIGGERS)[number], { title: string; description: string }> = {
   "signal.discovered": {
-    title: "New signal",
-    description: "Dispatch when Latitude discovers a new signal.",
+    title: "Novo sinal",
+    description: "Envie quando o Vigia descobrir um novo sinal.",
   },
   "incident.opened": {
-    title: "Escalating signal",
-    description: "Dispatch when a signal escalates into an incident.",
+    title: "Sinal em escalada",
+    description: "Envie quando um sinal evoluir para um incidente.",
   },
   "signal.regressed": {
-    title: "Regressed signal",
-    description: "Dispatch when a resolved signal starts occurring again.",
+    title: "Sinal regredido",
+    description: "Envie quando um sinal resolvido voltar a ocorrer.",
   },
   "monitor.incident": {
-    title: "Monitor incident",
-    description: "Dispatch when a threshold or escalating monitor opens an incident.",
+    title: "Incidente de monitor",
+    description: "Envie quando um monitor de limite ou escalada abrir um incidente.",
   },
 }
 
@@ -187,7 +192,7 @@ function isActiveDispatchTrigger(trigger: string): trigger is (typeof ACTIVE_DIS
 }
 
 const CLAUDE_ROUTINE_TEMPLATE =
-  "Inspect the Latitude signal, identify the regression or newly discovered issue, implement the fix, run the relevant checks, and report what changed."
+  "Inspecione o sinal do Vigia, identifique a regressão ou o novo problema, implemente a correção, execute as verificações relevantes e informe o que mudou."
 
 function extractClaudeRoutineTriggerId(routineUrl: string) {
   return routineUrl.trim().match(/\/routines\/(trig_[^/?#]+)/)?.[1] ?? null
@@ -261,7 +266,7 @@ export function DispatchConnectionSection({
       await queryClient.invalidateQueries({ queryKey: orgDefaultConfigQueryKey(kind) })
       await queryClient.invalidateQueries({ queryKey: projectDispatchSettingsQueryKey(projectId, kind) })
       await queryClient.invalidateQueries({ queryKey: sendToDestinationsQueryKey(projectId) })
-      toast({ description: `${KIND_LABELS[kind]} disconnected` })
+      toast({ description: `${KIND_LABELS[kind]} desconectado` })
       setConfirmOpen(false)
       if (canDisconnect) {
         await navigate({ to: "/projects/$projectSlug/settings/organization/integrations", params: { projectSlug } })
@@ -276,12 +281,12 @@ export function DispatchConnectionSection({
   return (
     <>
       <SettingsCard
-        title="Connection"
-        description="Shared by every project in your organization."
+        title="Conexão"
+        description="Compartilhada por todos os projetos da empresa."
         actions={
           canDisconnect ? (
             <Button variant="destructive" onClick={() => setConfirmOpen(true)}>
-              Disconnect
+              Desconectar
             </Button>
           ) : (
             <Button asChild variant="ghost">
@@ -289,7 +294,7 @@ export function DispatchConnectionSection({
                 to="/projects/$projectSlug/settings/organization/integrations/$integrationSlug"
                 params={{ projectSlug, integrationSlug: integrationSlug(kind) }}
               >
-                Manage for the organization →
+                Gerenciar para a empresa →
               </Link>
             </Button>
           )
@@ -298,7 +303,7 @@ export function DispatchConnectionSection({
       >
         <div className="flex min-w-0 flex-col gap-0.5">
           <Text.H5 weight="semibold">{integration.vendorAccountId}</Text.H5>
-          <Text.H6 color="foregroundMuted">Connected {relativeTime(new Date(integration.installedAt))}</Text.H6>
+          <Text.H6 color="foregroundMuted">Conectado {relativeTime(new Date(integration.installedAt))}</Text.H6>
         </div>
       </SettingsCard>
 
@@ -309,8 +314,8 @@ export function DispatchConnectionSection({
           onOpenChange={(next) => {
             if (!next && !disconnectMutation.isPending) setConfirmOpen(false)
           }}
-          title={`Disconnect ${KIND_LABELS[kind]}`}
-          description={`Latitude will stop dispatching to ${KIND_LABELS[kind]}, and the organization default plus every project override for it are removed. This affects every project in the organization.`}
+          title={`Desconectar ${KIND_LABELS[kind]}`}
+          description={`O Vigia deixará de enviar para ${KIND_LABELS[kind]}; o padrão da empresa e todas as substituições por projeto serão removidos. Isso afeta todos os projetos da empresa.`}
           footer={
             <div className="flex flex-row items-center gap-2">
               <Button variant="outline" onClick={() => setConfirmOpen(false)} disabled={disconnectMutation.isPending}>
@@ -322,7 +327,7 @@ export function DispatchConnectionSection({
                 isLoading={disconnectMutation.isPending}
                 disabled={disconnectMutation.isPending}
               >
-                Disconnect {KIND_LABELS[kind]}
+                Desconectar {KIND_LABELS[kind]}
               </Button>
             </div>
           }
@@ -377,7 +382,7 @@ function DispatchBehaviorSection({
       await resetProjectDispatchOverride({ data: { projectId, integrationId: integration.id } })
       setStagedScope(null)
       await invalidate()
-      toast({ description: "This project now follows the organization default" })
+      toast({ description: "Este projeto agora segue o padrão da empresa" })
     } catch (error) {
       toast({ variant: "destructive", description: toUserMessage(error) })
     } finally {
@@ -388,8 +393,8 @@ function DispatchBehaviorSection({
   return (
     <ScopedSetting
       idPrefix="dispatch-behavior"
-      title="Dispatching"
-      description="When Latitude dispatches to this integration, and what it sends."
+      title="Envios automáticos"
+      description="Quando o Vigia envia para esta integração e quais dados são enviados."
       scope={{
         kind: "selectable",
         value: scope,
@@ -398,10 +403,10 @@ function DispatchBehaviorSection({
       pendingChange={
         pendingRemoval
           ? {
-              title: "Follow the organization dispatch behavior?",
+              title: "Seguir o comportamento de envio da empresa?",
               description:
-                "This project will follow the organization default, and its own dispatch behavior is discarded.",
-              applyLabel: "Follow organization",
+                "Este projeto passará a seguir o padrão da empresa e seu comportamento próprio de envio será descartado.",
+              applyLabel: "Seguir empresa",
               isApplying: isSwitching,
               onApply: () => void applyRemoval(),
               onDiscard: () => setStagedScope(null),
@@ -414,15 +419,15 @@ function DispatchBehaviorSection({
           <div className="flex flex-row flex-wrap items-center justify-between gap-4">
             <Text.H6 color="foregroundMuted">
               {overrideCount > 0
-                ? `Organization default in effect for ${projectCount - overrideCount} of ${projectCount} projects · ${overrideCount} override it`
-                : `Organization default in effect for all ${projectCount} projects`}
+                ? `Padrão da empresa em vigor para ${projectCount - overrideCount} de ${projectCount} projetos · ${overrideCount} usam configuração própria`
+                : `Padrão da empresa em vigor para todos os ${projectCount} projetos`}
             </Text.H6>
             <Button asChild variant="outline">
               <Link
                 to="/projects/$projectSlug/settings/organization/integrations/$integrationSlug"
                 params={{ projectSlug, integrationSlug: integrationSlug(kind) }}
               >
-                Edit organization default
+                Editar padrão da empresa
               </Link>
             </Button>
           </div>
@@ -438,7 +443,7 @@ function DispatchBehaviorSection({
         webhookSecret={null}
         readOnly={scope === "organization"}
         submitWhenPristine={storedScope === "organization"}
-        submitLabel="Save for this project"
+        submitLabel="Salvar neste projeto"
         onSubmit={async (values) => {
           await upsertProjectDispatchOverride({
             data: {
@@ -453,7 +458,7 @@ function DispatchBehaviorSection({
           })
           setStagedScope(null)
           await invalidate()
-          toast({ description: `${KIND_LABELS[kind]} settings saved for this project` })
+          toast({ description: `Configurações de ${KIND_LABELS[kind]} salvas neste projeto` })
         }}
       />
     </ScopedSetting>
@@ -487,16 +492,16 @@ export function OrgDispatchBehaviorSection({
 
   return (
     <SettingsCard
-      title="Dispatching"
-      description="When Latitude dispatches to this integration, and what it sends."
+      title="Envios automáticos"
+      description="Quando o Vigia envia para esta integração e quais dados são enviados."
       notice={
-        canEdit ? null : <Text.H6 color="foregroundMuted">Only organization owners can change this default.</Text.H6>
+        canEdit ? null : <Text.H6 color="foregroundMuted">Apenas proprietários da empresa podem alterar este padrão.</Text.H6>
       }
       footer={
         <Text.H6 color="foregroundMuted">
           {overrideCount > 0
-            ? `In effect for ${projectCount - overrideCount} of ${projectCount} projects · ${overrideCount} override it`
-            : `In effect for all ${projectCount} projects`}
+            ? `Em vigor para ${projectCount - overrideCount} de ${projectCount} projetos · ${overrideCount} usam configuração própria`
+            : `Em vigor para todos os ${projectCount} projetos`}
         </Text.H6>
       }
     >
@@ -511,7 +516,7 @@ export function OrgDispatchBehaviorSection({
           initial={config ?? null}
           webhookSecret={null}
           readOnly={!canEdit}
-          submitLabel="Save default"
+          submitLabel="Salvar padrão"
           onSubmit={(values) =>
             confirm.request(async () => {
               await upsertOrgDefaultDispatchConfig({
@@ -527,7 +532,7 @@ export function OrgDispatchBehaviorSection({
               await queryClient.invalidateQueries({ queryKey: orgDefaultConfigQueryKey(kind) })
               await queryClient.invalidateQueries({ queryKey: ["agent-dispatch-project-settings"] })
               await queryClient.invalidateQueries({ queryKey: ["send-to-destinations"] })
-              toast({ description: "Organization default updated" })
+              toast({ description: "Padrão da empresa atualizado" })
             })
           }
         />
@@ -554,7 +559,7 @@ export function AgentDispatchConfigFormInner({
   webhookSecret,
   readOnly = false,
   submitWhenPristine = false,
-  submitLabel = "Save settings",
+  submitLabel = "Salvar configurações",
   extraActions,
   onSubmit,
 }: {
@@ -692,7 +697,7 @@ export function AgentDispatchConfigFormInner({
       <form.Field name="triggers">
         {(field) => (
           <div className="flex max-w-3xl flex-col gap-3">
-            <Label>Triggers</Label>
+            <Label>Gatilhos</Label>
             {visibleTriggers.map((trigger) => {
               const meta = TRIGGER_LABELS[trigger]
               return (
@@ -728,8 +733,8 @@ export function AgentDispatchConfigFormInner({
               cursorRepositoryOptions.length > 0 ? (
                 <Select
                   name="repoUrl"
-                  label="Repository"
-                  placeholder={cursorRepositoriesLoading ? "Loading repositories" : "Select a repository"}
+                  label="Repositório"
+                  placeholder={cursorRepositoriesLoading ? "Carregando repositórios" : "Selecione um repositório"}
                   searchable
                   loading={cursorRepositoriesLoading}
                   disabled={readOnly || cursorRepositoriesLoading}
@@ -740,7 +745,7 @@ export function AgentDispatchConfigFormInner({
                 />
               ) : (
                 <Input
-                  label="Repository URL"
+                  label="URL do repositório"
                   placeholder="https://github.com/acme/app"
                   disabled={readOnly || cursorRepositoriesLoading}
                   value={field.state.value}
@@ -771,7 +776,7 @@ export function AgentDispatchConfigFormInner({
           <form.Field name="routineTriggerId">
             {(field) => (
               <Input
-                label="Routine trigger ID"
+                label="ID do gatilho da rotina"
                 disabled={readOnly}
                 value={field.state.value}
                 onChange={(event) => field.handleChange(event.target.value)}
@@ -787,9 +792,9 @@ export function AgentDispatchConfigFormInner({
             {(field) => (
               <Select
                 name="teamId"
-                label="Linear team"
-                description="Latitude creates issues in this team."
-                placeholder={linearTeamsLoading ? "Loading Linear teams" : "Select a Linear team"}
+                label="Equipe do Linear"
+                description="O Vigia cria issues nesta equipe."
+                placeholder={linearTeamsLoading ? "Carregando equipes do Linear" : "Selecione uma equipe do Linear"}
                 searchable
                 loading={linearTeamsLoading}
                 disabled={readOnly || linearTeamsLoading}
@@ -804,9 +809,9 @@ export function AgentDispatchConfigFormInner({
             {(field) => (
               <Select
                 name="assigneeId"
-                label="Assignee"
-                description="Optional. Leave empty to create unassigned issues."
-                placeholder={linearMembersLoading ? "Loading Linear users" : "Select a Linear user"}
+                label="Responsável"
+                description="Opcional. Deixe vazio para criar issues sem responsável."
+                placeholder={linearMembersLoading ? "Carregando usuários do Linear" : "Selecione um usuário do Linear"}
                 searchable
                 removable
                 loading={linearMembersLoading}
@@ -823,11 +828,11 @@ export function AgentDispatchConfigFormInner({
         <div className="flex max-w-3xl flex-col gap-4">
           {effectiveWebhookSecret ? (
             <div className="flex flex-col gap-2">
-              <Text.H6>Webhook secret</Text.H6>
+              <Text.H6>Segredo do webhook</Text.H6>
               <CopyableText
                 value={effectiveWebhookSecret}
                 displayValue={maskSensitiveValue(effectiveWebhookSecret)}
-                tooltip="Copy webhook secret"
+                tooltip="Copiar segredo do webhook"
               />
             </div>
           ) : null}
@@ -936,7 +941,7 @@ export function ConnectAgentDispatchModal({
                 .url()
                 .refine(
                   (value) => extractClaudeRoutineTriggerId(value) !== null,
-                  "Paste the routine page URL from Claude Code.",
+                  "Cole a URL da página da rotina no Claude Code.",
                 ),
             })
             .parse(values)
@@ -963,14 +968,14 @@ export function ConnectAgentDispatchModal({
           await queryClient.invalidateQueries({ queryKey: orgDefaultConfigQueryKey(kind) })
           await queryClient.invalidateQueries({ queryKey: projectDispatchSettingsQueryKey(projectId, kind) })
           await queryClient.invalidateQueries({ queryKey: sendToDestinationsQueryKey(projectId) })
-          toast({ description: `${KIND_LABELS[kind]} connected` })
+          toast({ description: `${KIND_LABELS[kind]} conectado` })
           return
         }
         await queryClient.invalidateQueries({ queryKey: AGENT_DISPATCH_INTEGRATIONS_QUERY_KEY })
         await queryClient.invalidateQueries({ queryKey: orgDefaultConfigQueryKey(kind) })
         await queryClient.invalidateQueries({ queryKey: projectDispatchSettingsQueryKey(projectId, kind) })
         await queryClient.invalidateQueries({ queryKey: sendToDestinationsQueryKey(projectId) })
-        toast({ description: `${KIND_LABELS[kind]} connected` })
+        toast({ description: `${KIND_LABELS[kind]} conectado` })
         onClose()
       },
       { resetOnSuccess: true },
@@ -1072,38 +1077,38 @@ export function ConnectAgentDispatchModal({
           onClose()
         }
       }}
-      title={`Connect ${KIND_LABELS[kind]}`}
+      title={`Conectar ${KIND_LABELS[kind]}`}
       dismissible
       footer={
         webhookSecret ? (
-          <Button onClick={onClose}>Done</Button>
+          <Button onClick={onClose}>Concluir</Button>
         ) : (
           <Button onClick={() => void form.handleSubmit()} isLoading={form.state.isSubmitting}>
-            Connect
+            Conectar
           </Button>
         )
       }
     >
       {webhookSecret ? (
         <div className="flex flex-col gap-2">
-          <Text.H6>Copy this webhook secret now. It will not be shown again.</Text.H6>
-          <CopyableText value={webhookSecret} tooltip="Copy webhook secret" />
+          <Text.H6>Copie este segredo do webhook agora. Ele não será exibido novamente.</Text.H6>
+          <CopyableText value={webhookSecret} tooltip="Copiar segredo do webhook" />
         </div>
       ) : kind === "cursor" ? (
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-4">
             <Text.H5 display="block" weight="semibold">
-              Get your Cursor API key
+              Obtenha sua chave de API do Cursor
             </Text.H5>
             <div className="flex flex-col gap-2">
               <Text.H6 display="block" color="foregroundMuted">
-                1. Open Cursor API keys in a new tab and sign in to the workspace you want Latitude to use.
+                1. Abra as chaves de API do Cursor em uma nova aba e entre no workspace que o Vigia deve usar.
               </Text.H6>
               <Text.H6 display="block" color="foregroundMuted">
-                2. Create a new API key for Latitude, then copy it before leaving Cursor.
+                2. Crie uma nova chave de API para o Vigia e copie-a antes de sair do Cursor.
               </Text.H6>
               <Text.H6 display="block" color="foregroundMuted">
-                3. Return here, paste the key, and click Connect. You can revoke the key later from Cursor settings.
+                3. Volte aqui, cole a chave e clique em Conectar. Depois você pode revogá-la nas configurações do Cursor.
               </Text.H6>
             </div>
             <div className="flex flex-row flex-wrap items-center gap-2 pt-1">
@@ -1120,7 +1125,7 @@ export function ConnectAgentDispatchModal({
                   rel="noreferrer"
                 >
                   <Icon icon={ExternalLink} size="sm" />
-                  Cursor docs
+                  Documentação do Cursor
                 </a>
               </Button>
               <IntegrationDocsButton integration={kind} variant="ghost" />
@@ -1130,7 +1135,7 @@ export function ConnectAgentDispatchModal({
             <form.Field name="cursorApiKey">
               {(field) => (
                 <Input
-                  label="Cursor API key"
+                  label="Chave de API do Cursor"
                   type="password"
                   value={field.state.value}
                   onChange={(event) => {
@@ -1169,8 +1174,8 @@ export function ConnectAgentDispatchModal({
                   cursorRepositoryOptions.length > 0 ? (
                     <Select
                       name="repoUrl"
-                      label="Repository"
-                      placeholder="Select a repository"
+                      label="Repositório"
+                      placeholder="Selecione um repositório"
                       searchable
                       options={cursorRepositoryOptions}
                       value={field.state.value}
@@ -1179,7 +1184,7 @@ export function ConnectAgentDispatchModal({
                     />
                   ) : (
                     <Input
-                      label="Repository URL"
+                      label="URL do repositório"
                       placeholder="https://github.com/acme/app"
                       value={field.state.value}
                       onChange={(event) => field.handleChange(event.target.value)}
@@ -1207,25 +1212,25 @@ export function ConnectAgentDispatchModal({
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-4">
             <Text.H5 display="block" weight="semibold">
-              Connect a Claude Code routine
+              Conecte uma rotina do Claude Code
             </Text.H5>
             <div className="flex flex-col gap-2">
               <Text.H6 display="block" color="foregroundMuted">
-                1. Open Claude Code and create or select the routine Latitude should trigger.
+                1. Abra o Claude Code e crie ou selecione a rotina que o Vigia deve acionar.
               </Text.H6>
               <Text.H6 display="block" color="foregroundMuted">
-                2. Use the template below as the routine description.
+                2. Use o modelo abaixo como descrição da rotina.
               </Text.H6>
               <Text.H6 display="block" color="foregroundMuted">
-                3. Copy the trigger token from the API section and the routine page URL from your browser.
+                3. Copie o token do gatilho na seção de API e a URL da página da rotina no navegador.
               </Text.H6>
               <Text.H6 display="block" color="foregroundMuted">
-                4. Paste both values here. Latitude will extract the routine ID from the page URL.
+                4. Cole os dois valores aqui. O Vigia extrairá o ID da rotina a partir da URL da página.
               </Text.H6>
               <Text.H6 display="block" color="foregroundMuted">
-                Latitude's dispatch prompt asks the agent to brand its branch and PR with the signal reference (e.g.
-                "Resolves LAT-XY9Z"), so merging the PR resolves the signal automatically when the GitHub integration is
-                connected.
+                O prompt de envio pede ao agente que identifique a branch e o PR com a referência do sinal (por exemplo,
+                "Resolves LAT-XY9Z"); assim, ao integrar o PR, o sinal é resolvido automaticamente quando a integração
+                com GitHub está conectada.
               </Text.H6>
             </div>
             <div className="flex flex-col gap-2 pt-1">
@@ -1235,11 +1240,11 @@ export function ConnectAgentDispatchModal({
                 className="w-full"
                 onClick={async () => {
                   await navigator.clipboard.writeText(CLAUDE_ROUTINE_TEMPLATE)
-                  toast({ description: "Routine description copied" })
+                  toast({ description: "Descrição da rotina copiada" })
                 }}
               >
                 <Icon icon={Copy} size="sm" />
-                Copy routine description
+                Copiar descrição da rotina
               </Button>
               <div className="flex flex-row flex-wrap items-center justify-center gap-2">
                 <Button asChild variant="outline" size="sm" className="shrink-0">
@@ -1251,7 +1256,7 @@ export function ConnectAgentDispatchModal({
                 <Button asChild variant="ghost" size="sm" className="shrink-0">
                   <a href="https://code.claude.com/docs/en/routines" target="_blank" rel="noreferrer">
                     <Icon icon={ExternalLink} size="sm" />
-                    Claude Code docs
+                    Documentação do Claude Code
                   </a>
                 </Button>
                 <IntegrationDocsButton integration={kind} variant="ghost" />
@@ -1261,7 +1266,7 @@ export function ConnectAgentDispatchModal({
           <form.Field name="claudeRoutineToken">
             {(field) => (
               <Input
-                label="Routine token"
+                label="Token da rotina"
                 type="password"
                 value={field.state.value}
                 onChange={(event) => field.handleChange(event.target.value)}
@@ -1272,8 +1277,8 @@ export function ConnectAgentDispatchModal({
           <form.Field name="routineUrl">
             {(field) => (
               <Input
-                label="Routine URL"
-                description="Copy this from your browser while viewing the routine."
+                label="URL da rotina"
+                description="Copie este valor do navegador enquanto visualiza a rotina."
                 placeholder="https://claude.ai/code/routines/trig_..."
                 value={field.state.value}
                 onChange={(event) => field.handleChange(event.target.value)}
@@ -1286,30 +1291,30 @@ export function ConnectAgentDispatchModal({
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-4">
             <Text.H5 display="block" weight="semibold">
-              Get your Linear API key
+              Obtenha sua chave de API do Linear
             </Text.H5>
             <div className="flex flex-col gap-2">
               <Text.H6 display="block" color="foregroundMuted">
-                1. Open Linear API settings in the workspace where Latitude should create issues.
+                1. Abra as configurações de API do Linear no workspace em que o Vigia deve criar issues.
               </Text.H6>
               <Text.H6 display="block" color="foregroundMuted">
-                2. Create a personal API key for Latitude and copy it before leaving Linear.
+                2. Crie uma chave de API pessoal para o Vigia e copie-a antes de sair do Linear.
               </Text.H6>
               <Text.H6 display="block" color="foregroundMuted">
-                3. Paste the key, then choose the Linear team where Latitude should create issues.
+                3. Cole a chave e escolha a equipe do Linear em que o Vigia deve criar issues.
               </Text.H6>
             </div>
             <div className="flex flex-row flex-wrap items-center gap-2 pt-1">
               <Button asChild variant="outline" size="sm" className="shrink-0">
                 <a href="https://linear.app/settings/account/security" target="_blank" rel="noreferrer">
                   <Icon icon={ExternalLink} size="sm" />
-                  Linear API settings
+                  Configurações de API do Linear
                 </a>
               </Button>
               <Button asChild variant="ghost" size="sm" className="shrink-0">
                 <a href="https://linear.app/docs/graphql/working-with-the-graphql-api" target="_blank" rel="noreferrer">
                   <Icon icon={ExternalLink} size="sm" />
-                  Linear API docs
+                  Documentação da API do Linear
                 </a>
               </Button>
               <IntegrationDocsButton integration={kind} variant="ghost" />
@@ -1319,7 +1324,7 @@ export function ConnectAgentDispatchModal({
             <form.Field name="linearApiKey">
               {(field) => (
                 <Input
-                  label="Linear API key"
+                  label="Chave de API do Linear"
                   type="password"
                   value={field.state.value}
                   onChange={(event) => {
@@ -1349,9 +1354,9 @@ export function ConnectAgentDispatchModal({
                 {(field) => (
                   <Select
                     name="teamId"
-                    label="Linear team"
-                    description="Latitude creates issues in this team."
-                    placeholder="Select a Linear team"
+                    label="Equipe do Linear"
+                    description="O Vigia cria issues nesta equipe."
+                    placeholder="Selecione uma equipe do Linear"
                     searchable
                     options={linearTeamOptions}
                     value={field.state.value}
@@ -1367,20 +1372,20 @@ export function ConnectAgentDispatchModal({
         <div className="flex flex-col gap-4">
           <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted/30 p-4">
             <Text.H5 display="block" weight="semibold">
-              Prepare your webhook endpoint
+              Prepare seu endpoint de webhook
             </Text.H5>
             <div className="flex flex-col gap-2">
               <Text.H6 display="block" color="foregroundMuted">
-                1. Create a public HTTPS endpoint that accepts POST requests.
+                1. Crie um endpoint HTTPS público que aceite requisições POST.
               </Text.H6>
               <Text.H6 display="block" color="foregroundMuted">
-                2. Latitude sends JSON with trigger, context, and prompt fields.
+                2. O Vigia envia JSON com os campos trigger, context e prompt.
               </Text.H6>
               <Text.H6 display="block" color="foregroundMuted">
-                3. Verify X-Latitude-Signature using the webhook secret shown after you connect.
+                3. Verifique o cabeçalho técnico X-Latitude-Signature usando o segredo exibido após a conexão.
               </Text.H6>
               <Text.H6 display="block" color="foregroundMuted">
-                4. Return a 2xx response when your system accepts the dispatch.
+                4. Retorne uma resposta 2xx quando seu sistema aceitar o envio.
               </Text.H6>
             </div>
             <div className="flex flex-row flex-wrap items-center gap-2 pt-1">
@@ -1391,7 +1396,7 @@ export function ConnectAgentDispatchModal({
             {(field) => (
               <Input
                 label="Webhook URL"
-                placeholder="https://hooks.example.com/latitude/dispatch"
+                placeholder="https://hooks.example.com/vigia/dispatch"
                 value={field.state.value}
                 onChange={(event) => field.handleChange(event.target.value)}
                 errors={fieldErrorsAsStrings(field.state.meta.errors)}
@@ -1426,20 +1431,20 @@ function AgentDispatchHistorySection({
   const columns: InfiniteTableColumn<AgentDispatchRecord>[] = [
     {
       key: "trigger",
-      header: "Trigger",
+      header: "Gatilho",
       width: 180,
       render: (dispatch) => DISPATCH_TRIGGER_TITLES[dispatch.trigger] ?? dispatch.trigger.replaceAll(".", " "),
     },
     {
       key: "source",
-      header: "Source",
+      header: "Origem",
       width: 260,
       render: (dispatch) =>
         dispatch.sourceType === "signal" && dispatch.sourceSlug ? (
           <Link
             to="/projects/$projectSlug/signals/$signalSlug"
             params={{ projectSlug, signalSlug: dispatch.sourceSlug }}
-            aria-label={`Open signal ${dispatch.sourceName ?? dispatch.sourceSlug}`}
+            aria-label={`Abrir sinal ${dispatch.sourceName ?? dispatch.sourceSlug}`}
             className="flex min-w-0 items-center gap-1 text-xs font-semibold text-foreground hover:underline"
           >
             <span className="truncate">{dispatch.sourceName ?? dispatch.sourceSlug}</span>
@@ -1449,10 +1454,10 @@ function AgentDispatchHistorySection({
           <Link
             to="/projects/$projectSlug/monitors/$monitorSlug"
             params={{ projectSlug, monitorSlug: dispatch.sourceSlug }}
-            aria-label={`Open monitor ${dispatch.sourceName ?? dispatch.sourceId}`}
+            aria-label={`Abrir monitor ${dispatch.sourceName ?? dispatch.sourceId}`}
             className="flex min-w-0 items-center gap-1 text-xs font-semibold text-foreground hover:underline"
           >
-            <span className="truncate">{dispatch.sourceName ?? "Deleted monitor"}</span>
+            <span className="truncate">{dispatch.sourceName ?? "Monitor excluído"}</span>
             <Icon icon={ExternalLink} size="xs" />
           </Link>
         ) : (
@@ -1484,7 +1489,7 @@ function AgentDispatchHistorySection({
           <div className="flex min-w-0 items-end gap-2">
             <div className="flex min-w-0 flex-col gap-1">
               <Badge variant={statusVariant} size="small" className="w-fit capitalize">
-                {dispatch.status}
+                {DISPATCH_STATUS_LABELS[dispatch.status] ?? dispatch.status}
               </Badge>
               {errorTitle ? <Text.H7 color="destructive">{errorTitle}</Text.H7> : null}
             </div>
@@ -1494,8 +1499,8 @@ function AgentDispatchHistorySection({
                 variant="ghost"
                 size="sm"
                 className="h-7 w-7 shrink-0 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                aria-label="View error details"
-                onClick={() => setErrorDetailModal({ title: errorTitle ?? "Error details", detail: errorDetail })}
+                aria-label="Ver detalhes do erro"
+                onClick={() => setErrorDetailModal({ title: errorTitle ?? "Detalhes do erro", detail: errorDetail })}
               >
                 <Icon icon={FileText} size="sm" />
               </Button>
@@ -1506,19 +1511,19 @@ function AgentDispatchHistorySection({
     },
     {
       key: "claimedAt",
-      header: "Claimed",
+      header: "Assumido",
       width: 130,
       render: (dispatch) => relativeTime(new Date(dispatch.claimedAt)),
     },
     {
       key: "run",
-      header: "Run",
+      header: "Execução",
       width: 150,
       align: "end",
       render: (dispatch) => {
-        const linkLabel = dispatch.kind ? (DEEP_LINK_LABELS[dispatch.kind] ?? "View run") : "View run"
+        const linkLabel = dispatch.kind ? (DEEP_LINK_LABELS[dispatch.kind] ?? "Abrir execução") : "Abrir execução"
         const href = dispatch.externalUrl ?? dispatch.routineUrl
-        const label = dispatch.externalUrl ? linkLabel : dispatch.routineUrl ? "Claude routine" : null
+        const label = dispatch.externalUrl ? linkLabel : dispatch.routineUrl ? "Rotina do Claude" : null
 
         return href && label ? (
           <Button asChild variant="ghost" size="sm">
@@ -1538,10 +1543,10 @@ function AgentDispatchHistorySection({
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
         <Text.H5 display="block" weight="semibold">
-          Dispatch history
+          Histórico de envios
         </Text.H5>
         <Text.H6 display="block" color="foregroundMuted">
-          Audit log of dispatches triggered by signals, monitors, incidents, and manual sends.
+          Registro de auditoria dos envios acionados por sinais, monitores, incidentes e ações manuais.
         </Text.H6>
       </div>
       <InfiniteTable
@@ -1549,7 +1554,7 @@ function AgentDispatchHistorySection({
         isLoading={isLoading}
         columns={columns}
         getRowKey={(dispatch) => dispatch.id}
-        blankSlate="No dispatches yet."
+        blankSlate="Nenhum envio ainda."
         scrollAreaLayout="intrinsic"
         className="max-h-[min(32rem,60vh)]"
       />

@@ -11,7 +11,7 @@ export interface IntegrationCatalogEntry {
   readonly icon: ComponentType<LucideProps>
   /** One line of what it gets you, shown on the tile of an unconnected integration. */
   readonly summary: string
-  readonly docsUrl: string
+  readonly docsUrl?: string
 }
 
 export const INTEGRATION_CATALOG: readonly IntegrationCatalogEntry[] = [
@@ -19,43 +19,39 @@ export const INTEGRATION_CATALOG: readonly IntegrationCatalogEntry[] = [
     key: "slack",
     label: "Slack",
     icon: SlackIcon,
-    summary: "Send Latitude notifications to your Slack workspace.",
+    summary: "Envie notificações do Vigia para seu workspace do Slack.",
     docsUrl: "https://docs.latitude.so/more/slack",
   },
   {
     key: "github",
     label: "GitHub",
     icon: GithubIcon,
-    summary: "Auto-resolve signals when a related PR or commit is merged.",
+    summary: "Resolva sinais automaticamente quando um PR ou commit relacionado for integrado.",
     docsUrl: "https://docs.latitude.so/more/github",
   },
   {
     key: "cursor",
     label: "Cursor",
     icon: CursorIcon,
-    summary: "Cursor agents react to Latitude signals and monitors, then push fixes to your code.",
-    docsUrl: "https://docs.latitude.so/agent-dispatch/cursor",
+    summary: "Agentes do Cursor reagem a sinais e monitores do Vigia e enviam correções para o seu código.",
   },
   {
     key: "claude_code",
     label: "Claude Code",
     icon: ClaudeCodeIcon,
-    summary: "Claude Code routines react to Latitude signals and monitors, then push fixes to your code.",
-    docsUrl: "https://docs.latitude.so/agent-dispatch/claude-code",
+    summary: "Rotinas do Claude Code reagem a sinais e monitores do Vigia e enviam correções para o seu código.",
   },
   {
     key: "linear",
     label: "Linear",
     icon: LinearIcon,
-    summary: "Create Linear issues for signals that need follow-up.",
-    docsUrl: "https://docs.latitude.so/agent-dispatch/linear",
+    summary: "Crie issues no Linear para sinais que precisam de acompanhamento.",
   },
   {
     key: "webhook",
     label: "Webhook",
     icon: Webhook,
-    summary: "Send integration events to your own endpoint.",
-    docsUrl: "https://docs.latitude.so/agent-dispatch/webhooks",
+    summary: "Envie eventos de integração para o seu próprio endpoint.",
   },
 ]
 

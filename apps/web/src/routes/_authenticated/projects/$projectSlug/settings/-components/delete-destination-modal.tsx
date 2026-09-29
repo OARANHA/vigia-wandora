@@ -31,7 +31,7 @@ export function DeleteDestinationModal({
     try {
       await mutation.mutateAsync()
       await queryClient.invalidateQueries({ queryKey: destinationsQueryKey(projectId) })
-      toast({ description: "Destination deleted." })
+      toast({ description: "Destino excluído." })
       onClose()
     } catch (error) {
       setDeleting(false)
@@ -46,16 +46,16 @@ export function DeleteDestinationModal({
       onOpenChange={(next) => {
         if (!next && !deleting) onClose()
       }}
-      title="Delete destination"
-      description={`Delete "${destination.name}"? This stops the sync and permanently removes its delivery history. Data already sent to the destination is unaffected.`}
+      title="Excluir destino"
+      description={`Excluir "${destination.name}"? Isso interrompe a sincronização e remove permanentemente o histórico de entregas. Dados já enviados ao destino não são afetados.`}
       footer={
         <div className="flex flex-row items-center gap-2">
           <Button variant="outline" onClick={onClose} disabled={deleting}>
-            Cancel
+            Cancelar
           </Button>
           <Button variant="destructive" onClick={() => void handleConfirm()} disabled={deleting} isLoading={deleting}>
             <Icon icon={Trash2} size="sm" />
-            {deleting ? "Deleting…" : "Delete destination"}
+            {deleting ? "Excluindo…" : "Excluir destino"}
           </Button>
         </div>
       }

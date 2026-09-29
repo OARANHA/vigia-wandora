@@ -113,15 +113,15 @@ export function DestinationFormModal({
             toast({
               variant: "destructive",
               description:
-                "Connected, but the history import couldn't start. You can start it later from the destination.",
+                "Conectado, mas não foi possível iniciar a importação do histórico. Você pode iniciá-la depois no destino.",
             })
           } else {
             toast({
               description: importStarted
-                ? "Destination connected. Importing history in the background."
+                ? "Destino conectado. Importando o histórico em segundo plano."
                 : isEdit
-                  ? "Destination updated."
-                  : "Destination connected.",
+                  ? "Destino atualizado."
+                  : "Destino conectado.",
             })
           }
           onClose()
@@ -143,7 +143,7 @@ export function DestinationFormModal({
     } else if (destination) {
       probe = testExistingDestinationConnection({ data: { destinationId: destination.id, config } })
     } else {
-      setConnectionTest({ phase: "error", message: "Enter your credentials to test the connection." })
+      setConnectionTest({ phase: "error", message: "Informe suas credenciais para testar a conexão." })
       return
     }
 
@@ -156,8 +156,8 @@ export function DestinationFormModal({
         setConnectionTest({
           phase: "error",
           message: result.retryable
-            ? `Connection failed (${result.reason ?? "unknown"}). This is often temporary, so try again.`
-            : `Connection rejected (${result.reason ?? "unknown"}). Check the configuration and credentials.`,
+            ? `Falha na conexão (${result.reason ?? "desconhecido"}). Isso costuma ser temporário; tente novamente.`
+            : `Conexão rejeitada (${result.reason ?? "desconhecido"}). Verifique a configuração e as credenciais.`,
         })
       }
     } catch (error) {
@@ -174,16 +174,16 @@ export function DestinationFormModal({
       onOpenChange={(next) => {
         if (!next) onClose()
       }}
-      title={isEdit ? "Edit destination" : "Connect a destination"}
-      description="Continuously sync this project's traces into a customer-owned analytics tool."
+      title={isEdit ? "Editar destino" : "Conectar destino"}
+      description="Sincronize continuamente os traces deste projeto com uma ferramenta de analytics controlada pelo cliente."
       footer={
         <>
           <CloseTrigger />
           <Button variant="outline" onClick={() => void handleTestConnection()} disabled={testing} isLoading={testing}>
-            Test connection
+            Testar conexão
           </Button>
           <Button type="submit" onClick={() => void form.handleSubmit()}>
-            {isEdit ? "Save" : "Connect"}
+            {isEdit ? "Salvar" : "Conectar"}
           </Button>
         </>
       }
@@ -197,7 +197,7 @@ export function DestinationFormModal({
       >
         <Select
           name="kind"
-          label="Destination"
+          label="Destino"
           options={DESTINATION_KIND_OPTIONS}
           value={kind}
           disabled
@@ -209,8 +209,8 @@ export function DestinationFormModal({
             <Input
               required
               autoFocus
-              label="Name"
-              placeholder="My destination"
+              label="Nome"
+              placeholder="Meu destino"
               value={field.state.value}
               onChange={(event) => field.handleChange(event.target.value)}
               errors={fieldErrorsAsStrings(field.state.meta.errors)}
@@ -223,18 +223,18 @@ export function DestinationFormModal({
         {isEdit ? null : (
           <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
             <SwitchInput
-              label="Import past traces"
-              description="After connecting, backfill your retained history (up to your plan's limit). Off by default, so new destinations sync only going forward."
+              label="Importar traces anteriores"
+              description="Após conectar, importe o histórico retido até o limite disponível. Desativado por padrão, para que novos destinos sincronizem apenas dados futuros."
               checked={importSince !== null}
               onCheckedChange={(checked) => setImportSince(checked ? "" : null)}
             />
             {importSince !== null ? (
               <Input
                 type="date"
-                label="Import history since"
+                label="Importar histórico desde"
                 value={importSince}
                 max={todayStr}
-                description="Leave empty to import as far back as your plan retains."
+                description="Deixe vazio para importar até o limite de retenção disponível."
                 onChange={(event) => setImportSince(event.target.value)}
               />
             ) : null}
@@ -244,13 +244,13 @@ export function DestinationFormModal({
         {connectionTest.phase === "testing" ? (
           <div className="flex items-center gap-2">
             <Icon icon={Loader2} size="sm" color="foregroundMuted" className="animate-spin" />
-            <Text.H6 color="foregroundMuted">Testing connection…</Text.H6>
+            <Text.H6 color="foregroundMuted">Testando conexão…</Text.H6>
           </div>
         ) : null}
         {connectionTest.phase === "success" ? (
           <div className="flex items-center gap-2">
             <Icon icon={CircleCheck} size="sm" color="success" />
-            <Text.H6 color="success">Connection succeeded.</Text.H6>
+            <Text.H6 color="success">Conexão bem-sucedida.</Text.H6>
           </div>
         ) : null}
         {connectionTest.phase === "error" ? (

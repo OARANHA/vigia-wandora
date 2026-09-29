@@ -237,3 +237,29 @@ As superfícies cobertas usam linguagem Vigia/PT-BR e deixam de expor referênci
 **Configurações ainda não está concluída como área total.** Permanecem para um slice próprio os fluxos avançados e/ou condicionais: dispatch de agentes, destinos de dados, políticas avançadas de privacidade/redaction, configurações profundas de GitHub/Slack, defaults, flaggers, SSO e billing.
 
 Depois de fechar essas configurações avançadas, o próximo item canônico continua sendo Custos/Pontuação do agente quando habilitados e, em seguida, `/backoffice` como **Administração Vigia**.
+
+
+## Configurações avançadas — dispatch e destinos de dados — 2026-09-29
+
+O slice da branch `feat/vigia-settings-dispatch-destinations` revisa duas superfícies avançadas de Configurações:
+
+- dispatch de agentes para Cursor, Claude Code, Linear e webhook;
+- destinos de dados, incluindo PostHog, histórico de sincronização, importação histórica e estados operacionais;
+- shell compartilhado de escopo e conexão usado por essas configurações.
+
+Nas superfícies cobertas, a experiência visível foi alinhada ao Vigia/PT-BR e os links para documentação comercial do Latitude foram removidos quando não existe ainda um guia canônico do Vigia.
+
+O contrato técnico do webhook `X-Latitude-Signature` foi preservado deliberadamente. Ele faz parte da compatibilidade real do motor e não deve ser renomeado apenas por branding.
+
+**Configurações continua parcialmente concluída.** Permanecem pendentes:
+
+- privacidade/redaction avançada;
+- configurações profundas de GitHub e Slack;
+- defaults;
+- flaggers;
+- SSO, quando habilitado;
+- billing, quando habilitado.
+
+SSO e billing continuam fora deste slice porque ainda carregam decisões comerciais do upstream. O Vigia não deve inventar destino de vendas, plano, preço ou operação comercial antes de existir uma decisão canônica de produto.
+
+Depois de fechar essas superfícies, verificar na aplicação real se **Custos** e **Pontuação do agente** estão habilitados antes de iniciar esse trabalho. O `/backoffice` permanece separado como futura **Administração Vigia**.

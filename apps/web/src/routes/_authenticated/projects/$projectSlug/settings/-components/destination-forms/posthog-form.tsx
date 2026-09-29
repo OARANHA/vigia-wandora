@@ -9,9 +9,9 @@ import type { DestinationFieldsProps, DestinationFormModule } from "./types.ts"
 type HostPreset = "us" | "eu" | "custom"
 
 const HOST_PRESET_OPTIONS: { label: string; value: HostPreset }[] = [
-  { label: "United States (us.i.posthog.com)", value: "us" },
-  { label: "Europe (eu.i.posthog.com)", value: "eu" },
-  { label: "Custom URL", value: "custom" },
+  { label: "Estados Unidos (us.i.posthog.com)", value: "us" },
+  { label: "Europa (eu.i.posthog.com)", value: "eu" },
+  { label: "URL personalizada", value: "custom" },
 ]
 
 const presetForHost = (host: string): HostPreset => {
@@ -71,18 +71,18 @@ function SpansPreviewBody({
       }),
   })
 
-  if (query.isPending) return <Text.H6 color="foregroundMuted">Loading preview…</Text.H6>
+  if (query.isPending) return <Text.H6 color="foregroundMuted">Carregando prévia…</Text.H6>
   if (query.isError) {
     // Surface the cause in dev (401, schema mismatch, transport) without leaking it to users in prod.
     const detail = import.meta.env.DEV
       ? `: ${query.error instanceof Error ? query.error.message : String(query.error)}`
       : ""
-    return <Text.H6 color="destructive">Couldn't load the preview{detail}.</Text.H6>
+    return <Text.H6 color="destructive">Não foi possível carregar a prévia{detail}.</Text.H6>
   }
   return query.data.hasData ? (
     <pre className="max-h-64 overflow-auto rounded-md bg-muted p-3 text-xs">{query.data.eventsJson}</pre>
   ) : (
-    <Text.H6 color="foregroundMuted">Nothing to preview yet. Send spans to this project first.</Text.H6>
+    <Text.H6 color="foregroundMuted">Ainda não há dados para pré-visualizar. Envie spans para este projeto primeiro.</Text.H6>
   )
 }
 
@@ -103,7 +103,7 @@ function SpansPreview({
       })}
     >
       {({ region, host, excludePayloads }) => (
-        <CollapsibleBlock icon={<Icon icon={EyeIcon} size="sm" />} label="Preview what's sent">
+        <CollapsibleBlock icon={<Icon icon={EyeIcon} size="sm" />} label="Prévia do que é enviado">
           <SpansPreviewBody
             projectId={projectId}
             host={hostForPreset(region, host.trim())}
@@ -122,8 +122,8 @@ function PosthogFields({ form, isEdit, projectId, destination }: DestinationFiel
         {(field) => (
           <Select
             name="config.region"
-            label="Region"
-            description="US and EU pin PostHog's official ingestion hosts. Use Custom for a self-hosted instance."
+            label="Região"
+            description="Estados Unidos e Europa usam os hosts oficiais de ingestão do PostHog. Use URL personalizada para uma instância self-hosted."
             options={HOST_PRESET_OPTIONS}
             value={field.state.value}
             onChange={(value) => field.handleChange(value)}
@@ -138,7 +138,7 @@ function PosthogFields({ form, isEdit, projectId, destination }: DestinationFiel
               {(field) => (
                 <Input
                   required
-                  label="Host URL"
+                  label="URL do host"
                   placeholder="https://posthog.example.com"
                   value={field.state.value}
                   onChange={(event) => field.handleChange(event.target.value)}
@@ -155,11 +155,11 @@ function PosthogFields({ form, isEdit, projectId, destination }: DestinationFiel
           <Input
             type="password"
             required={!isEdit}
-            label="Project API key"
+            label="Chave de API do projeto"
             description={
               isEdit
-                ? `Stored key: ${destination?.credentialsPreview ?? "—"}. Leave blank to keep it; saving a new key resets a quarantined destination.`
-                : "Your PostHog project API key (starts with phc_)."
+                ? `Chave armazenada: ${destination?.credentialsPreview ?? "—"}. Deixe em branco para mantê-la; salvar uma nova chave reativa um destino em quarentena.`
+                : "Chave de API do projeto no PostHog (começa com phc_)."
             }
             placeholder={isEdit ? "••••••••" : "phc_…"}
             value={field.state.value}
@@ -170,15 +170,15 @@ function PosthogFields({ form, isEdit, projectId, destination }: DestinationFiel
       </form.Field>
 
       <div className="flex flex-col gap-2">
-        <Text.H5>Sources</Text.H5>
-        <Text.H6 color="foregroundMuted">What this destination exports, and exactly how each record is sent.</Text.H6>
+        <Text.H5>Origens</Text.H5>
+        <Text.H6 color="foregroundMuted">O que este destino exporta e como cada registro é enviado.</Text.H6>
         <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
           <Text.H5M>Spans</Text.H5M>
           <form.Field name="config.excludePayloads">
             {(field) => (
               <SwitchInput
-                label="Exclude payloads"
-                description="Omit prompts, completions, tool schemas, and error messages from what's sent. Tokens, cost, latency, and timing still flow."
+                label="Excluir payloads"
+                description="Omita prompts, respostas, schemas de ferramentas e mensagens de erro do envio. Tokens, custo, latência e tempos continuam sendo enviados."
                 checked={field.state.value}
                 onCheckedChange={(checked) => field.handleChange(checked)}
               />

@@ -48,11 +48,11 @@ export function BackfillDestinationModal({
     onSuccess: (result) => {
       void queryClient.invalidateQueries({ queryKey: destinationsQueryKey(projectId) })
       if (result.failed > 0) {
-        toast({ variant: "destructive", description: "Backfill couldn't start for some sources. Try again." })
+        toast({ variant: "destructive", description: "Não foi possível iniciar a importação histórica para algumas origens. Tente novamente." })
       } else if (result.enqueued === 0) {
-        toast({ description: "Nothing to import. You've already backfilled as far back as your plan retains." })
+        toast({ description: "Não há nada para importar. O histórico já foi processado até o limite de retenção disponível." })
       } else {
-        toast({ description: "Backfill started. Historical windows will show up in the run history." })
+        toast({ description: "Importação histórica iniciada. As janelas processadas aparecerão no histórico de execuções." })
         onStarted?.()
       }
       onClose()
@@ -67,13 +67,13 @@ export function BackfillDestinationModal({
       onOpenChange={(next) => {
         if (!next) onClose()
       }}
-      title="Import history"
-      description="Export this project's past traces into the destination. Latitude imports as far back as your plan retains; older data is skipped."
+      title="Importar histórico"
+      description="Envie traces anteriores deste projeto para o destino. O Vigia importa até o limite de retenção disponível; dados mais antigos são ignorados."
       footer={
         <>
           <CloseTrigger />
           <Button onClick={() => backfill.mutate()} isLoading={backfill.isPending}>
-            Start backfill
+            Iniciar importação
           </Button>
         </>
       }
@@ -81,10 +81,10 @@ export function BackfillDestinationModal({
       <div className="flex flex-col gap-4">
         <Input
           type="date"
-          label="Import history since"
+          label="Importar histórico desde"
           value={since}
           max={todayStr}
-          description="Leave empty to import as far back as your plan retains. Re-running is safe; the destination ignores duplicates."
+          description="Deixe vazio para importar até o limite de retenção disponível. Repetir a operação é seguro; o destino ignora duplicatas."
           onChange={(event) => setSince(event.target.value)}
         />
       </div>

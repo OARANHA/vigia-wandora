@@ -7,9 +7,9 @@ export const Route = createFileRoute("/_authenticated/projects/$projectSlug/sett
   component: DataDestinationsSettingsPage,
 })
 
-const PAGE_TITLE = "Data destinations"
+const PAGE_TITLE = "Destinos de dados"
 const PAGE_DESCRIPTION =
-  "Continuously sync this project's data into your own systems, such as a data warehouse or analytics platform."
+  "Sincronize continuamente os dados deste projeto com seus próprios sistemas, como um data warehouse ou uma plataforma de analytics."
 
 function DataDestinationsSettingsPage() {
   const project = useRouteProject()

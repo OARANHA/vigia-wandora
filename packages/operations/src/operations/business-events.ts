@@ -60,12 +60,16 @@ const CreateBusinessEventBodySchema = z
     occurredAt: z.iso
       .datetime()
       .optional()
-      .describe("When the business event actually happened. Defaults to ingestion time when omitted."),
+      .describe("When the business event actually happened. Uses ingestion time when omitted."),
     metadata: BusinessEventMetadataSchema.describe("Additional business context, such as order or customer references."),
   })
   .refine((body) => body.currency === undefined || body.value !== undefined, {
     message: "currency requires value",
     path: ["currency"],
+  })
+  .refine((body) => !Object.hasOwn(body.metadata, "vigia"), {
+    message: "metadata.vigia is reserved by Vigia",
+    path: ["metadata", "vigia"],
   })
   .openapi("CreateBusinessEventBody")
 
@@ -78,7 +82,7 @@ const BusinessEventResponseSchema = z
     label: z.string(),
     value: z.number().nullable(),
     currency: CurrencySchema.nullable(),
-    occurredAt: z.iso.datetime().nullable(),
+    occurredAt: z.iso.datetime(),
     metadata: BusinessEventMetadataSchema,
     createdAt: z.iso.datetime(),
   })
@@ -120,6 +124,7 @@ const createBusinessEvent = businessEventEndpoint({
       const projectRepository = yield* ProjectRepository
       const project = yield* projectRepository.findBySlug(projectSlug)
       const label = body.label ?? body.event
+      const occurredAt = body.occurredAt ?? new Date().toISOString()
       const sourceId = `${BUSINESS_EVENT_SOURCE_PREFIX}${body.event}`
 
       const score = (yield* submitApiScoreUseCase({
@@ -138,7 +143,7 @@ const createBusinessEvent = businessEventEndpoint({
             label,
             ...(body.value !== undefined ? { value: body.value } : {}),
             ...(body.currency !== undefined ? { currency: body.currency } : {}),
-            ...(body.occurredAt !== undefined ? { occurredAt: body.occurredAt } : {}),
+            occurredAt,
           },
         },
         organizationId,
@@ -155,7 +160,7 @@ const createBusinessEvent = businessEventEndpoint({
           label,
           value: body.value ?? null,
           currency: body.currency ?? null,
-          occurredAt: body.occurredAt ?? null,
+          occurredAt,
           metadata: body.metadata,
           createdAt: score.createdAt.toISOString(),
         },

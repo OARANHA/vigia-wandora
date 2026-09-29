@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
+  scoreCardBusinessEvent,
+  scoreCardBusinessValue,
   scoreCardEvaluationVerdict,
   scoreCardIsAbsentEvaluation,
   scoreCardLinkedSignalId,
@@ -148,5 +150,52 @@ describe("scoreCardEvaluationVerdict", () => {
   it("hides the verdict for errored evaluations and other sources", () => {
     expect(scoreCardEvaluationVerdict({ source: "evaluation", errored: true, passed: false })).toBeNull()
     expect(scoreCardEvaluationVerdict({ source: "annotation", errored: false, passed: false })).toBeNull()
+  })
+})
+
+
+describe("business event presentation", () => {
+  const businessScore = {
+    source: "custom",
+    sourceId: "vigia.business.sale_completed",
+    passed: true,
+    metadata: {
+      vigia: {
+        kind: "business_event",
+        event: "sale_completed",
+        success: true,
+        label: "Venda concluída",
+        value: 1480,
+        currency: "BRL",
+      },
+    },
+  }
+
+  it("recognizes a Vigia business event backed by a custom score", () => {
+    expect(scoreCardBusinessEvent(businessScore)).toEqual({
+      event: "sale_completed",
+      success: true,
+      label: "Venda concluída",
+      value: 1480,
+      currency: "BRL",
+    })
+  })
+
+  it("uses the business label instead of exposing the custom-score source id", () => {
+    expect(scoreCardSourceTitle(businessScore)).toBe("Venda concluída")
+  })
+
+  it("formats monetary business value for the Vigia surface", () => {
+    expect(scoreCardBusinessValue(businessScore)).toMatch(/R\$\s*1\.480,00/)
+  })
+
+  it("hides the normalized score percentage for business events", () => {
+    expect(
+      scoreCardShouldShowValue({
+        ...businessScore,
+        errored: false,
+        signalId: null,
+      }),
+    ).toBe(false)
   })
 })

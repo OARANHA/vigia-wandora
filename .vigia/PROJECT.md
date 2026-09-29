@@ -394,3 +394,39 @@ O contrato público visível ao cliente está consolidado em `https://vigia.wand
 
 Próximo slice: investigar capabilities já existentes no motor e definir o menor contrato de **Business Events** que responda à pergunta **“o que significa sucesso para este agente?”**.
 
+
+
+## Business Events v0 — decisão de arquitetura — 2026-09-29
+
+A investigação do próximo slice confirmou que o motor já possui a maior parte da capability necessária para ligar execução técnica a resultado de negócio:
+
+- `custom scores` aceitam `sourceId`, verdict, feedback e metadata arbitrária;
+- `submitApiScoreUseCase` resolve um trace e herda `sessionId` e o último span de conclusão LLM;
+- scores imutáveis são persistidos no Postgres, sincronizados para analytics e emitem `ScoreCreated`;
+- `ScoreCreated` é encaminhado para a descoberta de Sinais;
+- custom scores negativos, publicados e com feedback são elegíveis para a pipeline normal de descoberta de Sinais;
+- avaliações e annotations permanecem com seus papéis próprios; Business Events não foram modelados como nenhuma delas;
+- o `Agent Score / Outcome` atual mede cumprimento da tarefa por julgamentos internos e não deve ser confundido com receita, agendamento ou outros resultados externos.
+
+Os arquivos centrais de scores e correlação foram comparados com `upstream/latitude` e permanecem idênticos. Portanto, essa capacidade é tratada como motor Latitude, não como código próprio a ser duplicado.
+
+Decisão do Vigia:
+
+- expor `POST /v1/projects/:projectSlug/events`;
+- receber `traceId`, `event`, `success` e contexto opcional de negócio;
+- adaptar o evento para um custom score `vigia.business.<event>`;
+- reservar `metadata.vigia` para a semântica interna do produto;
+- apresentar o registro no trace como **Resultado**, incluindo valor monetário quando informado;
+- não criar tabela, migration, worker ou pipeline de correlação paralela.
+
+Limite conhecido do v0: metadata arbitrária do custom score é persistida no Postgres, mas o repositório de analytics do ClickHouse não materializa esses campos. Assim, o v0 prova correlação e visibilidade por trace; métricas agregadas de receita/valor/impacto continuam como próximo slice próprio.
+
+Validação de código do PR #46:
+
+- `git diff --check`: sucesso;
+- build de produção de API/web e demais imagens no workflow do Vigia: validado durante o PR;
+- typecheck de `@repo/operations`: sucesso no gate específico;
+- teste de integração `trace -> Business Event -> custom score/outbox`: sucesso;
+- teste da apresentação **Resultado** e valor em PT-BR: sucesso.
+
+A validação de produção e o uso da Wandora como primeiro cliente real devem ser registrados após o deploy, sem antecipar esse estado neste checkpoint.

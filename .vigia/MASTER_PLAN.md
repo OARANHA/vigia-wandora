@@ -111,18 +111,32 @@ Por baixo, o SDK configura OpenTelemetry e envia ao Vigia.
 
 ### Business Events API
 
-Camada própria do Vigia para correlacionar telemetria de IA com resultado de negócio.
+Camada própria e fina do Vigia para correlacionar telemetria de IA com resultado de negócio, sem criar um armazenamento paralelo ao motor.
 
-Exemplo conceitual:
+Contrato v0:
 
-`POST /v1/events`
+`POST /v1/projects/:projectSlug/events`
 
-Com:
+Campos públicos:
 
-- `trace_id`
-- tipo do evento
-- valor/resultado
-- metadados de negócio
+- `traceId`: trace que produziu ou influenciou o resultado;
+- `event`: nome estável do evento, como `sale_completed` ou `appointment_booked`;
+- `success`: se o evento representa sucesso para o objetivo de negócio do agente;
+- `label`: rótulo humano opcional;
+- `value` e `currency`: valor de negócio opcional;
+- `occurredAt`: instante do evento; quando omitido, o Vigia materializa o horário de ingestão;
+- `metadata`: contexto adicional do cliente. O namespace `metadata.vigia` é reservado.
+
+A implementação reutiliza o `custom score` nativo do Latitude como substrato. O adapter Vigia transforma `traceId` em uma referência interna de trace, e o motor resolve automaticamente `traceId`, `sessionId` e o último span de conclusão LLM antes de persistir o resultado.
+
+O resultado é gravado como `sourceId = vigia.business.<event>`, com `passed = success`, e fica visível no trace como **Resultado**. Eventos negativos preservam a pipeline nativa de descoberta de Sinais; eventos positivos não abrem Sinais apenas por existirem.
+
+Não foi criada tabela `business_events`, migration, worker ou modelo de correlação paralelo.
+
+Limites deliberados do v0:
+
+- Business Events não alimentam automaticamente o **Agent Score / Outcome**; o Outcome atual do motor usa julgamentos próprios de cumprimento da tarefa;
+- metadata arbitrária do custom score fica persistida no Postgres, mas não é materializada hoje no ClickHouse de scores. Agregações de receita/valor/impacto são um próximo slice explícito, não uma capability presumida.
 
 Exemplos de resultado:
 
@@ -379,11 +393,11 @@ O diferencial que merece código próprio é a combinação de:
 
 ## 14. Próxima ação objetiva
 
-**Definir o primeiro contrato de Business Events a partir da pergunta: “o que significa sucesso para este agente?”**
+**Implantar e validar o Business Events v0 ponta a ponta e, em seguida, usar a Wandora como primeiro emissor real.**
 
-Antes de criar código próprio, inspecionar no Latitude/Vigia as capabilities existentes de events, signals, scores e correlação com traces. Implementar somente a menor camada própria necessária para ligar uma execução técnica a um resultado de negócio útil ao cliente.
+A investigação confirmou que o Latitude já fornece persistência de scores, metadata, correlação com trace/session/span, analytics técnicos, outbox e descoberta de Sinais. O Vigia adiciona somente o contrato e a apresentação de negócio necessários.
 
-O primeiro slice deve provar o fluxo completo `trace -> evento de negócio -> resultado visível no Vigia`, mantendo OTLP como porta principal e preservando o Latitude como motor interno.
+Depois da prova em produção de `trace -> Business Event -> Resultado`, o próximo slice deve ser a menor leitura agregada de resultado/impacto útil ao empresário. Como o ClickHouse de scores não materializa metadata arbitrária, essa agregação deve ser desenhada explicitamente, sem duplicar a fonte de verdade de observabilidade.
 
 
 ### Checkpoint de preparação do primeiro runtime — 2026-09-28

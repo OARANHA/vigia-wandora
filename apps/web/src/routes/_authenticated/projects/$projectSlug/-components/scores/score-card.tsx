@@ -7,6 +7,8 @@ import { useState } from "react"
 import type { ScoreRecord } from "../../../../../../domains/scores/scores.functions.ts"
 import { useSignal } from "../../../../../../domains/signals/signals.collection.ts"
 import {
+  scoreCardBusinessEvent,
+  scoreCardBusinessValue,
   scoreCardEvaluationVerdict,
   scoreCardLinkedSignalId,
   scoreCardShouldShowFeedback,
@@ -111,7 +113,10 @@ export function ReadOnlyScoreCard({
   const linkedSignalName = linkedSignal?.name ?? null
   const linkedSignalSlug = linkedSignal?.slug ?? null
   const linkedSignalDescription = linkedSignal?.description?.trim()
-  const sourceLabel = SOURCE_LABELS[score.source]
+  const businessEvent = scoreCardBusinessEvent(score)
+  const businessValue = scoreCardBusinessValue(score)
+  const sourceLabel = businessEvent ? "Resultado" : SOURCE_LABELS[score.source]
+  const compactSourceLabel = businessEvent ? "Resultado" : COMPACT_SOURCE_LABELS[score.source]
   const sourceTitle = scoreCardSourceTitle(score)
   const feedback = score.feedback?.trim()
   const feedbackPrefixWithSeparator = feedbackPrefix?.trim() ? `${feedbackPrefix.trim()}:` : undefined
@@ -141,7 +146,7 @@ export function ReadOnlyScoreCard({
         <div className="flex min-w-0 items-center gap-2">
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <Text.H6 color="foregroundMuted" noWrap>
-              {COMPACT_SOURCE_LABELS[score.source]}
+              {compactSourceLabel}
             </Text.H6>
             {evaluationVerdict ? (
               <Text.H6 color="foregroundMuted" noWrap>
@@ -153,7 +158,16 @@ export function ReadOnlyScoreCard({
             </Text.H6>
           </div>
           <div className="flex shrink-0 items-center gap-1">
-            {showValue && !score.errored && !evaluationVerdict ? (
+            {businessValue && !score.errored ? (
+              <Text.H6B
+                className={cn("tabular-nums", {
+                  "text-destructive-muted-foreground": !score.passed,
+                  "text-success-muted-foreground": score.passed,
+                })}
+              >
+                {businessValue}
+              </Text.H6B>
+            ) : showValue && !score.errored && !evaluationVerdict ? (
               <Text.H6B
                 className={cn("tabular-nums", {
                   "text-destructive-muted-foreground": !score.passed,
@@ -258,7 +272,11 @@ export function ReadOnlyScoreCard({
         </div>
       </div>
 
-      {showValue ? <Text.H6 color="foregroundMuted">Value: {Math.round(score.value * 100)}%</Text.H6> : null}
+      {businessValue ? (
+        <Text.H6 color="foregroundMuted">Valor de negócio: {businessValue}</Text.H6>
+      ) : showValue ? (
+        <Text.H6 color="foregroundMuted">Value: {Math.round(score.value * 100)}%</Text.H6>
+      ) : null}
 
       {showFeedback && displayedFeedback ? (
         <Text.H5 className="whitespace-pre-wrap">{displayedFeedback}</Text.H5>

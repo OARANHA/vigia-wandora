@@ -240,3 +240,23 @@ Depois, verificar na aplicação real se **Custos** e **Pontuação do agente** 
 ### Próximo slice
 
 Investigar primeiro as capabilities existentes no Latitude/Vigia para events, signals, scores e correlação com traces. Depois, definir e implementar o menor contrato de **Business Events** capaz de responder **“o que significa sucesso para este agente?”** e provar `trace -> resultado de negócio` ponta a ponta.
+
+
+## Checkpoint 2026-09-29 — Business Events v0 em código
+
+O PR #46 implementa e valida em código a menor camada vendável para responder **“o que significa sucesso para este agente?”**:
+
+- contrato Vigia `POST /v1/projects/:projectSlug/events`;
+- correlação pública por `traceId`;
+- persistência reutilizando custom scores nativos, sem tabela ou migration paralela;
+- herança nativa de session/span do trace;
+- apresentação no trace como **Resultado**;
+- valor de negócio opcional em PT-BR;
+- resultados negativos preservam a descoberta nativa de Sinais;
+- typecheck e testes específicos de API/UI concluídos com sucesso.
+
+O v0 ainda não conclui **Métricas de impacto**: metadata de negócio não é materializada no ClickHouse de scores e a agregação de valor/receita deve ser tratada em slice próprio.
+
+### Próxima validação
+
+Implantar o PR #46, provar `trace -> evento de negócio -> resultado visível no Vigia` no runtime público e então marcar Events API/correlação como concluídas em produção. Em seguida, integrar a Wandora como primeiro emissor real antes de ampliar o modelo.

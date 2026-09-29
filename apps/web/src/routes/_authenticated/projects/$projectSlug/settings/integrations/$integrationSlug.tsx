@@ -41,7 +41,7 @@ function ProjectIntegrationSettingsPage() {
   return (
     <SettingsPage
       title={<IntegrationDetailHeader entry={integrationEntry(key)} projectSlug={projectSlug} scope="project" />}
-      description="What this integration does for this project, and where it follows the organization."
+      description="O que esta integração faz neste projeto e onde ela segue as configurações da empresa."
     >
       {key === "github" ? (
         <GithubProjectSettings projectId={routeProject.id} projectSlug={projectSlug} projectCount={projectCount} />

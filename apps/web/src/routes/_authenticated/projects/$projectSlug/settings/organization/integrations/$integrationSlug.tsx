@@ -45,7 +45,7 @@ function OrganizationIntegrationDetailPage() {
   return (
     <SettingsPage
       title={<IntegrationDetailHeader entry={integrationEntry(key)} projectSlug={projectSlug} scope="organization" />}
-      description="Connection and organization-wide defaults, shared by every project."
+      description="Conexão e padrões da empresa compartilhados por todos os projetos."
     >
       {key === "slack" ? (
         <SlackOrgSettings projectSlug={projectSlug} />

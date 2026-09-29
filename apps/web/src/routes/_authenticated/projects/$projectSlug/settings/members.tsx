@@ -160,14 +160,14 @@ function TransferOwnershipModal({
     <Modal.Root open={open} onOpenChange={setOpen}>
       <Modal.Content dismissible>
         <Modal.Header
-          title="Transfer Ownership"
+          title="Transferir propriedade"
           description="Transfira a propriedade desta empresa para outro membro. Após a transferência, você será administrador."
         />
         <Modal.Body>
           <FormWrapper>
             {eligibleMembers.length === 0 ? (
               <Text.H5 color="foregroundMuted">
-                No eligible members to transfer ownership to. Add more members first.
+                Nenhum membro elegível para receber a propriedade. Adicione mais membros primeiro.
               </Text.H5>
             ) : (
               <div className="flex flex-col gap-2">
@@ -180,7 +180,7 @@ function TransferOwnershipModal({
                   placeholder="Selecione um membro..."
                   searchable
                   searchPlaceholder="Buscar membros..."
-                  searchableEmptyMessage="No members found"
+                  searchableEmptyMessage="Nenhum membro encontrado"
                 />
               </div>
             )}
@@ -193,7 +193,7 @@ function TransferOwnershipModal({
             disabled={eligibleMembers.length === 0 || !selectedMemberId}
             onClick={() => void handleTransfer()}
           >
-            Transfer Ownership
+            Transferir propriedade
           </Button>
         </Modal.Footer>
       </Modal.Content>
@@ -292,7 +292,7 @@ function ChangeRoleModal({
         <Modal.Footer>
           <CloseTrigger />
           <Button type="button" disabled={!selectedRole || isSubmitting} onClick={() => void handleSubmit()}>
-            {isSubmitting ? "Updating..." : "Update Role"}
+            {isSubmitting ? "Atualizando..." : "Atualizar função"}
           </Button>
         </Modal.Footer>
       </Modal.Content>
@@ -367,7 +367,7 @@ function MembersTable({
     }
   }
 
-  const pendingMemberDisplayName = pendingMemberMutation?.name ?? pendingMemberMutation?.email ?? "this member"
+  const pendingMemberDisplayName = pendingMemberMutation?.name ?? pendingMemberMutation?.email ?? "este membro"
   const isCancelInviteMutation = pendingMemberMutation?.type === "cancel-invite"
 
   return (
@@ -397,8 +397,8 @@ function MembersTable({
             title={isCancelInviteMutation ? "Cancelar convite?" : "Remover membro?"}
             description={
               isCancelInviteMutation
-                ? `Are you sure you want to cancel the pending invitation for ${pendingMemberDisplayName}?`
-                : `Are you sure you want to remove ${pendingMemberDisplayName} from this organization?`
+                ? `Deseja cancelar o convite pendente para ${pendingMemberDisplayName}?`
+                : `Deseja remover ${pendingMemberDisplayName} desta empresa?`
             }
           />
           <Modal.Footer>
@@ -411,7 +411,7 @@ function MembersTable({
               {isMutatingMember
                 ? isCancelInviteMutation
                   ? "Cancelando..."
-                  : "Removing..."
+                  : "Removendo..."
                 : isCancelInviteMutation
                   ? "Cancelar convite"
                   : "Remover membro"}

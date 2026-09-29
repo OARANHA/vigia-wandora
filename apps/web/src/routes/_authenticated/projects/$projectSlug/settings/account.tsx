@@ -280,7 +280,7 @@ function DisconnectAccountConfirmModal({
       await unlinkUserAccount({
         data: { providerId: provider.id, accountId: account.accountId },
       })
-      toast({ description: `${provider.label} disconnected` })
+      toast({ description: `${provider.label} desconectado` })
       await queryClient.invalidateQueries({ queryKey: ["userAccounts"] })
       onClose()
     } catch (error) {
@@ -295,8 +295,8 @@ function DisconnectAccountConfirmModal({
       onOpenChange={(open) => {
         if (!open && !disconnecting) onClose()
       }}
-      title={`Disconnect ${provider.label}`}
-      description={`You'll no longer be able to sign in with ${provider.label}. Email sign-in keeps working, and you can reconnect ${provider.label} at any time.`}
+      title={`Desconectar ${provider.label}`}
+      description={`Você não poderá mais entrar com ${provider.label}. O acesso por email continuará funcionando e você poderá reconectar ${provider.label} quando quiser.`}
       dismissible
       footer={
         <div className="flex flex-row items-center gap-2">
@@ -304,7 +304,7 @@ function DisconnectAccountConfirmModal({
             Cancel
           </Button>
           <Button variant="destructive" onClick={() => void handleConfirm()} disabled={disconnecting}>
-            {disconnecting ? "Disconnecting..." : "Disconnect"}
+            {disconnecting ? "Desconectando..." : "Desconectar"}
           </Button>
         </div>
       }
@@ -338,7 +338,7 @@ function ConnectedAccountsSection() {
     if (error) {
       toast({
         variant: "destructive",
-        description: error.message ?? `Could not start connecting ${provider.label}`,
+        description: error.message ?? `Não foi possível iniciar a conexão com ${provider.label}`,
       })
       setConnecting(null)
       return

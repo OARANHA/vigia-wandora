@@ -372,7 +372,7 @@ function OAuthKeysTable({ oauthKeys }: { oauthKeys: OAuthKeyRecord[] }) {
               </Button>
               <Button variant="destructive" onClick={() => void handleConfirm()} disabled={revoking}>
                 {revoking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-                <Text.H5 color="white">{revoking ? "Revoking..." : "Revoke OAuth key"}</Text.H5>
+                <Text.H5 color="white">{revoking ? "Revogando..." : "Revogar chave OAuth"}</Text.H5>
               </Button>
             </div>
           }
@@ -404,13 +404,13 @@ function KeysSettingsPage() {
           <div className="flex flex-col gap-1">
             <Text.H4 weight="bold">Chaves de API</Text.H4>
             <Text.H5 color="foregroundMuted">
-              Application keys with access to this organization (through API or SDK)
+              Chaves de aplicação com acesso a esta empresa por API ou SDK
             </Text.H5>
           </div>
           <div className="shrink-0">
             <Button variant="outline" onClick={() => setCreateOpen(true)}>
               <Icon size="sm" icon={PlusIcon} />
-              API key
+              Nova chave de API
             </Button>
           </div>
         </div>
@@ -423,8 +423,7 @@ function KeysSettingsPage() {
         <div className="flex flex-col gap-1">
           <Text.H4 weight="bold">Chaves OAuth</Text.H4>
           <Text.H5 color="foregroundMuted">
-            Connected OAuth clients with access to this organization (Claude Code, Codex, Cursor... through MCP or
-            Partners)
+            Clientes OAuth conectados com acesso a esta empresa (Claude Code, Codex, Cursor... via MCP ou parceiros)
           </Text.H5>
         </div>
         <div className="flex flex-col gap-2">

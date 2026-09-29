@@ -18,10 +18,10 @@
 - [x] Onboarding do projeto/agente em PT-BR
 - [x] Navegação principal em PT-BR
 - [ ] Configuração de URLs/subdomínios
-- [ ] Instalar Docker, Traefik e Portainer próprios na VPS Vigia
-- [ ] Publicar `vigia.wandora.com.br` no Traefik próprio da VPS Vigia
-- [ ] Publicar `ops.vigia.wandora.com.br` para operação administrativa do Vigia
-- [ ] Validar HTTPS público sem HTTP 526
+- [x] Instalar Docker, Traefik e Portainer próprios na VPS Vigia
+- [x] Publicar `vigia.wandora.com.br` no Traefik próprio da VPS Vigia
+- [ ] Publicar `ops-vigia.wandora.com.br` para operação administrativa do Vigia (rota pronta; falta DNS/proxy público)
+- [x] Validar HTTPS público do `vigia.wandora.com.br` sem HTTP 526
 - [ ] Remover referências comerciais desnecessárias ao Latitude
 - [ ] Dashboard simplificado para visão empresarial
 - [x] Primeiro fluxo "Conecte seu agente"
@@ -206,3 +206,12 @@ Próximos itens de Configurações:
 - [ ] billing, quando habilitado e após decisão comercial canônica.
 
 Depois, verificar na aplicação real se **Custos** e **Pontuação do agente** estão habilitados. O `/backoffice` continua separado como **Administração Vigia**.
+
+
+## Checkpoint 2026-09-29 — hostname administrativo
+
+- [x] Portainer do Vigia validado em `127.0.0.1:9443`, sem exposição direta da porta administrativa;
+- [x] Traefik do Vigia validado em 80/443 com file provider próprio;
+- [x] rota `ops-vigia.wandora.com.br` adicionada mantendo `ops.vigia.wandora.com.br` como alias temporário;
+- [ ] criar o DNS `ops-vigia.wandora.com.br` no Cloudflare como Proxied;
+- [ ] validar HTTPS público do novo hostname e então remover o alias/DNS aninhado.

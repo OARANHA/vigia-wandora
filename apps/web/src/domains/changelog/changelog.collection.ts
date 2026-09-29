@@ -1,7 +1,8 @@
 import { useQuery } from "@tanstack/react-query"
 import { type ChangelogEntryRecord, listChangelogEntries } from "./changelog.functions.ts"
 
-export const CHANGELOG_UI_ENABLED = true
+// Vigia must not surface the upstream Latitude changelog to customers.
+export const CHANGELOG_UI_ENABLED = false
 
 const CHANGELOG_QUERY_KEY = ["changelog", "entries"] as const
 

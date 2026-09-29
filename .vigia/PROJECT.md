@@ -109,7 +109,7 @@ A observabilidade básica (ingestão e visualização de traces) funciona sem cr
 
 Decisão atual: o Vigia será publicado pela infraestrutura própria da VPS Vigia, não pelo Traefik da VPS Wandora.
 
-A VPS dedicada do Vigia terá seu próprio Traefik e rede de borda. O host público permanece `vigia.wandora.com.br`. O hostname administrativo preferido é `ops.vigia.wandora.com.br`, destinado ao Portainer/console operacional e separado da aplicação pública.
+A VPS dedicada do Vigia usa Traefik e rede de borda próprios. O host público permanece `vigia.wandora.com.br`. O hostname administrativo canônico passa a ser `ops-vigia.wandora.com.br`, destinado ao Portainer/console operacional e separado da aplicação pública. `ops.vigia.wandora.com.br` fica somente como alias temporário de migração e deve ser removido após a validação do novo DNS/proxy.
 
 O deploy só será considerado completo quando o DNS apontar para a VPS Vigia, o Traefik próprio emitir TLS válido e o smoke test HTTPS/OTLP funcionar sem depender da rede `wandora-edge` da Wandora.
 
@@ -143,7 +143,7 @@ Validação do slice no SHA `2389b307d675e1ae95e6507144d07bafa5b48841`:
 
 Observação: um `pnpm check` global anterior expôs diagnósticos preexistentes do baseline fora deste slice. Por isso a validação de estilo deste trabalho foi isolada aos arquivos alterados, sem tratar dívida upstream não relacionada como parte deste escopo.
 
-Ainda não houve deploy do Vigia nem smoke test público de ingestão em `vigia.wandora.com.br`. Esse teste depende da primeira stack executável e da rota dinâmica do Traefik.
+Atualização de runtime em 2026-09-29: o Vigia já está implantado na VPS dedicada com Portainer, Traefik e stack `vigia`; `https://vigia.wandora.com.br` responde publicamente pelo Cloudflare e direciona para o login. O primeiro trace OTLP real ponta a ponta continua pendente.
 
 
 ## Preparação do runtime público
@@ -157,7 +157,7 @@ Em 2026-09-28, o runtime de produção foi consolidado e validado sem ainda ser 
 - builds dos seis serviços de aplicação/migration concluídos com sucesso;
 - pull anônimo de todas as seis imagens `ghcr.io/oaranha/vigia-*:main` concluído com sucesso.
 
-O Portainer continua sem uma stack `vigia` e a VPS continua sem containers Vigia. A rota pública ainda não foi aplicada no Traefik.
+Atualização de runtime em 2026-09-29: o Portainer próprio da VPS Vigia possui as stacks `vigia-infrastructure` e `vigia`; os containers de aplicação estão implantados e o Traefik próprio atende `vigia.wandora.com.br`.
 
 A criação automatizada da stack foi bloqueada antes da execução quando o fluxo tentou transportar os segredos obrigatórios do Compose. Nenhum segredo foi salvo. O deploy deve continuar apenas quando esses valores puderem ser injetados por um mecanismo seguro do operador/Portainer.
 

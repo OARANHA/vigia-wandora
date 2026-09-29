@@ -42,7 +42,7 @@ services:
             # Ativar em produção somente com uma política de acesso administrativo
             # na borda (preferencialmente Cloudflare Access ou equivalente).
             vigia-ops:
-              rule: "Host(`ops.vigia.wandora.com.br`)"
+              rule: "Host(`ops-vigia.wandora.com.br`) || Host(`ops.vigia.wandora.com.br`)"
               entryPoints:
                 - websecure
               priority: 100

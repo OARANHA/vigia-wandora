@@ -72,7 +72,7 @@ function RelatedSignalCard({ projectSlug, row }: { readonly projectSlug: string;
     <Link
       to="/projects/$projectSlug/signals/$signalSlug"
       params={{ projectSlug, signalSlug: row.slug }}
-      aria-label={`Open the ${row.name} issue`}
+      aria-label={`Abrir o sinal ${row.name}`}
       className="group flex flex-col gap-2 rounded-lg bg-secondary p-4 hover:bg-accent"
     >
       <div className="flex min-w-0 flex-row items-center gap-2">
@@ -116,7 +116,7 @@ export function SignalRelated({
   return (
     <DetailSection
       icon={<Icon icon={NetworkIcon} size="sm" />}
-      label="Related issues"
+      label="Sinais relacionados"
       defaultOpen
       contentClassName="pl-0 max-h-none overflow-visible"
     >

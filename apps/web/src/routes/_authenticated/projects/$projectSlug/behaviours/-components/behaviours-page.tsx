@@ -54,16 +54,16 @@ function ScopedTreeWaiting({ behaviour }: { readonly behaviour: CustomBehaviorRe
   // A whole-project behavior has no filter, so the count is recent sessions in the
   // gardening window, not "matching" ones.
   const sessionsLabel = hasFilter
-    ? "matching sessions"
-    : `sessions in the last ${TAXONOMY_GARDENING_SAMPLE_LOOKBACK_DAYS} days`
-  const scheduleLine = "The groups are built automatically once there are enough sessions."
+    ? "sessões correspondentes"
+    : `sessões nos últimos ${TAXONOMY_GARDENING_SAMPLE_LOOKBACK_DAYS} dias`
+  const scheduleLine = "Os grupos são criados automaticamente assim que houver sessões suficientes."
 
   // Not enough data yet: a normal steady state, driven by the preview.
   if (preview.data && !preview.data.isReady) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
         <Icon icon={HourglassIcon} size="lg" color="foregroundMuted" />
-        <Text.H4>{hasFilter ? "Waiting for matching sessions" : "Waiting for recent sessions"}</Text.H4>
+        <Text.H4>{hasFilter ? "Aguardando sessões correspondentes" : "Aguardando sessões recentes"}</Text.H4>
         <Text.H5 color="foregroundMuted" centered className="max-w-md">
           {`Found ${(count ?? 0).toLocaleString()} of ${threshold} ${sessionsLabel} so far. `}
           {scheduleLine}
@@ -77,11 +77,11 @@ function ScopedTreeWaiting({ behaviour }: { readonly behaviour: CustomBehaviorRe
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
         <Icon icon={Loader2Icon} size="md" color="foregroundMuted" className="animate-spin" />
-        <Text.H4>{isFacetBehavior ? "Analyzing sessions through this behavior" : "Building this behavior"}</Text.H4>
+        <Text.H4>{isFacetBehavior ? "Analisando sessões com este comportamento" : "Construindo este comportamento"}</Text.H4>
         <Text.H5 color="foregroundMuted" centered className="max-w-md">
           {isFacetBehavior
-            ? "We're analyzing your sessions through this behavior. The groups appear here as soon as they're ready."
-            : "We're analyzing the matching sessions. The groups appear here as soon as they're ready."}
+            ? "Estamos analisando suas sessões com este comportamento. Os grupos aparecem aqui assim que estiverem prontos."
+            : "Estamos analisando as sessões correspondentes. Os grupos aparecem aqui assim que estiverem prontos."}
         </Text.H5>
       </div>
     )
@@ -92,10 +92,10 @@ function ScopedTreeWaiting({ behaviour }: { readonly behaviour: CustomBehaviorRe
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
       <Icon icon={ClockIcon} size="lg" color="foregroundMuted" />
-      <Text.H4>Waiting for the next run</Text.H4>
+      <Text.H4>Aguardando a próxima execução</Text.H4>
       <Text.H5 color="foregroundMuted" centered className="max-w-md">
         {count !== undefined ? `${count.toLocaleString()} ${sessionsLabel} found. ` : ""}
-        The groups are built on a schedule, so they appear after the next run, which can take a few hours.
+        Os grupos são criados em ciclos agendados e aparecem após a próxima execução, o que pode levar algumas horas.
       </Text.H5>
     </div>
   )
@@ -147,35 +147,34 @@ function BehaviorHealthOverview({
   const unclearPct = extracted > 0 ? Math.round((unclear / extracted) * 100) : 0
   const hint =
     extracted >= 10 && unclear / extracted > 0.4
-      ? "Many sessions came back unclear. The instructions may be too specific, or these conversations don't carry the answer."
+      ? "Muitas sessões ficaram sem resposta clara. As instruções podem estar específicas demais ou essas conversas não contêm a resposta."
       : clear >= 10 && distinctAnswers <= 2
-        ? "Almost every session maps to the same answer. This behavior may be too broad to separate sessions."
+        ? "Quase todas as sessões resultam na mesma resposta. Este comportamento pode estar amplo demais para separar as sessões."
         : null
   return (
     <div className="flex w-full max-w-xl flex-col gap-4 rounded-lg border border-border p-5">
       <div className="flex flex-row items-center justify-center gap-1.5">
-        <Text.H4M>How this behavior is doing</Text.H4M>
+        <Text.H4M>Como este comportamento está se saindo</Text.H4M>
         <Tooltip asChild trigger={<Icon icon={InfoIcon} size="sm" color="foregroundMuted" />}>
           <div className="flex max-w-xs flex-col gap-1.5">
-            <span>Clear answers: the share of analyzed sessions the behavior pulled a usable answer from.</span>
+            <span>Respostas claras: percentual das sessões analisadas em que o comportamento encontrou uma resposta utilizável.</span>
             <span>
-              Unique answers: how many different answers those are. A low number means the behavior barely separates
-              sessions.
+              Respostas únicas: quantas respostas diferentes foram encontradas. Um número baixo indica pouca separação entre sessões.
             </span>
-            <span>Unclear: the share where the behavior could not find an answer in the conversation.</span>
+            <span>Sem clareza: percentual em que o comportamento não encontrou resposta na conversa.</span>
           </div>
         </Tooltip>
       </div>
       <div className="grid grid-cols-3 divide-x divide-border">
         <HealthStat
-          label="Clear answers"
+          label="Respostas claras"
           value={`${clearPct}%`}
           sub={`${clear.toLocaleString()} of ${extracted.toLocaleString()}`}
           color="success"
         />
-        <HealthStat label="Unique answers" value={distinctAnswers.toLocaleString()} color="primary" />
+        <HealthStat label="Respostas únicas" value={distinctAnswers.toLocaleString()} color="primary" />
         <HealthStat
-          label="Unclear"
+          label="Sem clareza"
           value={`${unclearPct}%`}
           sub={unclear.toLocaleString()}
           color="warningMutedForeground"
@@ -241,7 +240,7 @@ function BehaviorColdStartProgress({
     try {
       await stopBehavior.mutateAsync({ customBehaviorId: behaviour.id })
       setAction(null)
-      toast({ description: "Behavior stopped and removed." })
+      toast({ description: "Comportamento interrompido e removido." })
       // Leave the now-deleted view's route BEFORE invalidating, so it never
       // resolves to "not found".
       await navigate({ to: "/projects/$projectSlug/behaviours", params: { projectSlug: project.slug } })
@@ -261,12 +260,12 @@ function BehaviorColdStartProgress({
       <div className="flex w-full max-w-xl flex-col gap-3">
         <div className="flex flex-row items-center gap-2">
           <Icon icon={Loader2Icon} color="foregroundMuted" className="animate-spin" />
-          <Text.H4>{cached ? "Grouping your sessions" : "Analyzing your sessions through this behavior"}</Text.H4>
+          <Text.H4>{cached ? "Agrupando suas sessões" : "Analisando suas sessões com este comportamento"}</Text.H4>
         </div>
         <Text.H5 color="foregroundMuted">
           {cached
-            ? `All ${extracted.toLocaleString()} sessions are already analyzed for this behavior. We're building the groups now, and they appear as soon as they're ready.`
-            : `Analyzed ${extracted.toLocaleString()}${target ? ` of ~${target.toLocaleString()}` : ""} sessions. A new behavior is analyzed once, then the groups appear as soon as they're ready.`}
+            ? `Todas as ${extracted.toLocaleString()} sessões já foram analisadas para este comportamento. Estamos construindo os grupos agora e eles aparecerão assim que estiverem prontos.`
+            : `Analisadas ${extracted.toLocaleString()}${target ? ` de ~${target.toLocaleString()}` : ""} sessões. Um novo comportamento é analisado uma vez; depois, os grupos aparecem assim que estiverem prontos.`}
         </Text.H5>
         {pct !== null && !cached ? (
           <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -275,10 +274,10 @@ function BehaviorColdStartProgress({
         ) : null}
         <div className="flex flex-row items-center gap-2">
           <Button size="sm" variant="outline" onClick={() => setAction("refine")} disabled={!facet}>
-            Refine instructions
+            Refinar instruções
           </Button>
           <Button size="sm" variant="destructive-soft" onClick={() => setAction("stop")}>
-            Stop behavior
+            Interromper comportamento
           </Button>
         </div>
       </div>
@@ -292,7 +291,7 @@ function BehaviorColdStartProgress({
       ) : null}
       {answers.length > 0 ? (
         <div className="flex w-full max-w-xl flex-col gap-1.5">
-          <Text.H6 color="foregroundMuted">Extracted answers (click one to open its session)</Text.H6>
+          <Text.H6 color="foregroundMuted">Respostas extraídas (clique para abrir a sessão)</Text.H6>
           <div className="flex flex-col gap-1">
             {answers.map((answer) => (
               <button
@@ -319,7 +318,7 @@ function BehaviorColdStartProgress({
               disabled={answersQuery.isFetchingNextPage}
             >
               {answersQuery.isFetchingNextPage ? <Icon icon={Loader2Icon} size="sm" className="animate-spin" /> : null}
-              Show more
+              Mostrar mais
             </Button>
           ) : null}
         </div>
@@ -330,23 +329,23 @@ function BehaviorColdStartProgress({
           dismissible
           size="regular"
           onOpenChange={(next) => (next || stopBehavior.isPending ? undefined : setAction(null))}
-          title="Stop this behavior?"
-          description="This stops the analysis and removes the behavior. The answers extracted so far are discarded. You can create it again later."
+          title="Interromper este comportamento?"
+          description="Isso interrompe a análise e remove o comportamento. As respostas extraídas até agora serão descartadas. Você poderá criá-lo novamente depois."
           footer={
             <div className="flex w-full flex-row justify-between gap-2">
               <Button variant="outline" onClick={() => setAction(null)} disabled={stopBehavior.isPending}>
-                Keep analyzing
+                Continuar analisando
               </Button>
               <Button variant="destructive" onClick={() => void confirmStop()} disabled={stopBehavior.isPending}>
                 {stopBehavior.isPending ? <Icon icon={Loader2Icon} size="sm" className="animate-spin" /> : null}
-                Stop and remove
+                Interromper e remover
               </Button>
             </div>
           }
         >
           <Alert
             variant="destructive"
-            description="Stopping is permanent for the work done so far. The extracted answers can't be recovered."
+            description="A interrupção descarta permanentemente o trabalho feito até aqui. As respostas extraídas não poderão ser recuperadas."
           />
         </Modal>
       ) : null}
@@ -532,7 +531,7 @@ export function BehavioursTreeBody({
                   {...(tw.pickerStartFrom ? { startTimeFrom: tw.pickerStartFrom } : {})}
                   {...(tw.pickerStartTo ? { startTimeTo: tw.pickerStartTo } : {})}
                   {...(coverage ? { minTime: coverage.fromIso, maxTime: coverage.toIso } : {})}
-                  placeholder={coverage ? "Covered range" : "All time"}
+                  placeholder={coverage ? "Período coberto" : "Todo o período"}
                   onChange={tw.onTimeChange}
                 />
                 {coverage ? <CoverageNote coverage={coverage} /> : null}

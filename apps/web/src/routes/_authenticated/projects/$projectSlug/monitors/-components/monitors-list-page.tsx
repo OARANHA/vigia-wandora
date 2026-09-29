@@ -89,10 +89,10 @@ function MonitorsPageContent() {
     () => [
       {
         id: "monitor:create",
-        title: "Create monitor",
+        title: "Criar monitor",
         icon: BellPlusIcon,
         section: "context",
-        group: "Monitors",
+        group: "Monitores",
         keywords: "create monitor new add alert",
         perform: () => setCreateOpen(true),
       },
@@ -153,10 +153,10 @@ function MonitorsPageContent() {
       toast({
         description:
           resolvedCount === 0
-            ? "No ongoing incidents to resolve."
+            ? "Nenhum incidente em andamento para resolver."
             : resolvedCount === 1
-              ? "1 incident resolved."
-              : `${resolvedCount} incidents resolved.`,
+              ? "1 incidente resolvido."
+              : `${resolvedCount} incidentes resolvidos.`,
       })
       selection.clearSelections()
       setBulkResolveModalOpen(false)
@@ -174,7 +174,7 @@ function MonitorsPageContent() {
     try {
       const { mutedCount } = await bulkMuteMonitors({ data })
       await invalidateAllMonitorQueries(queryClient, project.id)
-      toast({ description: mutedCount === 1 ? "1 monitor muted." : `${mutedCount} monitors muted.` })
+      toast({ description: mutedCount === 1 ? "1 monitor silenciado." : `${mutedCount} monitores silenciados.` })
       selection.clearSelections()
       setBulkMuteModalOpen(false)
     } catch (error) {
@@ -193,9 +193,9 @@ function MonitorsPageContent() {
       await invalidateAllMonitorQueries(queryClient, project.id)
       toast({
         description: [
-          deletedCount === 1 ? "1 monitor removed." : `${deletedCount} monitors removed.`,
+          deletedCount === 1 ? "1 monitor removido." : `${deletedCount} monitores removidos.`,
           ...(skippedSystemCount > 0
-            ? [`${skippedSystemCount} system ${skippedSystemCount === 1 ? "monitor" : "monitors"} skipped.`]
+            ? [`${skippedSystemCount} ${skippedSystemCount === 1 ? "monitor do sistema ignorado" : "monitores do sistema ignorados"}.`]
             : []),
         ].join(" "),
       })
@@ -242,7 +242,7 @@ function MonitorsPageContent() {
                 <Input
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
-                  placeholder="Search monitors"
+                  placeholder={ptBR.clientPages.monitors.searchPlaceholder}
                   size="sm"
                   className="w-64 pl-8 rounded-lg"
                 />
@@ -252,7 +252,7 @@ function MonitorsPageContent() {
             <Layout.ActionRowItem>
               <Button onClick={() => setCreateOpen(true)}>
                 <Icon icon={BellPlusIcon} size="sm" />
-                Monitor
+                {ptBR.clientPages.monitors.create}
               </Button>
             </Layout.ActionRowItem>
           </Layout.ActionsRow>
@@ -267,12 +267,12 @@ function MonitorsPageContent() {
                 disabled={bulkActionLoading}
               >
                 <Icon icon={CheckIcon} size="sm" />
-                Resolve last incident
+                Resolverr último incidente
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={() => setBulkMuteModalOpen(true)} disabled={bulkActionLoading}>
               <Icon icon={BellOffIcon} size="sm" />
-              Mute ({selection.selectedCount.toLocaleString()})
+              Silenciar ({selection.selectedCount.toLocaleString()})
             </Button>
             <Button
               variant="destructive-outline"
@@ -281,7 +281,7 @@ function MonitorsPageContent() {
               disabled={bulkActionLoading}
             >
               <Icon icon={Trash2Icon} size="sm" />
-              Remove ({selection.selectedCount.toLocaleString()})
+              Remover ({selection.selectedCount.toLocaleString()})
             </Button>
           </div>
         )}
@@ -302,12 +302,12 @@ function MonitorsPageContent() {
           open={bulkResolveModalOpen}
           onOpenChange={setBulkResolveModalOpen}
           dismissible
-          title="Resolve ongoing incidents"
-          description="Each selected monitor's ongoing incident will be closed and marked as resolved. If a monitor's condition triggers again, a new incident will be created."
+          title="Resolver incidentes em andamento"
+          description="O incidente em andamento de cada monitor selecionado será encerrado e marcado como resolvido. Se a condição voltar a disparar, um novo incidente será criado."
           footer={
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setBulkResolveModalOpen(false)} disabled={bulkActionLoading}>
-                Cancel
+                Cancelar
               </Button>
               <Button
                 onClick={() => void handleBulkResolveIncidents()}
@@ -315,7 +315,7 @@ function MonitorsPageContent() {
                 isLoading={bulkActionLoading}
               >
                 <Icon icon={CheckIcon} size="sm" />
-                Resolve
+                Resolver
               </Button>
             </div>
           }
@@ -325,16 +325,16 @@ function MonitorsPageContent() {
           open={bulkMuteModalOpen}
           onOpenChange={setBulkMuteModalOpen}
           dismissible
-          title={selection.selectedCount === 1 ? "Mute monitor" : "Mute monitors"}
-          description={`${selection.selectedCount === 1 ? "The selected monitor" : `The ${selection.selectedCount} selected monitors`} will keep creating incidents, but ${selection.selectedCount === 1 ? "it" : "they"} will stop sending notifications`}
+          title={selection.selectedCount === 1 ? "Silenciar monitor" : "Silenciar monitores"}
+          description={`${selection.selectedCount === 1 ? "O monitor selecionado" : `Os ${selection.selectedCount} monitores selecionados`} continuará${selection.selectedCount === 1 ? "" : "ão"} criando incidentes, mas deixará${selection.selectedCount === 1 ? "" : "ão"} de enviar notificações.`}
           footer={
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setBulkMuteModalOpen(false)} disabled={bulkActionLoading}>
-                Cancel
+                Cancelar
               </Button>
               <Button onClick={() => void handleBulkMute()} disabled={bulkActionLoading} isLoading={bulkActionLoading}>
                 <Icon icon={BellOffIcon} size="sm" />
-                Mute
+                Silenciar
               </Button>
             </div>
           }
@@ -344,12 +344,12 @@ function MonitorsPageContent() {
           open={bulkDeleteModalOpen}
           onOpenChange={setBulkDeleteModalOpen}
           dismissible
-          title={selection.selectedCount === 1 ? "Remove monitor" : "Remove monitors"}
-          description={`Removing ${selection.selectedCount === 1 ? "this monitor" : `these ${selection.selectedCount} monitors`} cannot be undone. Existing incidents will stay in your history`}
+          title={selection.selectedCount === 1 ? "Remover monitor" : "Remover monitores"}
+          description={`Remover ${selection.selectedCount === 1 ? "este monitor" : `estes ${selection.selectedCount} monitores`} não pode ser desfeito. Incidentes existentes permanecerão no histórico.`}
           footer={
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setBulkDeleteModalOpen(false)} disabled={bulkActionLoading}>
-                Cancel
+                Cancelar
               </Button>
               <Button
                 variant="destructive"
@@ -357,7 +357,7 @@ function MonitorsPageContent() {
                 disabled={bulkActionLoading}
                 isLoading={bulkActionLoading}
               >
-                Remove
+                Remover
               </Button>
             </div>
           }

@@ -43,10 +43,8 @@ import { integrationSlug } from "../../../../../../../domains/integrations/integ
 import { toUserMessage } from "../../../../../../../lib/errors.ts"
 import { SignalDispatchHistory } from "./signal-dispatch-history.tsx"
 
-const MCP_DOCS_URL = "https://docs.latitude.so/getting-started/mcp"
-
 const failureDescription = (label: string, reason: string): string =>
-  reason === "auth" || reason === "config" ? `${label} rejected the dispatch.` : `Could not reach ${label}. Try again.`
+  reason === "auth" || reason === "config" ? `${label} recusou o envio.` : `Não foi possível acessar ${label}. Tente novamente.`
 
 function dispatchHistoryLink(projectSlug: string, kind: SendToDestinationRecord["kind"]) {
   return (
@@ -55,7 +53,7 @@ function dispatchHistoryLink(projectSlug: string, kind: SendToDestinationRecord[
       params={{ projectSlug, integrationSlug: integrationSlug(kind) }}
       className="font-medium underline"
     >
-      View dispatch history
+      Ver histórico de envios
     </Link>
   )
 }
@@ -105,13 +103,13 @@ export function SignalSendTo({
       const label = AGENT_DISPATCH_KIND_LABELS[destination.kind]
       if (result.status === "dispatched") {
         toast({
-          description: dispatchToastDescription(`Sent to ${label}.`, projectSlug, destination.kind),
+          description: dispatchToastDescription(`Enviado para ${label}.`, projectSlug, destination.kind),
           ...(result.externalUrl
             ? {
                 action: (
-                  <ToastAction altText={`View in ${label}`} asChild>
+                  <ToastAction altText={`Ver em ${label}`} asChild>
                     <a href={result.externalUrl} target="_blank" rel="noreferrer">
-                      View
+                      Ver
                     </a>
                   </ToastAction>
                 ),
@@ -120,12 +118,12 @@ export function SignalSendTo({
         })
       } else if (result.status === "skipped-already-dispatched") {
         toast({
-          description: dispatchToastDescription(`Already sent to ${label}.`, projectSlug, destination.kind),
+          description: dispatchToastDescription(`Já enviado para ${label}.`, projectSlug, destination.kind),
         })
       } else if (result.status === "not-ready") {
         toast({
           variant: "destructive",
-          description: dispatchToastDescription(`Finish setting up ${label} first.`, projectSlug, destination.kind),
+          description: dispatchToastDescription(`Conclua primeiro a configuração de ${label}.`, projectSlug, destination.kind),
         })
       } else {
         toast({
@@ -152,10 +150,10 @@ export function SignalSendTo({
 
   const menuContent = (
     <DropdownMenuContent align="end" className="w-56">
-      <DropdownMenuLabel className="font-medium text-muted-foreground">Cloud agents</DropdownMenuLabel>
+      <DropdownMenuLabel className="font-medium text-muted-foreground">Agentes na nuvem</DropdownMenuLabel>
       {destinationsLoading ? (
         <DropdownMenuItem disabled className="items-center gap-2">
-          <Text.H5 color="foregroundMuted">Loading integrations…</Text.H5>
+          <Text.H5 color="foregroundMuted">Carregando integrações…</Text.H5>
         </DropdownMenuItem>
       ) : hasCloudDestinations ? (
         destinations?.map((destination) =>
@@ -163,7 +161,7 @@ export function SignalSendTo({
             <DropdownMenuItem key={destination.kind} asChild className="cursor-pointer items-center gap-2">
               <Link to="/projects/$projectSlug/settings/signals" params={{ projectSlug }} hash={destination.kind}>
                 <Icon icon={AGENT_DISPATCH_KIND_ICONS[destination.kind]} size="sm" />
-                <Text.H5>{`Finish setting up ${AGENT_DISPATCH_KIND_LABELS[destination.kind]}`}</Text.H5>
+                <Text.H5>{`Concluir configuração de ${AGENT_DISPATCH_KIND_LABELS[destination.kind]}`}</Text.H5>
               </Link>
             </DropdownMenuItem>
           ) : (
@@ -186,7 +184,7 @@ export function SignalSendTo({
                 <Icon icon={AGENT_DISPATCH_KIND_ICONS[destination.kind]} size="sm" />
               )}
               <Text.H5>
-                {sendingKind === destination.kind ? "Sending…" : AGENT_DISPATCH_KIND_LABELS[destination.kind]}
+                {sendingKind === destination.kind ? "Enviando…" : AGENT_DISPATCH_KIND_LABELS[destination.kind]}
               </Text.H5>
             </DropdownMenuItem>
           ),
@@ -195,15 +193,15 @@ export function SignalSendTo({
         <DropdownMenuItem asChild className="cursor-pointer items-center gap-2">
           <Link to="/projects/$projectSlug/settings/integrations" params={{ projectSlug }}>
             <Icon icon={Plus} size="sm" />
-            <Text.H5>Set up cloud agents</Text.H5>
+            <Text.H5>Configurar agentes na nuvem</Text.H5>
           </Link>
         </DropdownMenuItem>
       )}
       <DropdownMenuSeparator />
-      <DropdownMenuLabel className="font-medium text-muted-foreground">Local agents</DropdownMenuLabel>
+      <DropdownMenuLabel className="font-medium text-muted-foreground">Agentes locais</DropdownMenuLabel>
       <DropdownMenuItem className="cursor-pointer items-center gap-2" onSelect={() => setPromptModalOpen(true)}>
         <Icon icon={Clipboard} size="sm" />
-        <Text.H5>Copy prompt</Text.H5>
+        <Text.H5>Copiar prompt</Text.H5>
       </DropdownMenuItem>
     </DropdownMenuContent>
   )
@@ -245,7 +243,7 @@ export function SignalSendTo({
                 variant="outline"
                 size="sm"
                 className="rounded-l-none px-1.5"
-                aria-label="Send again to agent"
+                aria-label="Enviar novamente para o agente"
                 disabled={sendMutation.isPending}
               >
                 {sendMutation.isPending ? (
@@ -273,7 +271,7 @@ export function SignalSendTo({
             ) : (
               <Icon icon={Sparkles} size="sm" />
             )}
-            {sendMutation.isPending ? "Sending…" : "Send to agent"}
+            {sendMutation.isPending ? "Enviando…" : "Enviar para agente"}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuPortal>{menuContent}</DropdownMenuPortal>
@@ -324,13 +322,13 @@ function SendToCursorRepoModal({
       open
       dismissible
       onOpenChange={(next) => (!next ? onClose() : undefined)}
-      title="Choose a repository"
-      description="Cursor needs a repository before it can dispatch. This is saved for future sends across your organization."
+      title="Escolha um repositório"
+      description="O Cursor precisa de um repositório antes do envio. Essa escolha será salva para os próximos envios da sua empresa."
       footer={
         <>
           <CloseTrigger />
           <Button onClick={() => saveMutation.mutate()} isLoading={saveMutation.isPending} disabled={!repoUrl}>
-            Save and send
+            Salvar e enviar
           </Button>
         </>
       }
@@ -338,8 +336,8 @@ function SendToCursorRepoModal({
       {repositoryOptions.length > 0 ? (
         <Select
           name="repoUrl"
-          label="Repository"
-          placeholder={isLoading ? "Loading repositories" : "Select a repository"}
+          label="Repositório"
+          placeholder={isLoading ? "Carregando repositórios" : "Selecione um repositório"}
           searchable
           loading={isLoading}
           disabled={isLoading}
@@ -349,7 +347,7 @@ function SendToCursorRepoModal({
         />
       ) : (
         <Input
-          label="Repository URL"
+          label="URL do repositório"
           placeholder="https://github.com/acme/app"
           value={repoUrl}
           onChange={(event) => setRepoUrl(event.target.value)}
@@ -381,19 +379,19 @@ function CopyPromptModal({
       open
       dismissible
       onOpenChange={(next) => (!next ? onClose() : undefined)}
-      title="Copy prompt"
-      description="Paste this into Cursor, Claude Code, Codex, OpenCode, or any coding agent in the repository that produced these traces."
+      title="Copiar prompt"
+      description="Cole isto no Cursor, Claude Code, Codex, OpenCode ou em qualquer agente de código no repositório que produziu estes traces."
       footer={<CloseTrigger />}
     >
       <div className="flex flex-col gap-4">
         {loadError || (!isLoading && !prompt) ? (
-          <Text.H6 color="destructive">Could not load the prompt. Close this dialog and try again.</Text.H6>
+          <Text.H6 color="destructive">Não foi possível carregar o prompt. Feche esta janela e tente novamente.</Text.H6>
         ) : isLoading ? (
           <Skeleton className="h-48 w-full" />
         ) : (
           <div className="group relative">
             <div className="absolute top-0 right-0 z-10 rounded-tr-md rounded-bl-lg bg-muted p-0.5">
-              <CopyButton value={prompt ?? ""} tooltip="Copy" />
+              <CopyButton value={prompt ?? ""} tooltip="Copiar" />
             </div>
             <pre className="max-h-80 overflow-y-auto rounded-md bg-muted p-3 pr-12 font-mono text-xs leading-relaxed break-words whitespace-pre-wrap">
               {prompt}
@@ -401,11 +399,7 @@ function CopyPromptModal({
           </div>
         )}
         <Text.H6 display="block" color="foregroundMuted">
-          Works best with the{" "}
-          <a href={MCP_DOCS_URL} target="_blank" rel="noreferrer" className="underline hover:text-foreground">
-            Latitude MCP server
-          </a>{" "}
-          connected, but the prompt carries trace IDs and excerpts as starting evidence either way.
+          Funciona melhor com um servidor MCP conectado, mas o prompt já inclui IDs de trace e trechos como evidência inicial.
         </Text.H6>
       </div>
     </Modal>

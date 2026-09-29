@@ -1,14 +1,14 @@
 import { FlaskConical, PlusIcon } from "lucide-react"
 import { BlankSlate } from "../../../../../../components/blank-slate.tsx"
+import { ptBR } from "../../../../../../lib/i18n/pt-BR.ts"
 
 export function ExperimentsEmptyState({ onCreate }: { readonly onCreate: () => void }) {
   return (
     <BlankSlate
       icon={FlaskConical}
-      title="No experiments yet"
-      description="Compare variants side by side, each with its own filters, search query, or time range. See how sessions, users, tools, signals, and behaviours differ across them."
-      action={{ label: "New experiment", icon: PlusIcon, onClick: onCreate }}
-      docsHref="https://docs.latitude.so/experiments/overview"
+      title={ptBR.clientPages.experiments.emptyTitle}
+      description={ptBR.clientPages.experiments.emptyDescription}
+      action={{ label: ptBR.clientPages.experiments.create, icon: PlusIcon, onClick: onCreate }}
     />
   )
 }

@@ -92,7 +92,7 @@ export function ExperimentsView({
   const columns: InfiniteTableColumn<ExperimentListRow>[] = [
     {
       key: "name",
-      header: "Experiment",
+      header: "Experimento",
       sortKey: "name",
       width: 340,
       minWidth: 180,
@@ -105,7 +105,7 @@ export function ExperimentsView({
     },
     {
       key: "variants",
-      header: "Variants",
+      header: "Variantes",
       sortKey: "variants",
       width: 110,
       minWidth: 90,
@@ -113,7 +113,7 @@ export function ExperimentsView({
     },
     {
       key: "sessions",
-      header: "Sessions",
+      header: "Sessões",
       sortKey: "sessions",
       width: 130,
       minWidth: 100,
@@ -121,7 +121,7 @@ export function ExperimentsView({
     },
     {
       key: "users",
-      header: "Users",
+      header: "Usuários",
       sortKey: "users",
       width: 130,
       minWidth: 100,
@@ -129,10 +129,10 @@ export function ExperimentsView({
     },
     optionsColumn<ExperimentListRow>({
       getOptions: (row): MenuOption[] => [
-        { label: "Rename", iconProps: { icon: PencilIcon }, onClick: () => setRenameTarget(row.experiment) },
+        { label: "Renomear", iconProps: { icon: PencilIcon }, onClick: () => setRenameTarget(row.experiment) },
         { type: "separator" },
         {
-          label: "Remove",
+          label: "Remover",
           type: "destructive",
           iconProps: { icon: Trash2Icon, color: "destructive" },
           onClick: () => setDeleteTarget(row.experiment),
@@ -163,7 +163,7 @@ export function ExperimentsView({
               <Link
                 to="/projects/$projectSlug/experiments/$experimentSlug"
                 params={{ projectSlug, experimentSlug: row.experiment.slug }}
-                aria-label={`Open ${row.experiment.name}`}
+                aria-label={`Abrir ${row.experiment.name}`}
                 {...props}
               />
             )}

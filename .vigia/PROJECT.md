@@ -190,3 +190,18 @@ Neste slice também foram removidos links visíveis para `docs.latitude.so` nas 
 
 Continuam pendentes como próximos slices de cliente: Sinais, Comportamentos, Experimentos, Monitores, Conjuntos de dados, Configurações e, quando habilitados, Custos/Pontuação do agente. O `/backoffice` permanece separado e será tratado depois da área do cliente.
 
+## Tradução das áreas operacionais do cliente — 2026-09-29
+
+O PR #35 aprofunda a experiência PT-BR nas áreas de análise e operação que vêm depois do núcleo de Sessões/Usuários/Ferramentas/Memória:
+
+- **Sinais**: lista, estatísticas, estados vazios, ações de ciclo de vida e principais superfícies do detalhe;
+- **Comportamentos**: estado vazio, progresso de análise, visão, cabeçalho e ações;
+- **Experimentos**: lista, estado vazio, modais e detalhe principal;
+- **Monitores**: lista, estado vazio, criação, detalhe e ações principais.
+
+Também foram removidas referências comerciais visíveis ao Latitude nas superfícies cobertas. Em particular, monitores de sistema e exemplos automáticos de sinais deixaram de exibir a marca do motor, e links visíveis para `docs.latitude.so` foram removidos onde ainda apareciam nesse slice.
+
+Termos técnicos e contratos internos do Latitude continuam preservados quando fazem parte da implementação e não da experiência do cliente.
+
+Permanecem como próximos slices da área do cliente: Conjuntos de dados, Configurações e as superfícies de Custos/Pontuação do agente quando habilitadas. O `/backoffice` segue separado para um rebranding posterior como **Administração Vigia**.
+

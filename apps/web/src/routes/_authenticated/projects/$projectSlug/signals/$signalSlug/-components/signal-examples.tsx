@@ -6,7 +6,6 @@ import {
   type FirstMatchHint,
   type HighlightRange,
   Icon,
-  LatitudeLogo,
   Sheet,
   Skeleton,
   Text,
@@ -15,7 +14,7 @@ import {
 import { relativeTime } from "@repo/utils"
 import { useHotkeys } from "@tanstack/react-hotkeys"
 import { useParams } from "@tanstack/react-router"
-import { ChevronLeftIcon, ChevronRightIcon, ListTreeIcon, Maximize2Icon, MessageSquareTextIcon } from "lucide-react"
+import { ChevronLeftIcon, ChevronRightIcon, ListTreeIcon, Maximize2Icon, MessageSquareTextIcon, ShieldCheckIcon } from "lucide-react"
 import { type RefObject, useEffect, useMemo, useRef, useState } from "react"
 import { useProjectMemberByUserIdMap } from "../../../../../../../domains/members/members.collection.ts"
 import { pickUserFromMembersMap } from "../../../../../../../domains/members/pick-users-from-members.ts"
@@ -32,8 +31,8 @@ const FUZZY_OFFSET_WINDOW = 10
 // Corner label for the framed message region — mirrors the semantic-search
 // "Related to your search" treatment, but for issue occurrences.
 const REGION_LABEL = {
-  label: "Where this issue occurs",
-  tooltip: "An annotation flagged this message as an occurrence of this issue.",
+  label: "Onde este sinal ocorre",
+  tooltip: "Uma anotação marcou esta mensagem como ocorrência deste sinal.",
 } as const
 
 function centerVertically(container: HTMLElement, target: Element) {
@@ -178,7 +177,7 @@ function ExampleConversation({
   if (conversation.totalMessages === 0) {
     return (
       <div className="flex items-center justify-center p-6">
-        <Text.H6 color="foregroundMuted">We couldn't load this example's conversation.</Text.H6>
+        <Text.H6 color="foregroundMuted">Não foi possível carregar a conversa deste exemplo.</Text.H6>
       </div>
     )
   }
@@ -220,8 +219,8 @@ function OccurrenceAnnotation({
       <div className="flex flex-row items-center gap-2">
         {occurrence.flaggerSlug ? (
           <div className="flex flex-row items-center gap-1.5">
-            <LatitudeLogo className="h-4 w-4" />
-            <Text.H6 weight="bold">Latitude</Text.H6>
+            <ShieldCheckIcon className="h-4 w-4" />
+            <Text.H6 weight="bold">Vigia</Text.H6>
             <FlaggerBadge projectId={projectId} projectSlug={projectSlug} slug={occurrence.flaggerSlug} />
           </div>
         ) : annotator ? (
@@ -230,7 +229,7 @@ function OccurrenceAnnotation({
             <Text.H6 weight="bold">{annotator.name}</Text.H6>
           </>
         ) : (
-          <Text.H6 weight="bold">Annotation</Text.H6>
+          <Text.H6 weight="bold">Anotação</Text.H6>
         )}
         <Text.H6 color="foregroundMuted">{relativeTime(new Date(occurrence.createdAt))}</Text.H6>
       </div>
@@ -307,7 +306,7 @@ export function SignalExamples({
   return (
     <DetailSection
       icon={<Icon icon={MessageSquareTextIcon} size="sm" />}
-      label="Examples"
+      label="Exemplos"
       defaultOpen
       contentClassName="pl-0 max-h-none overflow-visible"
     >
@@ -315,22 +314,22 @@ export function SignalExamples({
         <Skeleton className="h-40 w-full" />
       ) : !current ? (
         <Text.H6 color="foregroundMuted">
-          No pinpointed examples yet. Examples appear when an occurrence is annotated on a specific message.
+          Ainda não há exemplos pontuais. Eles aparecem quando uma ocorrência é anotada em uma mensagem específica.
         </Text.H6>
       ) : (
         <div className="flex flex-col gap-3 rounded-lg bg-secondary p-4">
           <div className="flex flex-row items-center justify-between gap-2">
             <Text.H6 color="foregroundMuted">
-              Example {currentIndex + 1} of {occurrences.length}
+              Exemplo {currentIndex + 1} de {occurrences.length}
             </Text.H6>
             <div className="flex flex-row items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => openTraceSheet(current.traceId, "trace")}>
                 <Icon icon={ListTreeIcon} size="sm" />
-                See trace
+                Ver trace
               </Button>
               <Button variant="outline" size="sm" onClick={() => openTraceSheet(current.traceId, "conversation")}>
                 <Icon icon={Maximize2Icon} size="sm" />
-                Expand
+                Expandir
               </Button>
               <div className="mx-1 h-5 w-px bg-border" />
               <Tooltip
@@ -342,13 +341,13 @@ export function SignalExamples({
                     className="h-8 w-8 p-0"
                     disabled={!canPrev}
                     onClick={() => goTo(currentIndex - 1)}
-                    aria-label="Previous example"
+                    aria-label="Exemplo anterior"
                   >
                     <ChevronLeftIcon className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 }
               >
-                Previous example (H)
+                Exemplo anterior (H)
               </Tooltip>
               <Tooltip
                 asChild
@@ -359,13 +358,13 @@ export function SignalExamples({
                     className="h-8 w-8 p-0"
                     disabled={!canNext}
                     onClick={() => goTo(currentIndex + 1)}
-                    aria-label="Next example"
+                    aria-label="Próximo exemplo"
                   >
                     <ChevronRightIcon className="h-4 w-4 text-muted-foreground" />
                   </Button>
                 }
               >
-                Next example (L)
+                Próximo exemplo (L)
               </Tooltip>
             </div>
           </div>
@@ -379,7 +378,7 @@ export function SignalExamples({
         </div>
       )}
 
-      <Sheet open={traceSheet !== null} onClose={closeTraceSheet} closeAriaLabel="Close trace panel">
+      <Sheet open={traceSheet !== null} onClose={closeTraceSheet} closeAriaLabel="Fechar painel do trace">
         {traceSheet ? (
           <TraceDetailDrawer
             key={`${traceSheet.traceId}-${traceSheet.tab}`}
@@ -391,7 +390,7 @@ export function SignalExamples({
             urlSyncedTabs={false}
             initialTab={traceSheet.tab}
             drawerStoreKey="issue-trace-detail-drawer-width"
-            closeLabel="Back to issue"
+            closeLabel="Voltar para o sinal"
           />
         ) : null}
       </Sheet>

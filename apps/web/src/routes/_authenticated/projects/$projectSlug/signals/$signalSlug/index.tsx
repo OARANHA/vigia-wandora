@@ -40,10 +40,10 @@ function SignalDetailBreadcrumb() {
   return (
     <>
       <BreadcrumbLink to="/projects/$projectSlug/signals" params={{ projectSlug }}>
-        Signals
+        Sinais
       </BreadcrumbLink>
       <BreadcrumbSeparator />
-      <BreadcrumbText variant="current">{signal?.name ?? "Signal"}</BreadcrumbText>
+      <BreadcrumbText variant="current">{signal?.name ?? "Sinal"}</BreadcrumbText>
     </>
   )
 }
@@ -94,23 +94,23 @@ function SignalDetailPage() {
                         variant="ghost"
                         size="sm"
                         className="w-fit"
-                        aria-label="Go back"
+                        aria-label="Voltar"
                         onClick={() => router.history.back()}
                       >
                         <Icon icon={ArrowLeftIcon} size="sm" />
-                        Back
+                        Voltar
                       </Button>
                     ) : (
-                      <Button asChild variant="ghost" size="sm" className="w-fit" aria-label="Back to signals">
+                      <Button asChild variant="ghost" size="sm" className="w-fit" aria-label="Voltar para sinais">
                         <Link to="/projects/$projectSlug/signals" params={{ projectSlug }}>
                           <Icon icon={ArrowLeftIcon} size="sm" />
-                          Back
+                          Voltar
                         </Link>
                       </Button>
                     )
                   }
                 >
-                  {canGoBack ? "Go back" : "Back to signals"}
+                  {canGoBack ? "Voltar" : "Voltar para sinais"}
                 </Tooltip>
                 <SignalNeighborNav
                   projectId={project.id}
@@ -124,7 +124,7 @@ function SignalDetailPage() {
                 <Skeleton className="h-7 w-56" />
               ) : (
                 <div className="group/title flex min-w-0 items-center gap-2">
-                  <Text.H4M className="min-w-0 truncate">{signal?.name ?? "Signal not found"}</Text.H4M>
+                  <Text.H4M className="min-w-0 truncate">{signal?.name ?? "Sinal não encontrado"}</Text.H4M>
                   {signal && signal.states.length > 0 ? (
                     <div className="shrink-0">
                       <SignalLifecycleStatuses states={signal.states} />
@@ -138,14 +138,14 @@ function SignalDetailPage() {
                         <Button
                           variant="ghost"
                           className="h-7 w-7 shrink-0 p-0 opacity-0 transition-opacity group-hover/title:opacity-100 group-focus-within/title:opacity-100 focus-visible:opacity-100"
-                          aria-label="Edit signal name and description"
+                          aria-label="Editar nome e descrição do sinal"
                           onClick={() => setRenameOpen(true)}
                         >
                           <Icon icon={PencilIcon} size="sm" color="foregroundMuted" />
                         </Button>
                       }
                     >
-                      Edit name & description
+                      Editar nome e descrição
                     </Tooltip>
                   ) : null}
                 </div>
@@ -155,7 +155,7 @@ function SignalDetailPage() {
           description={
             !isLoading && signal ? (
               <div className="flex max-w-max">
-                <CopyableText value={signal.slug} size="sm" ellipsis tooltip="Copy signal slug" />
+                <CopyableText value={signal.slug} size="sm" ellipsis tooltip="Copiar identificador do sinal" />
               </div>
             ) : undefined
           }
@@ -201,7 +201,7 @@ function SignalDetailPage() {
                 {isLoading ? (
                   <Skeleton className="h-5 w-full" />
                 ) : (
-                  <Text.H5 color="foregroundMuted">{signal?.description ?? "This signal could not be loaded."}</Text.H5>
+                  <Text.H5 color="foregroundMuted">{signal?.description ?? "Não foi possível carregar este sinal."}</Text.H5>
                 )}
                 {!isLoading && signal ? (
                   <div className="flex flex-row flex-wrap items-center gap-2">

@@ -63,7 +63,7 @@ export function SignalTriageControls({
       name="issue-priority"
       options={PRIORITY_OPTIONS}
       value={issue?.priority ?? UNSET}
-      placeholder="No priority"
+      placeholder="Sem prioridade"
       disabled={disabled}
       size="small"
       triggerClassName="rounded-lg px-2 shadow-none"
@@ -83,11 +83,11 @@ export function SignalTriageControls({
   return (
     <div className="flex flex-row flex-wrap items-end gap-3">
       <div className="flex w-48 flex-col gap-1">
-        <Text.H6 color="foregroundMuted">Assignee</Text.H6>
+        <Text.H6 color="foregroundMuted">Responsável</Text.H6>
         {assigneePicker}
       </div>
       <div className="flex w-40 flex-col gap-1">
-        <Text.H6 color="foregroundMuted">Priority</Text.H6>
+        <Text.H6 color="foregroundMuted">Prioridade</Text.H6>
         {priorityPicker}
       </div>
     </div>

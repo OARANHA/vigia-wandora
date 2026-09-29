@@ -81,13 +81,13 @@ export function ExperimentCreateModal({
       open
       dismissible
       onOpenChange={(next) => (!next ? onClose() : undefined)}
-      title="New experiment"
-      description="Compare variants side by side, each with its own filters, search query, or time range. See how sessions, users, tools, signals, and behaviours differ across them."
+      title="Novo experimento"
+      description="Compare variantes lado a lado, cada uma com seus próprios filtros, busca ou período. Veja como sessões, usuários, ferramentas, sinais e comportamentos mudam entre elas."
       footer={
         <>
           <CloseTrigger />
           <Button type="submit" isLoading={create.isPending} onClick={() => void form.handleSubmit()}>
-            Create
+            Criar
           </Button>
         </>
       }
@@ -104,8 +104,8 @@ export function ExperimentCreateModal({
             <Input
               required
               autoFocus
-              label="Name"
-              placeholder="English vs. other languages"
+              label="Nome"
+              placeholder="Português vs. outros idiomas"
               value={field.state.value}
               onChange={(event) => field.handleChange(event.target.value)}
               errors={fieldErrorsAsStrings(field.state.meta.errors)}
@@ -115,8 +115,8 @@ export function ExperimentCreateModal({
         <form.Field name="description">
           {(field) => (
             <Textarea
-              label="Description"
-              placeholder="Comparing user sessions from English vs. all other languages"
+              label="Descrição"
+              placeholder="Comparando sessões em português com outros idiomas"
               minRows={2}
               value={field.state.value}
               onChange={(event) => field.handleChange(event.target.value)}
@@ -125,7 +125,7 @@ export function ExperimentCreateModal({
           )}
         </form.Field>
         <div className="flex flex-col gap-2">
-          <Text.H5M>Preset</Text.H5M>
+          <Text.H5M>Predefinição</Text.H5M>
           <div className="grid grid-cols-2 gap-2">
             {EXPERIMENT_PRESET_OPTIONS.map((option) => {
               const active = option.value === preset
@@ -187,7 +187,7 @@ export function ExperimentRenameModal({
         }),
       {
         onSuccess: (updated: ExperimentRecord) => {
-          toast({ description: "Experiment updated." })
+          toast({ description: "Experimento atualizado." })
           onClose()
           onRenamed?.(updated)
         },
@@ -201,13 +201,13 @@ export function ExperimentRenameModal({
       open
       dismissible
       onOpenChange={(next) => (!next ? onClose() : undefined)}
-      title="Edit experiment"
-      description="Rename the experiment or change its description."
+      title="Editar experimento"
+      description="Renomeie o experimento ou altere sua descrição."
       footer={
         <>
           <CloseTrigger />
           <Button type="submit" isLoading={update.isPending} onClick={() => void form.handleSubmit()}>
-            Save
+            Salvar
           </Button>
         </>
       }
@@ -224,8 +224,8 @@ export function ExperimentRenameModal({
             <Input
               required
               autoFocus
-              label="Name"
-              placeholder="English vs. other languages"
+              label="Nome"
+              placeholder="Português vs. outros idiomas"
               value={field.state.value}
               onChange={(event) => field.handleChange(event.target.value)}
               errors={fieldErrorsAsStrings(field.state.meta.errors)}
@@ -235,8 +235,8 @@ export function ExperimentRenameModal({
         <form.Field name="description">
           {(field) => (
             <Textarea
-              label="Description"
-              placeholder="Comparing user sessions from English vs. all other languages"
+              label="Descrição"
+              placeholder="Comparando sessões em português com outros idiomas"
               minRows={2}
               value={field.state.value}
               onChange={(event) => field.handleChange(event.target.value)}
@@ -270,7 +270,7 @@ export function ExperimentDeleteConfirmModal({
     setIsPending(true)
     try {
       await remove.mutateAsync(experiment.id)
-      toast({ description: "Experiment removed." })
+      toast({ description: "Experimento removido." })
       onDeleted?.(experiment.id)
       onOpenChange(null)
     } catch (error) {
@@ -285,15 +285,15 @@ export function ExperimentDeleteConfirmModal({
       open={experiment !== null}
       dismissible
       onOpenChange={(open) => (!open ? onOpenChange(null) : undefined)}
-      title="Remove experiment"
-      description="Removing this experiment cannot be undone."
+      title="Remover experimento"
+      description="A remoção deste experimento não pode ser desfeita."
       footer={
         <div className="flex justify-end gap-2">
           <Button variant="outline" disabled={isPending} onClick={() => onOpenChange(null)}>
-            Cancel
+            Cancelar
           </Button>
           <Button variant="destructive" disabled={isPending} isLoading={isPending} onClick={() => void onConfirm()}>
-            Remove
+            Remover
           </Button>
         </div>
       }

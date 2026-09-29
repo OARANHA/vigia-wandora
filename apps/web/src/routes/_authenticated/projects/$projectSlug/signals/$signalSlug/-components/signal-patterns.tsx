@@ -138,7 +138,7 @@ export function SignalPatterns({ projectId, signalId }: { readonly projectId: st
   return (
     <div className="flex h-full flex-col gap-3 rounded-lg bg-secondary p-4">
       <div className="flex flex-col gap-0.5">
-        <Text.H6 color="foregroundMuted">What's unusual about this signal</Text.H6>
+        <Text.H6 color="foregroundMuted">O que há de incomum neste sinal</Text.H6>
         {/* States the metric once so the bare per-row percentages aren't misread
             as "share of the signal's occurrences" (it's the reverse). */}
         <Text.H6 color="foregroundMuted" className="opacity-70">
@@ -149,7 +149,7 @@ export function SignalPatterns({ projectId, signalId }: { readonly projectId: st
         {isLoading ? (
           [0, 1, 2].map((row) => <Skeleton key={row} className="h-7 w-full" />)
         ) : ranked.length === 0 ? (
-          <Text.H6 color="foregroundMuted">Not enough data to compare against the project baseline yet.</Text.H6>
+          <Text.H6 color="foregroundMuted">Ainda não há dados suficientes para comparar com a linha de base do projeto.</Text.H6>
         ) : (
           ranked.map((pattern) => <PatternRow key={`${pattern.dimension.id}:${pattern.value}`} pattern={pattern} />)
         )}

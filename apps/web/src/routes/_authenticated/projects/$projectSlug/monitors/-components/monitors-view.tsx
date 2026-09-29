@@ -4,7 +4,6 @@ import {
   type InfiniteTableColumn,
   type InfiniteTableInfiniteScroll,
   type InfiniteTableSelection,
-  LatitudeLogo,
   type MenuOption,
   optionsColumn,
   type SortDirection,
@@ -13,7 +12,7 @@ import {
   Tooltip,
 } from "@repo/ui"
 import { useNavigate } from "@tanstack/react-router"
-import { BellIcon, BellOffIcon, PencilIcon, Trash2Icon } from "lucide-react"
+import { BellIcon, BellOffIcon, PencilIcon, ShieldCheckIcon, Trash2Icon } from "lucide-react"
 import { useState } from "react"
 import { describeMonitorTarget } from "../../../../../../domains/monitors/monitor-target.ts"
 import type { MonitorListRowRecord, MonitorRecord } from "../../../../../../domains/monitors/monitors.collection.ts"
@@ -127,7 +126,7 @@ function TargetCell({
             <button
               type="button"
               className="min-w-0 cursor-pointer"
-              aria-label={`Open saved search ${savedSearchName} on the traces page`}
+              aria-label={`Abrir busca salva ${savedSearchName} na página de traces`}
               onClick={(event) => {
                 event.stopPropagation()
                 onOpenSearch(savedSearchSlug)
@@ -139,7 +138,7 @@ function TargetCell({
             </button>
           }
         >
-          View matching traces
+          Ver traces correspondentes
         </Tooltip>
       </div>
     )
@@ -212,13 +211,13 @@ export function MonitorsView({
                   variant="white"
                   size="small"
                   className="shrink-0"
-                  aria-label="This monitor is managed by the system"
+                  aria-label="Este monitor é gerenciado pelo sistema"
                 >
-                  <LatitudeLogo className="h-3 w-3" />
+                  <ShieldCheckIcon className="h-3 w-3" />
                 </Badge>
               }
             >
-              This monitor is managed by the system
+              Este monitor é gerenciado pelo sistema
             </Tooltip>
           ) : null}
         </div>
@@ -231,11 +230,11 @@ export function MonitorsView({
       width: 80,
       minWidth: 80,
       render: (row) =>
-        row.monitor.mutedAt ? <Status variant="neutral" label="Muted" /> : <Status variant="success" label="Live" />,
+        row.monitor.mutedAt ? <Status variant="neutral" label="Silenciado" /> : <Status variant="success" label="Ativo" />,
     },
     {
       key: "lastIncident",
-      header: "Last incident",
+      header: "Último incidente",
       sortKey: "lastIncident",
       width: 187,
       minWidth: 153,
@@ -243,7 +242,7 @@ export function MonitorsView({
     },
     {
       key: "target",
-      header: "Target",
+      header: "Alvo",
       width: 180,
       minWidth: 120,
       maxWidth: 220,
@@ -262,7 +261,7 @@ export function MonitorsView({
     },
     {
       key: "condition",
-      header: "Condition",
+      header: "Condição",
       width: 340,
       minWidth: 200,
       maxWidth: 340,
@@ -274,18 +273,18 @@ export function MonitorsView({
         return [
           // Rename + Remove only apply to user monitors; system monitors are locked.
           {
-            label: "Rename",
+            label: "Renomear",
             iconProps: { icon: PencilIcon },
             ...(isUser ? { onClick: () => setRenameTarget(row.monitor) } : { disabled: true }),
           },
           {
-            label: row.monitor.mutedAt ? "Unmute" : "Mute",
+            label: row.monitor.mutedAt ? "Reativar" : "Silenciar",
             iconProps: { icon: row.monitor.mutedAt ? BellIcon : BellOffIcon },
             onClick: () => setPendingMute(row.monitor),
           },
           { type: "separator" },
           {
-            label: "Remove",
+            label: "Remover",
             type: "destructive",
             iconProps: { icon: Trash2Icon, color: "destructive" },
             ...(isUser ? { onClick: () => setDeleteTarget(row.monitor) } : { disabled: true }),
@@ -317,7 +316,7 @@ export function MonitorsView({
               onActiveMonitorChange(row.monitor.slug === activeMonitorSlug ? undefined : row.monitor.slug)
             }
             getRowAriaLabel={(row) =>
-              row.monitor.slug === activeMonitorSlug ? `Close ${row.monitor.name}` : `Open ${row.monitor.name}`
+              row.monitor.slug === activeMonitorSlug ? `Fechar ${row.monitor.name}` : `Abrir ${row.monitor.name}`
             }
           />
         </Layout.List>

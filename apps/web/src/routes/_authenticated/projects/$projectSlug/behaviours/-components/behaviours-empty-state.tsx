@@ -1,5 +1,6 @@
 import { Button, Icon, Text } from "@repo/ui"
-import { ExternalLinkIcon, Loader2Icon, PlusIcon, TagsIcon } from "lucide-react"
+import { Loader2Icon, PlusIcon, TagsIcon } from "lucide-react"
+import { ptBR } from "../../../../../../lib/i18n/pt-BR.ts"
 import type { useRouteProject } from "../../-route-data.ts"
 
 type RouteProject = ReturnType<typeof useRouteProject>
@@ -35,25 +36,19 @@ export function GlobalEmptyState({
         )}
       </div>
       <div className="flex flex-col items-center gap-2">
-        <Text.H3>{isDemoProject ? "Sample behaviors are loading" : "No behaviors yet"}</Text.H3>
+        <Text.H3>{isDemoProject ? ptBR.clientPages.behaviours.loadingTitle : ptBR.clientPages.behaviours.emptyTitle}</Text.H3>
         <Text.H5 color="foregroundMuted" centered className="max-w-md">
           {isDemoProject
-            ? "We found the sample traces and signals. The behavior taxonomy is still being prepared, so check back in about a minute."
-            : "Live taxonomy behaviors will appear here after sessions have been clustered."}
+            ? ptBR.clientPages.behaviours.loadingDescription
+            : ptBR.clientPages.behaviours.emptyDescription}
         </Text.H5>
       </div>
       {isDemoProject ? null : (
         <div className="flex flex-row items-center gap-2">
-          <Button asChild variant={onNewBehavior ? "outline" : "default"}>
-            <a href="https://docs.latitude.so/search/behaviours" target="_blank" rel="noopener noreferrer">
-              <Icon size="sm" icon={ExternalLinkIcon} />
-              Read the docs
-            </a>
-          </Button>
           {onNewBehavior ? (
             <Button onClick={onNewBehavior}>
               <Icon size="sm" icon={PlusIcon} />
-              Behavior
+              {ptBR.clientPages.behaviours.create}
             </Button>
           ) : null}
         </div>

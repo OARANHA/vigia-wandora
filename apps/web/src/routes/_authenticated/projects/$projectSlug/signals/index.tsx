@@ -88,48 +88,48 @@ const BULK_LIFECYCLE_MODAL: Record<
   }
 > = {
   resolve: {
-    title: "Resolve signals",
-    label: "Resolve",
+    title: "Resolver sinais",
+    label: "Resolver",
     icon: CheckIcon,
     destructive: false,
     description: (target) =>
-      `Mark ${target} as resolved. If a signal starts occurring again we will alert you and promote it as regressed.`,
+      `Marcar ${target} como resolvido. Se voltar a ocorrer, o Vigia alertará e marcará como regressão.`,
   },
   unresolve: {
-    title: "Unresolve signals",
-    label: "Unresolve",
+    title: "Reabrir sinais",
+    label: "Reabrir",
     icon: UndoIcon,
     destructive: false,
-    description: (target) => `Reopen ${target}. New occurrences won't mark them as regressed.`,
+    description: (target) => `Reabrir ${target}. Novas ocorrências não serão tratadas como regressão.`,
   },
   ignore: {
-    title: "Ignore signals",
-    label: "Ignore",
+    title: "Ignorar sinais",
+    label: "Ignorar",
     icon: EyeOffIcon,
     destructive: true,
-    description: (target) => `Mark ${target} as ignored. We won't monitor or alert you about new occurrences anymore.`,
+    description: (target) => `Marcar ${target} como ignorado. O Vigia deixará de monitorar e alertar sobre novas ocorrências.`,
   },
   unignore: {
-    title: "Unignore signals",
-    label: "Unignore",
+    title: "Voltar a acompanhar sinais",
+    label: "Acompanhar",
     icon: EyeIcon,
     destructive: false,
-    description: (target) => `Stop ignoring ${target}. New occurrences will surface them again.`,
+    description: (target) => `Voltar a acompanhar ${target}. Novas ocorrências voltarão a aparecer.`,
   },
   mute: {
-    title: "Mute signals",
-    label: "Mute",
+    title: "Silenciar sinais",
+    label: "Silenciar",
     icon: BellOffIcon,
     destructive: true,
     description: (target) =>
-      `Silence ${target}. New occurrences still start incidents, but they won't send notifications.`,
+      `Silenciar ${target}. Novas ocorrências ainda criam incidentes, mas não enviam notificações.`,
   },
   unmute: {
-    title: "Unmute signals",
-    label: "Unmute",
+    title: "Reativar notificações",
+    label: "Reativar",
     icon: BellIcon,
     destructive: false,
-    description: (target) => `Unmute ${target}. New occurrences will be notified again.`,
+    description: (target) => `Reativar notificações de ${target}. Novas ocorrências voltarão a gerar notificações.`,
   },
 }
 
@@ -492,7 +492,7 @@ function SignalsPage() {
                 <Input
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
-                  placeholder="Search signals"
+                  placeholder={ptBR.clientPages.signals.searchPlaceholder}
                   size="sm"
                   className="w-64 pl-8 rounded-lg"
                 />
@@ -506,12 +506,12 @@ function SignalsPage() {
                 options={[
                   {
                     id: "active",
-                    label: "Active",
+                    label: ptBR.clientPages.signals.active,
                     icon: <ActivityIcon className="w-4 h-4" />,
                   },
                   {
                     id: "archived",
-                    label: "Archived",
+                    label: ptBR.clientPages.signals.archived,
                     icon: <ArchiveIcon className="w-4 h-4" />,
                   },
                 ]}
@@ -520,7 +520,7 @@ function SignalsPage() {
               />
               <Button onClick={() => openCreate(null)}>
                 <Icon icon={PlusIcon} size="sm" />
-                Signal
+                {ptBR.clientPages.signals.create}
               </Button>
             </Layout.ActionRowItem>
           </Layout.ActionsRow>
@@ -549,11 +549,11 @@ function SignalsPage() {
               disabled={bulkActionLoading}
             >
               <Icon icon={archived ? BellIcon : BellOffIcon} size="sm" />
-              {archived ? "Unmute" : "Mute"} ({selection.selectedCount.toLocaleString()})
+              {archived ? "Reativar" : "Silenciar"} ({selection.selectedCount.toLocaleString()})
             </Button>
             <Button variant="outline" size="sm" onClick={() => setExportModalOpen(true)} disabled={exporting}>
               <Icon icon={DownloadIcon} size="sm" />
-              Export ({selection.selectedCount.toLocaleString()})
+              Exportar ({selection.selectedCount.toLocaleString()})
             </Button>
           </div>
         )}
@@ -586,7 +586,7 @@ function SignalsPage() {
           <ExportConfirmationModal
             open={exportModalOpen}
             onOpenChange={setExportModalOpen}
-            itemLabel="signal"
+            itemLabel="sinal"
             selectedCount={selection.selectedCount}
             onConfirm={() => void handleExportSignals()}
             exporting={exporting}
@@ -602,7 +602,7 @@ function SignalsPage() {
             dismissible
             title={BULK_LIFECYCLE_MODAL[bulkLifecycleAction].title}
             description={BULK_LIFECYCLE_MODAL[bulkLifecycleAction].description(
-              selection.selectedCount === 1 ? "this signal" : `${selection.selectedCount} signals`,
+              selection.selectedCount === 1 ? "este sinal" : `${selection.selectedCount} sinais`,
             )}
             footer={
               <>
@@ -621,7 +621,7 @@ function SignalsPage() {
                 >
                   <Icon icon={BULK_LIFECYCLE_MODAL[bulkLifecycleAction].icon} size="sm" />
                   {BULK_LIFECYCLE_MODAL[bulkLifecycleAction].label}{" "}
-                  {selection.selectedCount === 1 ? "Signal" : `${selection.selectedCount} Signals`}
+                  {selection.selectedCount === 1 ? "Sinal" : `${selection.selectedCount} sinais`}
                 </Button>
               </>
             }
@@ -634,11 +634,11 @@ function SignalsPage() {
                   disabled={bulkActionLoading}
                 />
                 <div className="flex flex-col gap-1">
-                  <Text.H6>Keep evaluating these signals</Text.H6>
+                  <Text.H6>Continuar avaliando estes sinais</Text.H6>
                   <Text.H6 color="foregroundMuted">
                     {bulkKeepMonitoring
-                      ? "Their evaluations keep running so regressions reopen them."
-                      : "Their evaluations will be archived; regressions won't be detected."}
+                      ? "As avaliações continuam ativas para que regressões reabram os sinais."
+                      : "As avaliações serão arquivadas; regressões não serão detectadas."}
                   </Text.H6>
                 </div>
               </div>

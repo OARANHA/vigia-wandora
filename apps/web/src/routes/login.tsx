@@ -14,7 +14,6 @@ import { setSignupAttributionCookie } from "../lib/analytics/signup-attribution-
 import { oauthCallbackErrorMessage } from "../lib/auth/oauth-errors.ts"
 import { authClient } from "../lib/auth-client.ts"
 import { TURNSTILE_SITE_KEY } from "../lib/auth-config.ts"
-import { toUserMessage } from "../lib/errors.ts"
 import { ptBR } from "../lib/i18n/pt-BR.ts"
 import { bootstrapPostHogAttributionSession, getPostHogSessionId } from "../lib/posthog/posthog-client.ts"
 import { VIGIA_PRODUCT } from "../lib/product.ts"
@@ -58,7 +57,7 @@ function LoginPage() {
   const [email, setEmail] = useState(prefilledEmail ?? "")
   const captchaTokenRef = useRef<string | undefined>(undefined)
 
-  const handleCaptchaVerify = useCallback((token: string) => {
+  const handleCaptchaVerify = useCallback(([REDACTED] => {
     captchaTokenRef.current = token
   }, [])
   const handleCaptchaExpire = useCallback(() => {
@@ -94,7 +93,7 @@ function LoginPage() {
         })
         if (ssoError) {
           setIsRedirectingToSso(false)
-          setError(ssoError.message ?? ptBR.auth.ssoError)
+          setError(ptBR.auth.ssoError)
           setIsLoading(false)
         }
         return
@@ -112,8 +111,8 @@ function LoginPage() {
 
       setIsSent(true)
       setIsLoading(false)
-    } catch (err) {
-      setError(toUserMessage(err))
+    } catch {
+      setError(ptBR.auth.requestError)
       setIsLoading(false)
     }
   }
@@ -133,8 +132,8 @@ function LoginPage() {
       if (redirectPath) startParams.set("redirect", redirectPath)
       const startUrl = `/api/auth/${provider}/start${startParams.toString() ? `?${startParams.toString()}` : ""}`
       window.location.assign(startUrl)
-    } catch (err) {
-      setError(toUserMessage(err))
+    } catch {
+      setError(ptBR.auth.socialError)
       setIsLoading(false)
     }
   }
@@ -169,11 +168,7 @@ function LoginPage() {
   }
 
   return (
-    <AuthScreen>
-      <div className="flex flex-col items-center justify-center gap-y-1">
-        <Text.H3 align="center">{ptBR.auth.welcome}</Text.H3>
-      </div>
-
+    <AuthScreen title={ptBR.auth.loginTitle} description={ptBR.auth.loginDescription}>
       <div className="flex flex-col gap-4 rounded-xl overflow-hidden shadow-none bg-muted/50 border border-border p-6">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input
@@ -190,7 +185,7 @@ function LoginPage() {
 
           {TURNSTILE_SITE_KEY && (
             <Turnstile
-              siteKey={TURNSTILE_SITE_KEY}
+[REDACTED]
               onVerify={handleCaptchaVerify}
               onExpire={handleCaptchaExpire}
               onError={handleCaptchaExpire}

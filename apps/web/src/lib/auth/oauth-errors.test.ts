@@ -6,8 +6,8 @@ describe("oauthCallbackErrorMessage", () => {
     expect(oauthCallbackErrorMessage(undefined)).toBeUndefined()
   })
 
-  it("maps account_not_linked to copy that steers the user to email sign-in", () => {
-    expect(oauthCallbackErrorMessage("account_not_linked")).toContain("Sign in with your email")
+  it("maps account_not_linked to PT-BR copy that steers the user to email sign-in", () => {
+    expect(oauthCallbackErrorMessage("account_not_linked")).toContain("Entre com seu e-mail")
   })
 
   it("falls back to a generic message without echoing unknown codes", () => {

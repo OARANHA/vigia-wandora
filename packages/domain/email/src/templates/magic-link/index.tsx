@@ -13,8 +13,12 @@ export interface MagicLinkEmailData {
 export async function magicLinkTemplate(data: MagicLinkEmailData): Promise<RenderedEmail> {
   return {
     html: await renderEmail(<MagicLinkEmail userName={data.userName} magicLinkUrl={data.magicLinkUrl} />),
-    subject: "Continue to Latitude",
-    text: `Hi ${data.userName}, use this link to continue to Latitude: ${data.magicLinkUrl}`,
+    subject: "Seu link de acesso ao Vigia",
+    text: `Recebemos uma solicitação de acesso ao Vigia com este e-mail. Clique no link abaixo para entrar com segurança.
+
+Entrar no Vigia: ${data.magicLinkUrl}
+
+Se você não solicitou este acesso, ignore este e-mail.`,
   }
 }
 

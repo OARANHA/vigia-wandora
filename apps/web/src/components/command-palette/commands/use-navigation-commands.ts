@@ -13,6 +13,7 @@ import {
   useVisibleProjectSections,
   useVisibleProjectSettingsGroups,
 } from "../../../domains/projects/project-sections.ts"
+import { ptBR } from "../../../lib/i18n/pt-BR.ts"
 import type { PaletteCommand } from "../types.ts"
 
 /** The two integrations outside the dispatch set; Slack is only ever configured organization-wide. */
@@ -86,7 +87,7 @@ export function useNavigationCommands(): readonly PaletteCommand[] {
           commands.push({
             id: `nav:settings:${item.key}`,
             title: item.label,
-            subtitle: `Settings → ${group.title}`,
+            subtitle: `${ptBR.clientShell.sections.settings} → ${group.title}`,
             icon: item.icon,
             section: "navigation",
             keywords: `settings ${group.title} ${item.label}`,
@@ -99,7 +100,7 @@ export function useNavigationCommands(): readonly PaletteCommand[] {
         commands.push({
           id: `nav:integration:${integration.key}`,
           title: integration.label,
-          subtitle: `Settings → ${integration.group} → Integrations`,
+          subtitle: `${ptBR.clientShell.sections.settings} → ${integration.group} → ${ptBR.clientShell.settings.integrations}`,
           icon: integration.icon,
           section: "navigation",
           keywords: integration.keywords,
@@ -111,7 +112,7 @@ export function useNavigationCommands(): readonly PaletteCommand[] {
         commands.push({
           id: `nav:integration:${kind}`,
           title: label,
-          subtitle: "Settings → Project → Integrations",
+          subtitle: `${ptBR.clientShell.sections.settings} → ${ptBR.clientShell.settings.project} → ${ptBR.clientShell.settings.integrations}`,
           icon: AGENT_DISPATCH_KIND_ICONS[kind],
           section: "navigation",
           keywords: AGENT_DISPATCH_KEYWORDS[kind],

@@ -1,5 +1,6 @@
 import { cn, Icon, Switch, Text } from "@repo/ui"
 import { Boxes } from "lucide-react"
+import { ptBR } from "../lib/i18n/pt-BR.ts"
 
 /**
  * Sidebar row with the live/sandbox switch, shared by the live project
@@ -19,7 +20,7 @@ export function SandboxToggle({
   readonly disabled?: boolean
   readonly onToggle: () => void
 }) {
-  const actionLabel = checked ? "Switch to live" : "Switch to sandbox"
+  const actionLabel = checked ? ptBR.clientShell.sandbox.switchToLive : ptBR.clientShell.sandbox.switchToSandbox
   // Mirrors NavItem's row markup so the entry is visually identical to Settings.
   const rowClassName = cn("flex items-center rounded-lg transition-colors", {
     "h-10 w-10 justify-center": collapsed,
@@ -46,7 +47,7 @@ export function SandboxToggle({
     <div className={rowClassName}>
       <Icon icon={Boxes} size="sm" className="text-muted-foreground" />
       <Text.H5M color="foregroundMuted" ellipsis className="min-w-0 flex-1 text-left">
-        Sandbox
+        {ptBR.clientShell.sandbox.label}
       </Text.H5M>
       <Switch
         checked={checked}

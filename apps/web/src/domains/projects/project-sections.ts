@@ -28,6 +28,7 @@ import {
   WrenchIcon,
 } from "lucide-react"
 import { useMemo } from "react"
+import { ptBR } from "../../lib/i18n/pt-BR.ts"
 import { useFeatureFlags } from "../feature-flags/feature-flags.collection.ts"
 
 type SectionGroupKey = "observe" | "understand" | "refine"
@@ -46,7 +47,7 @@ interface ProjectSection {
 const PROJECT_SECTIONS: readonly ProjectSection[] = [
   {
     key: "agent-score",
-    label: "Agent Score",
+    label: ptBR.clientShell.sections.agentScore,
     icon: GaugeIcon,
     group: "observe",
     path: (slug) => `/projects/${slug}/agent-score`,
@@ -55,7 +56,7 @@ const PROJECT_SECTIONS: readonly ProjectSection[] = [
   },
   {
     key: "sessions",
-    label: "Sessions",
+    label: ptBR.clientShell.sections.sessions,
     icon: MessagesSquareIcon,
     group: "observe",
     path: (slug) => `/projects/${slug}`,
@@ -63,7 +64,7 @@ const PROJECT_SECTIONS: readonly ProjectSection[] = [
   },
   {
     key: "users",
-    label: "Users",
+    label: ptBR.clientShell.sections.users,
     icon: UsersRoundIcon,
     group: "observe",
     path: (slug) => `/projects/${slug}/users`,
@@ -71,7 +72,7 @@ const PROJECT_SECTIONS: readonly ProjectSection[] = [
   },
   {
     key: "tools",
-    label: "Tools",
+    label: ptBR.clientShell.sections.tools,
     icon: WrenchIcon,
     group: "observe",
     path: (slug) => `/projects/${slug}/tools`,
@@ -79,7 +80,7 @@ const PROJECT_SECTIONS: readonly ProjectSection[] = [
   },
   {
     key: "memory",
-    label: "Memory",
+    label: ptBR.clientShell.sections.memory,
     icon: BrainIcon,
     group: "observe",
     path: (slug) => `/projects/${slug}/memory`,
@@ -87,7 +88,7 @@ const PROJECT_SECTIONS: readonly ProjectSection[] = [
   },
   {
     key: "cost",
-    label: "Cost",
+    label: ptBR.clientShell.sections.cost,
     icon: CircleDollarSignIcon,
     group: "observe",
     path: (slug) => `/projects/${slug}/cost`,
@@ -96,7 +97,7 @@ const PROJECT_SECTIONS: readonly ProjectSection[] = [
   },
   {
     key: "signals",
-    label: "Signals",
+    label: ptBR.clientShell.sections.signals,
     icon: ShieldAlertIcon,
     group: "understand",
     path: (slug) => `/projects/${slug}/signals`,
@@ -104,7 +105,7 @@ const PROJECT_SECTIONS: readonly ProjectSection[] = [
   },
   {
     key: "behaviours",
-    label: "Behaviors",
+    label: ptBR.clientShell.sections.behaviours,
     icon: TagsIcon,
     group: "understand",
     path: (slug) => `/projects/${slug}/behaviours`,
@@ -112,7 +113,7 @@ const PROJECT_SECTIONS: readonly ProjectSection[] = [
   },
   {
     key: "experiments",
-    label: "Experiments",
+    label: ptBR.clientShell.sections.experiments,
     icon: FlaskConical,
     group: "understand",
     path: (slug) => `/projects/${slug}/experiments`,
@@ -120,7 +121,7 @@ const PROJECT_SECTIONS: readonly ProjectSection[] = [
   },
   {
     key: "monitors",
-    label: "Monitors",
+    label: ptBR.clientShell.sections.monitors,
     icon: BellRingIcon,
     group: "refine",
     path: (slug) => `/projects/${slug}/monitors`,
@@ -128,7 +129,7 @@ const PROJECT_SECTIONS: readonly ProjectSection[] = [
   },
   {
     key: "datasets",
-    label: "Datasets",
+    label: ptBR.clientShell.sections.datasets,
     icon: DatabaseIcon,
     group: "refine",
     path: (slug) => `/projects/${slug}/datasets`,
@@ -142,15 +143,15 @@ interface ProjectSectionGroup {
 }
 
 const PROJECT_SECTION_GROUPS: readonly ProjectSectionGroup[] = [
-  { key: "observe", label: "Observe" },
-  { key: "understand", label: "Understand" },
-  { key: "refine", label: "Refine" },
+  { key: "observe", label: ptBR.clientShell.groups.observe },
+  { key: "understand", label: ptBR.clientShell.groups.understand },
+  { key: "refine", label: ptBR.clientShell.groups.refine },
 ]
 
 /** Top-level Settings entry (rendered in the sidebar footer, separate from the main list). */
 export const PROJECT_SETTINGS_SECTION: Omit<ProjectSection, "group"> = {
   key: "settings",
-  label: "Settings",
+  label: ptBR.clientShell.sections.settings,
   icon: SettingsIcon,
   path: (slug) => `/projects/${slug}/settings`,
   isActive: (pathname, slug) => pathname.startsWith(`/projects/${slug}/settings`),
@@ -170,105 +171,105 @@ interface ProjectSettingsGroup {
 
 const PROJECT_SETTINGS_GROUPS: readonly ProjectSettingsGroup[] = [
   {
-    title: "Project",
+    title: ptBR.clientShell.settings.project,
     items: [
       {
         key: "general",
-        label: "General",
+        label: ptBR.clientShell.settings.general,
         icon: Package,
         path: (slug) => `/projects/${slug}/settings/general`,
       },
       {
         key: "settings-signals",
-        label: "Signals",
+        label: ptBR.clientShell.sections.signals,
         icon: ShieldAlertIcon,
         path: (slug) => `/projects/${slug}/settings/signals`,
       },
       {
         key: "flaggers",
-        label: "Flaggers",
+        label: ptBR.clientShell.settings.flaggers,
         icon: ScanSearch,
         path: (slug) => `/projects/${slug}/settings/flaggers`,
       },
       {
         key: "privacy",
-        label: "Privacy",
+        label: ptBR.clientShell.settings.privacy,
         icon: EyeOffIcon,
         path: (slug) => `/projects/${slug}/settings/privacy`,
       },
       {
         key: "integrations",
-        label: "Integrations",
+        label: ptBR.clientShell.settings.integrations,
         icon: Plug,
         path: (slug) => `/projects/${slug}/settings/integrations`,
       },
       {
         key: "imports",
-        label: "Imports",
+        label: ptBR.clientShell.settings.imports,
         icon: ImportIcon,
         path: (slug) => `/projects/${slug}/settings/imports`,
       },
       {
         key: "data-destinations",
-        label: "Destinations",
+        label: ptBR.clientShell.settings.destinations,
         icon: Share2Icon,
         path: (slug) => `/projects/${slug}/settings/data-destinations`,
       },
     ],
   },
   {
-    title: "Organization",
+    title: ptBR.clientShell.settings.organization,
     items: [
       {
         key: "organization",
-        label: "General",
+        label: ptBR.clientShell.settings.general,
         icon: Building2,
         path: (slug) => `/projects/${slug}/settings/organization`,
       },
       {
         key: "members",
-        label: "Members",
+        label: ptBR.clientShell.settings.members,
         icon: Users,
         path: (slug) => `/projects/${slug}/settings/members`,
       },
       {
         key: "keys",
-        label: "Keys",
+        label: ptBR.clientShell.settings.keys,
         icon: Key,
         path: (slug) => `/projects/${slug}/settings/keys`,
       },
       {
         key: "billing",
-        label: "Billing",
+        label: ptBR.clientShell.settings.billing,
         icon: CreditCard,
         path: (slug) => `/projects/${slug}/settings/billing`,
       },
       {
         key: "defaults",
-        label: "Defaults",
+        label: ptBR.clientShell.settings.defaults,
         icon: SlidersHorizontalIcon,
         path: (slug) => `/projects/${slug}/settings/defaults`,
       },
       {
         key: "organization-integrations",
-        label: "Integrations",
+        label: ptBR.clientShell.settings.integrations,
         icon: Plug,
         path: (slug) => `/projects/${slug}/settings/organization/integrations`,
       },
       {
         key: "sso",
-        label: "Single sign-on",
+        label: ptBR.clientShell.settings.sso,
         icon: Fingerprint,
         path: (slug) => `/projects/${slug}/settings/sso`,
       },
     ],
   },
   {
-    title: "Personal",
+    title: ptBR.clientShell.settings.personal,
     items: [
       {
         key: "account",
-        label: "Account",
+        label: ptBR.clientShell.settings.account,
         icon: UserRound,
         path: (slug) => `/projects/${slug}/settings/account`,
       },

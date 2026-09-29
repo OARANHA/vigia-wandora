@@ -16,7 +16,7 @@
 - [x] Base centralizada de produto e copy PT-BR
 - [x] Login, perfil inicial e seleção de empresa em PT-BR
 - [x] Onboarding do projeto/agente em PT-BR
-- [ ] Navegação principal em PT-BR
+- [x] Navegação principal em PT-BR
 - [ ] Configuração de URLs/subdomínios
 - [ ] Instalar Docker, Traefik e Portainer próprios na VPS Vigia
 - [ ] Publicar `vigia.wandora.com.br` no Traefik próprio da VPS Vigia

@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router"
 import { listEnabledFeatureFlagIdentifiers } from "../../../../../domains/feature-flags/feature-flags.functions.ts"
+import { ptBR } from "../../../../../lib/i18n/pt-BR.ts"
 import { BreadcrumbText } from "../../../-components/breadcrumb-ui.tsx"
 import { useRouteProject } from "../-route-data.ts"
 import { BehavioursCatalogPage } from "./-components/behaviours-catalog-page.tsx"
 import { LegacyBehavioursPage } from "./-components/legacy-behaviours-page.tsx"
 
 function BehavioursBreadcrumb() {
-  return <BreadcrumbText variant="current">Behaviors</BreadcrumbText>
+  return <BreadcrumbText variant="current">{ptBR.clientShell.sections.behaviours}</BreadcrumbText>
 }
 
 export const Route = createFileRoute("/_authenticated/projects/$projectSlug/behaviours/")({

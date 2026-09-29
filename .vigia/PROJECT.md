@@ -83,7 +83,7 @@ Validação no HEAD da feature antes do merge:
 - `pnpm typecheck`: sucesso;
 - build do web: sucesso.
 
-O onboarding profundo de projeto/agente, navegação autenticada e superfícies técnicas ainda contêm referências do Latitude e permanecem pendentes.
+O onboarding de projeto/agente e o shell principal autenticado já possuem camada Vigia/PT-BR. As superfícies técnicas internas de cada seção ainda contêm copy herdada do Latitude e permanecem como trabalho incremental.
 
 ## Dependências mínimas do baseline
 
@@ -160,3 +160,17 @@ Em 2026-09-28, o runtime de produção foi consolidado e validado sem ainda ser 
 O Portainer continua sem uma stack `vigia` e a VPS continua sem containers Vigia. A rota pública ainda não foi aplicada no Traefik.
 
 A criação automatizada da stack foi bloqueada antes da execução quando o fluxo tentou transportar os segredos obrigatórios do Compose. Nenhum segredo foi salvo. O deploy deve continuar apenas quando esses valores puderem ser injetados por um mecanismo seguro do operador/Portainer.
+
+
+## Shell autenticado do cliente — 2026-09-29
+
+O PR #32 consolidou o primeiro slice visual pós-login da área do cliente:
+
+- logotipo oficial do Vigia na sidebar autenticada;
+- navegação principal e breadcrumbs em PT-BR;
+- criação de empresa, menu da conta, ambiente de teste e indicador de uso em PT-BR;
+- acesso administrativo nomeado como **Administração Vigia** somente para usuários com role global `admin`;
+- link visível para a documentação comercial do Latitude removido do cabeçalho;
+- changelog comercial do upstream ocultado até existir um feed próprio do Vigia.
+
+A tradução profunda do conteúdo de cada página e o rebranding/PT-BR do `/backoffice` permanecem em slices separados. Contratos, rotas e referências internas necessárias ao motor Latitude continuam preservados.

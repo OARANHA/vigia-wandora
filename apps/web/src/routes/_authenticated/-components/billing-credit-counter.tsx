@@ -5,14 +5,15 @@ import { Flame } from "lucide-react"
 import { useState } from "react"
 import { createBillingCheckoutSession, getBillingOverview } from "../../../domains/billing/billing.functions.ts"
 import { toUserMessage } from "../../../lib/errors.ts"
+import { ptBR } from "../../../lib/i18n/pt-BR.ts"
 import { BillingUsageBreakdown } from "./billing-usage-breakdown.tsx"
 
-const numberFormatter = new Intl.NumberFormat("en-US", {
+const numberFormatter = new Intl.NumberFormat("pt-BR", {
   notation: "compact",
   maximumFractionDigits: 1,
 })
 // Period bounds are UTC midnights; local-time formatting would shift them a day back west of Greenwich.
-const periodDateFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
+const periodDateFormatter = new Intl.DateTimeFormat("pt-BR", { month: "short", day: "numeric", timeZone: "UTC" })
 const BILLING_COUNTER_RADIUS = 8
 const BILLING_COUNTER_CIRCUMFERENCE = 2 * Math.PI * BILLING_COUNTER_RADIUS
 const FREE_PLAN_UPGRADE_USAGE_THRESHOLD = 0.8
@@ -20,7 +21,7 @@ const FREE_PLAN_UPGRADE_USAGE_THRESHOLD = 0.8
 type BillingOverview = Awaited<ReturnType<typeof getBillingOverview>>
 
 const formatPeriodRange = (periodStart: string, periodEnd: string) =>
-  `${periodDateFormatter.format(new Date(periodStart))} to ${periodDateFormatter.format(new Date(periodEnd))}`
+  `${periodDateFormatter.format(new Date(periodStart))} a ${periodDateFormatter.format(new Date(periodEnd))}`
 
 export function BillingCreditCounter({
   organizationId,
@@ -50,11 +51,11 @@ export function BillingCreditCounter({
   const showLimitState = isOverage || (overview.planSlug === "free" && overview.isAtIncludedLimit)
   const strokeOffset = BILLING_COUNTER_CIRCUMFERENCE * (1 - overview.usageProgress)
   const consumedLabel = numberFormatter.format(overview.consumedCredits)
-  const includedLabel = includedCredits === null ? "custom" : numberFormatter.format(includedCredits)
+  const includedLabel = includedCredits === null ? ptBR.clientShell.usage.custom : numberFormatter.format(includedCredits)
   const usageLabel = includedCredits === null ? consumedLabel : `${consumedLabel}/${includedLabel}`
   const headline = isOverage
-    ? `${consumedLabel} credits used: ${numberFormatter.format(overview.includedUsedCredits)} included plus ${numberFormatter.format(overview.overageCredits)} metered overage`
-    : `${consumedLabel} of ${includedLabel} credits used`
+    ? `${consumedLabel} créditos usados: ${numberFormatter.format(overview.includedUsedCredits)} incluídos + ${numberFormatter.format(overview.overageCredits)} excedentes`
+    : `${consumedLabel} de ${includedLabel} créditos usados`
   const showUpgradeCta =
     overview.planSlug === "free" && hasIncludedCredits && overview.usageProgress >= FREE_PLAN_UPGRADE_USAGE_THRESHOLD
 
@@ -81,7 +82,7 @@ export function BillingCreditCounter({
         <PopoverTrigger asChild>
           <button
             type="button"
-            aria-label={`Usage: ${headline}. Open breakdown.`}
+            aria-label={`${ptBR.clientShell.usage.label}: ${headline}. ${ptBR.clientShell.usage.openBreakdown}.`}
             className={cn(
               "flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-muted cursor-pointer",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring data-[state=open]:bg-muted",
@@ -90,7 +91,7 @@ export function BillingCreditCounter({
             <span className="flex items-center gap-1 text-muted-foreground">
               <Icon icon={Flame} size="xs" weight="L" />
               <Text.H6 color="foregroundMuted" weight="medium">
-                Usage
+                {ptBR.clientShell.usage.label}
               </Text.H6>
             </span>
             <span className="flex items-center gap-2">
@@ -132,7 +133,7 @@ export function BillingCreditCounter({
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-0.5">
               <div className="flex items-baseline justify-between gap-2">
-                <Text.H5M color="foreground">Usage this period</Text.H5M>
+                <Text.H5M color="foreground">{ptBR.clientShell.usage.thisPeriod}</Text.H5M>
                 <Text.H7 color="foregroundMuted" noWrap>
                   {formatPeriodRange(overview.periodStart, overview.periodEnd)}
                 </Text.H7>
@@ -146,7 +147,7 @@ export function BillingCreditCounter({
             />
             {isOverage ? (
               <Text.H7 color="foregroundMuted">
-                Usage can exceed the included limit because this plan allows overage billing.
+                O uso pode ultrapassar o limite incluído quando o plano permite cobrança excedente.
               </Text.H7>
             ) : null}
           </div>
@@ -154,7 +155,7 @@ export function BillingCreditCounter({
       </Popover>
       {showUpgradeCta ? (
         <Button size="sm" className="w-full" isLoading={isUpgradePending} onClick={() => void openUpgrade()}>
-          Upgrade now
+          {ptBR.clientShell.usage.upgrade}
         </Button>
       ) : null}
     </div>

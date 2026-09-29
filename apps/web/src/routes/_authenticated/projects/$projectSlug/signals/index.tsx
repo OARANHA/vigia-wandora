@@ -18,6 +18,7 @@ import { eq } from "@tanstack/react-db"
 import { createFileRoute, useParams } from "@tanstack/react-router"
 import { useProjectFlaggers } from "../../../../../domains/flaggers/flaggers.collection.ts"
 import { defaultProjectTimeWindowDays } from "../../../../../domains/projects/default-time-window.ts"
+import { ptBR } from "../../../../../lib/i18n/pt-BR.ts"
 import { useProjectsCollection } from "../../../../../domains/projects/projects.collection.ts"
 import { useAnalyticsTimeWindow } from "../../../../../domains/projects/use-analytics-time-window.ts"
 import { BreadcrumbText } from "../../../-components/breadcrumb-ui.tsx"
@@ -33,7 +34,7 @@ function SignalsBreadcrumb() {
 
   return (
     <span className="flex min-w-0 items-center gap-0">
-      <BreadcrumbText variant="current">Signals</BreadcrumbText>
+      <BreadcrumbText variant="current">{ptBR.clientShell.sections.signals}</BreadcrumbText>
       {hasActiveFlaggers && (
         <Tooltip
           side="bottom"
@@ -44,7 +45,7 @@ function SignalsBreadcrumb() {
             </span>
           }
         >
-          Latitude is always scanning for common issues
+          O Vigia analisa continuamente problemas recorrentes
         </Tooltip>
       )}
     </span>

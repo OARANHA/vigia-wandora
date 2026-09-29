@@ -18,13 +18,14 @@ import type { DatasetRecord } from "../../../../../domains/datasets/datasets.fun
 import { createDatasetMutation } from "../../../../../domains/datasets/datasets.mutations.ts"
 import { ListingLayout as Layout, listingLayoutIntrinsicScroll } from "../../../../../layouts/ListingLayout/index.tsx"
 import { useParamState } from "../../../../../lib/hooks/useParamState.ts"
+import { ptBR } from "../../../../../lib/i18n/pt-BR.ts"
 import { BreadcrumbText } from "../../../-components/breadcrumb-ui.tsx"
 import { useRouteProject } from "../-route-data.ts"
 import { DatasetsEmptyState } from "./-components/datasets-empty-state.tsx"
 
 export const Route = createFileRoute("/_authenticated/projects/$projectSlug/datasets/")({
   staticData: {
-    breadcrumb: () => <BreadcrumbText variant="current">Datasets</BreadcrumbText>,
+    breadcrumb: () => <BreadcrumbText variant="current">{ptBR.clientShell.sections.datasets}</BreadcrumbText>,
   },
   component: DatasetsPage,
 })

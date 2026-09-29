@@ -14,11 +14,12 @@ import {
 } from "@repo/ui"
 import { extractLeadingEmoji } from "@repo/utils"
 import { getRouteApi, useRouter } from "@tanstack/react-router"
-import { FileText, HatGlassesIcon, LifeBuoy, Moon, Plus, ShieldAlertIcon, Sun } from "lucide-react"
+import { HatGlassesIcon, LifeBuoy, Moon, Plus, ShieldAlertIcon, Sun } from "lucide-react"
 import { useMemo, useRef, useState } from "react"
 import { useOrganizationsCollection } from "../../../domains/organizations/organizations.collection.ts"
 import { SidebarCollapseToggleButton, useSidebarCollapse } from "../../../layouts/AppSidebar/sidebar-collapse.tsx"
 import { authClient } from "../../../lib/auth-client.ts"
+import { ptBR } from "../../../lib/i18n/pt-BR.ts"
 import { resetPostHog } from "../../../lib/posthog/posthog-client.ts"
 import { useThemePreference } from "../../../lib/theme.ts"
 import { isAdminUser } from "../../../server/admin-auth.ts"
@@ -47,7 +48,7 @@ interface OrgOption {
 const CREATE_ORG_OPTION: OrgOption = {
   key: CREATE_ORG_KEY,
   id: CREATE_ORG_KEY,
-  label: "Create new",
+  label: ptBR.clientShell.header.createOrganization,
   emoji: null,
   isActive: false,
 }
@@ -159,23 +160,17 @@ export function NavHeader() {
       <div className="flex shrink-0 items-center gap-1">
         <NotificationBell />
         {supportEnabled && (
-          <Button variant="ghost" size="sm" className="h-8" onClick={() => showIntercom()} aria-label="Help">
+          <Button variant="ghost" size="sm" className="h-8" onClick={() => showIntercom()} aria-label={ptBR.clientShell.header.help}>
             <Icon icon={LifeBuoy} size="sm" />
-            <span className="hidden md:block">Help</span>
+            <span className="hidden md:block">{ptBR.clientShell.header.help}</span>
           </Button>
         )}
-        <Button variant="ghost" size="sm" className="h-8" asChild>
-          <a href="https://docs.latitude.so" target="_blank" rel="noopener noreferrer">
-            <Icon icon={FileText} size="sm" />
-            <span className="hidden md:block">Docs</span>
-          </a>
-        </Button>
         <DropdownMenu
           side="bottom"
           align="end"
           options={[
             {
-              label: `Switch theme`,
+              label: ptBR.clientShell.header.switchTheme,
               iconProps: {
                 icon: theme === "dark" ? Sun : Moon,
                 size: "sm" as const,
@@ -185,7 +180,7 @@ export function NavHeader() {
             ...(isAdmin
               ? [
                   {
-                    label: "Backoffice",
+                    label: ptBR.clientShell.header.admin,
                     iconProps: { icon: ShieldAlertIcon, size: "sm" as const },
                     onClick: () => {
                       void router.navigate({ to: "/backoffice" })
@@ -194,7 +189,7 @@ export function NavHeader() {
                 ]
               : []),
             {
-              label: "Log out",
+              label: ptBR.clientShell.header.logout,
               type: "destructive",
               onClick: () => {
                 void authClient.signOut().then(async () => {

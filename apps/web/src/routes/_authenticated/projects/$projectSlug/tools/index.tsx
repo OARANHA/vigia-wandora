@@ -10,6 +10,7 @@ import { useProjectFirstTraceAt, useProjectLastTraceAt } from "../../../../../do
 import { ListingLayout as Layout } from "../../../../../layouts/ListingLayout/index.tsx"
 import { useDebounce } from "../../../../../lib/hooks/useDebounce.ts"
 import { useParamState } from "../../../../../lib/hooks/useParamState.ts"
+import { ptBR } from "../../../../../lib/i18n/pt-BR.ts"
 import { BreadcrumbText } from "../../../-components/breadcrumb-ui.tsx"
 import { useTableColumnSettings } from "../-components/table-column-settings.ts"
 import { useRouteProject } from "../-route-data.ts"
@@ -58,7 +59,7 @@ function parseSorting(raw: string): ToolsTableSorting {
 }
 
 function ToolsBreadcrumb() {
-  return <BreadcrumbText variant="current">Tools</BreadcrumbText>
+  return <BreadcrumbText variant="current">{ptBR.clientShell.sections.tools}</BreadcrumbText>
 }
 
 export const Route = createFileRoute("/_authenticated/projects/$projectSlug/tools/")({

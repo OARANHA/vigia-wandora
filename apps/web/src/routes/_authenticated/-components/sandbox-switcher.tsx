@@ -4,6 +4,7 @@ import { useState } from "react"
 import { SandboxToggle } from "../../../components/sandbox-toggle.tsx"
 import { enterSandboxProject } from "../../../domains/sandbox/sandbox-lifecycle.functions.ts"
 import { toUserMessage } from "../../../lib/errors.ts"
+import { ptBR } from "../../../lib/i18n/pt-BR.ts"
 
 /**
  * Sidebar entry (sits above Settings) that switches the app into the org's
@@ -33,7 +34,7 @@ export function SandboxSwitcher({ collapsed, projectId }: { readonly collapsed: 
         params: { sandboxOrgId, projectSlug },
       })
     } catch (error) {
-      toast({ variant: "destructive", title: "Could not open sandbox", description: toUserMessage(error) })
+      toast({ variant: "destructive", title: ptBR.clientShell.sandbox.openError, description: toUserMessage(error) })
     } finally {
       setIsEntering(false)
     }

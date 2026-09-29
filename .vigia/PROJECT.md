@@ -174,3 +174,19 @@ O PR #32 consolidou o primeiro slice visual pós-login da área do cliente:
 - changelog comercial do upstream ocultado até existir um feed próprio do Vigia.
 
 A tradução profunda do conteúdo de cada página e o rebranding/PT-BR do `/backoffice` permanecem em slices separados. Contratos, rotas e referências internas necessárias ao motor Latitude continuam preservados.
+
+## Tradução profunda da área do cliente — 2026-09-29
+
+O PR #34 aprofunda a experiência PT-BR nas superfícies mais visíveis após o login:
+
+- Sessões: lista, filtros, estados vazios e drawer de detalhe;
+- Usuários: busca, tabela, estatísticas, detalhe, sessões, uso, sinais e memória;
+- Ferramentas: filtros, estados, tabela, estatísticas, detalhe, erros, parâmetros, contexto e chamadas recentes;
+- Memória: lista, estatísticas, conexão inicial e visão de armazenamento.
+
+A copy recorrente dessas superfícies passa pela base central `apps/web/src/lib/i18n/pt-BR.ts` quando há reutilização real. Termos técnicos como trace, span e TTFT permanecem quando ajudam a leitura técnica sem expor a marca do motor.
+
+Neste slice também foram removidos links visíveis para `docs.latitude.so` nas áreas cobertas e referências comerciais ao Latitude nos estados de Sessões e Memória.
+
+Continuam pendentes como próximos slices de cliente: Sinais, Comportamentos, Experimentos, Monitores, Conjuntos de dados, Configurações e, quando habilitados, Custos/Pontuação do agente. O `/backoffice` permanece separado e será tratado depois da área do cliente.
+

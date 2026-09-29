@@ -431,13 +431,20 @@ Validação de código do PR #46:
 
 A validação de produção e o uso da Wandora como primeiro cliente real devem ser registrados após o deploy, sem antecipar esse estado neste checkpoint.
 
+## Business Events v0 — produção validada — 2026-09-29
 
-## Business Events v0 — integrado, deploy pendente — 2026-09-29
+O Business Events v0 do PR #46 está implantado no runtime público no commit `c845630556be695d6b8a49bee93b9b8ec6c9e4cb`.
 
-O PR #46 foi integrado ao `main` no commit `c845630556be695d6b8a49bee93b9b8ec6c9e4cb`. O workflow `Vigia container images` #86 publicou com sucesso as imagens de produção do merge.
+O bloqueio de registry foi diagnosticado como falha no caminho IPv6 usado pelo Docker para o CDN de blobs do GHCR. Uma rota temporária e específica para `2606:50c0:8000::/46` fez o transporte cair para IPv4 sem alterar Docker daemon, sysctl, firewall ou IPv6 global. A rota não é persistente após reboot e deve ser reavaliada antes de futuros pulls se o problema externo continuar.
 
-A implantação no runtime público foi interrompida **antes do redeploy**. O precheck operacional tentou repullar `ghcr.io/oaranha/vigia-web:main` três vezes por execução e recebeu `connection reset by peer` em conexões IPv6 do backend do GHCR. Uma segunda execução controlada repetiu o mesmo resultado e também abortou antes de tocar a stack.
+Validação de produção:
 
-Readback pós-falha confirmou a stack `vigia` ativa, serviços saudáveis e `ConfigHash` ainda em `417b322c23f06d6c6d17e4839ec437e679c97219`. O endpoint novo de Business Events, portanto, **ainda não deve ser considerado implantado em produção**.
+- oito imagens Vigia `:main` repulladas e confirmadas na revisão `c845630556be695d6b8a49bee93b9b8ec6c9e4cb`;
+- redeploy pelo Portainer local concluído;
+- `ConfigHash` da stack igual ao commit implantado;
+- serviços principais saudáveis e migrations com exit 0;
+- OTLP público retornando HTTP 200 e trace encontrado pela API de leitura;
+- Business Event público retornando HTTP 201;
+- custom score `vigia.business.smoke_success` persistido com o mesmo `traceId` e `passed = true`.
 
-O próximo passo é tratar o transporte de registry da VPS. Qualquer mudança de rede/daemon que ultrapasse retry/readback exige aprovação operacional explícita. Depois disso, repetir apenas o pull necessário, redeploy via Portainer e smoke real do contrato.
+O contrato `POST /v1/projects/:projectSlug/events` e a correlação `traceId -> resultado de negócio` estão, portanto, validados em produção. O próximo passo é integrar a Wandora como primeiro emissor real do Vigia.

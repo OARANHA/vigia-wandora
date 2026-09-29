@@ -4,6 +4,7 @@ import { agentScoreModule } from "./agent-score.ts"
 import { analyticsModule } from "./analytics.ts"
 import { annotationsModule } from "./annotations.ts"
 import { apiKeysModule } from "./api-keys.ts"
+import { businessEventsModule } from "./business-events.ts"
 import { datasetsModule } from "./datasets.ts"
 import { experimentsModule } from "./experiments.ts"
 import { importsModule } from "./imports.ts"
@@ -27,6 +28,7 @@ import { usersModule } from "./users.ts"
 // derive from mount order, which follows this manifest.
 export const operationModules: ReadonlyArray<OperationModule> = [
   projectsModule,
+  businessEventsModule,
   scoresModule,
   annotationsModule,
   tracesModule,

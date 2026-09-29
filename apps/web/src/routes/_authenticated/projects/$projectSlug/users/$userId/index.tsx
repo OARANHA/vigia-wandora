@@ -49,7 +49,7 @@ const ERROR_RATE_COLOR = "hsl(35 90% 55%)"
 
 function UserDetailBreadcrumb() {
   const { userId } = useParams({ strict: false })
-  return <BreadcrumbText variant="current">{userId ?? "User"}</BreadcrumbText>
+  return <BreadcrumbText variant="current">{userId ?? "Usuário"}</BreadcrumbText>
 }
 
 export const Route = createFileRoute("/_authenticated/projects/$projectSlug/users/$userId/")({
@@ -92,7 +92,7 @@ function UserActivityChart({
         ? [
             {
               kind: "bar",
-              name: "Errored sessions",
+              name: "Sessões com erro",
               values: buckets.map((bucket) => bucket.count),
               color: FAILED_SESSIONS_COLOR,
               axis: "left",
@@ -109,7 +109,7 @@ function UserActivityChart({
             },
             {
               kind: "bar",
-              name: "Successful sessions",
+              name: "Sessões bem-sucedidas",
               values: buckets.map((bucket) => bucket.count - bucket.errorCount),
               color: OK_SESSIONS_COLOR,
               axis: "left",
@@ -117,7 +117,7 @@ function UserActivityChart({
             },
             {
               kind: "line",
-              name: "Error rate %",
+              name: "Taxa de erro %",
               values: buckets.map((bucket) =>
                 bucket.count > 0 ? Math.round((bucket.errorCount / bucket.count) * 1000) / 10 : 0,
               ),
@@ -145,7 +145,7 @@ function UserActivityChart({
     return (
       <div className="flex min-h-[80px] items-center justify-center">
         <Text.H6 color="foregroundMuted">
-          {errorsOnly ? `No errors in the last ${windowDays} days` : `No activity in the last ${windowDays} days`}
+          {errorsOnly ? `Nenhum erro nos últimos ${windowDays} dias` : `Nenhuma atividade nos últimos ${windowDays} dias`}
         </Text.H6>
       </div>
     )
@@ -158,7 +158,7 @@ function UserActivityChart({
       height={160}
       xAxisLabelFontSize={10}
       tooltipTitle={tooltipTitle}
-      ariaLabel="User sessions over time"
+      ariaLabel="Sessões do usuário ao longo do tempo"
     />
   )
 }
@@ -203,15 +203,15 @@ function UserDetailPage() {
                 asChild
                 side="bottom"
                 trigger={
-                  <Button asChild variant="ghost" size="sm" className="w-fit" aria-label="Back to users">
+                  <Button asChild variant="ghost" size="sm" className="w-fit" aria-label="Voltar para usuários">
                     <Link to="/projects/$projectSlug/users" params={{ projectSlug }}>
                       <Icon icon={ArrowLeftIcon} size="sm" />
-                      Back
+                      Voltar
                     </Link>
                   </Button>
                 }
               >
-                Back to users
+                Voltar para usuários
               </Tooltip>
               {profileLoading ? (
                 <Skeleton className="h-7 w-56" />
@@ -227,13 +227,13 @@ function UserDetailPage() {
             profile ? (
               <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
                 <div className="flex min-w-0 max-w-max">
-                  <CopyableText value={profile.userId} size="sm" ellipsis tooltip="Copy user id" />
+                  <CopyableText value={profile.userId} size="sm" ellipsis tooltip="Copiar ID do usuário" />
                 </div>
                 {profile.userEmail && profile.userEmail !== userDisplayName(profile) ? (
                   <Text.H6 color="foregroundMuted">{profile.userEmail}</Text.H6>
                 ) : null}
                 <Text.H6 color="foregroundMuted">
-                  First seen {formatAgoLabel(profile.firstSeenAt)} · Last seen {formatAgoLabel(profile.lastSeenAt)}
+                  Primeira atividade {formatAgoLabel(profile.firstSeenAt)} · Última atividade {formatAgoLabel(profile.lastSeenAt)}
                 </Text.H6>
               </div>
             ) : undefined
@@ -250,7 +250,7 @@ function UserDetailPage() {
                 <div className="mx-1 h-5 w-px bg-border" />
                 <Label htmlFor="user-errors-only" className="cursor-pointer">
                   <Text.H6 color="foregroundMuted" noWrap>
-                    Error view
+                    Ver erros
                   </Text.H6>
                 </Label>
                 <Switch
@@ -273,8 +273,8 @@ function UserDetailPage() {
 
         {notFound ? (
           <div className="flex flex-1 flex-col items-center justify-center gap-2 p-8">
-            <Text.H4M>User not found</Text.H4M>
-            <Text.H5 color="foregroundMuted">No traces carry this user id in this project.</Text.H5>
+            <Text.H4M>Usuário não encontrado</Text.H4M>
+            <Text.H5 color="foregroundMuted">Nenhum trace possui este ID de usuário neste projeto.</Text.H5>
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col">
@@ -284,8 +284,8 @@ function UserDetailPage() {
               <div className="flex min-w-0 flex-col gap-3 rounded-lg bg-secondary p-4">
                 <Text.H6 color="foregroundMuted">
                   {errorsOnly
-                    ? `Errors · last ${activityWindowDays} days`
-                    : `Activity · last ${activityWindowDays} days`}
+                    ? `Erros · últimos ${activityWindowDays} dias`
+                    : `Atividade · últimos ${activityWindowDays} dias`}
                 </Text.H6>
                 <UserActivityChart
                   projectId={project.id}
@@ -297,11 +297,11 @@ function UserDetailPage() {
 
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                 <div className="flex min-w-0 flex-col gap-3 rounded-lg bg-secondary p-4">
-                  <Text.H6 color="foregroundMuted">Signals affecting this user</Text.H6>
+                  <Text.H6 color="foregroundMuted">Sinais que afetam este usuário</Text.H6>
                   <UserSignalsSection projectId={project.id} projectSlug={projectSlug} userId={userId} />
                 </div>
                 <div className="flex min-w-0 flex-col gap-3 rounded-lg bg-secondary p-4">
-                  <Text.H6 color="foregroundMuted">Behaviors</Text.H6>
+                  <Text.H6 color="foregroundMuted">Comportamentos</Text.H6>
                   <UserBehavioursSection projectId={project.id} projectSlug={projectSlug} userId={userId} />
                 </div>
               </div>
@@ -309,14 +309,14 @@ function UserDetailPage() {
               <UserUsageSection projectId={project.id} userId={userId} errorsOnly={errorsOnly} />
 
               <div className="flex min-w-0 flex-col gap-3 rounded-lg bg-secondary p-4">
-                <Text.H6 color="foregroundMuted">Memory stores</Text.H6>
+                <Text.H6 color="foregroundMuted">Armazenamentos de memória</Text.H6>
                 <UserMemoryStoresSection projectId={project.id} projectSlug={projectSlug} userId={userId} />
               </div>
 
               <div className="flex min-w-0 flex-col gap-3">
                 <div className="flex items-center justify-between gap-2">
                   <Text.H5M color="foreground">
-                    {sessionTotalCount > 0 ? `Sessions (${formatCount(sessionTotalCount)})` : "Sessions"}
+                    {sessionTotalCount > 0 ? `Sessões (${formatCount(sessionTotalCount)})` : "Sessões"}
                   </Text.H5M>
                   <Button asChild variant="outline" size="sm" className="w-auto">
                     <Link
@@ -331,7 +331,7 @@ function UserDetailPage() {
                       }}
                     >
                       <Icon icon={TextAlignStartIcon} size="sm" />
-                      View sessions
+                      Ver sessões
                     </Link>
                   </Button>
                 </div>
@@ -343,7 +343,7 @@ function UserDetailPage() {
                   onSortChange={setSessionsSorting}
                   activeSessionId={activeSessionId || undefined}
                   onSessionClick={(sessionId) => setActiveSessionId(sessionId)}
-                  blankSlate={errorsOnly ? "No errored sessions for this user." : "No sessions carry this user id yet."}
+                  blankSlate={errorsOnly ? "Nenhuma sessão com erro para este usuário." : "Ainda não há sessões com este ID de usuário."}
                 />
               </div>
             </div>

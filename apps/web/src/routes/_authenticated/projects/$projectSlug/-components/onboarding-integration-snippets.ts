@@ -1892,6 +1892,26 @@ export function getCodingMachineTelemetryInstallCommand(agent: CodingMachineAgen
   }
 }
 
+export function getCodingMachineVigiaRoutingConfig(
+  agent: CodingMachineAgentId,
+): { readonly target: string; readonly value: string } | null {
+  switch (agent) {
+    case "claude-code":
+      return {
+        target: "no objeto env de ~/.claude/settings.json",
+        value: `"LATITUDE_BASE_URL": "${VIGIA_TELEMETRY_BASE_URL}"`,
+      }
+    case "openclaw":
+      return {
+        target: 'em plugins.entries["@latitude-data/openclaw-telemetry"].config no ~/.openclaw/openclaw.json',
+        value: `"baseUrl": "${VIGIA_TELEMETRY_BASE_URL}"`,
+      }
+    case "hermes":
+    case "pi":
+      return null
+  }
+}
+
 export function getPiTelemetryInstallCommand(projectSlug: string, apiKey: string | null): string {
   const key = apiKey ?? "lat_xxx"
   const slug = projectSlug.trim() || "your-project-slug"

@@ -51,9 +51,9 @@ import { SessionDetailDrawer } from "../../-components/session-detail-drawer.tsx
 import { BehavioursTrajectoryChart } from "./behaviours-trajectory-chart.tsx"
 
 const segmentOptions: ReadonlyArray<{ readonly id: BehaviourSegment; readonly label: string }> = [
-  { id: "all", label: "All" },
-  { id: "new_this_week", label: "New this week" },
-  { id: "spiking", label: "Spiking" },
+  { id: "all", label: "Todos" },
+  { id: "new_this_week", label: "Novos nesta semana" },
+  { id: "spiking", label: "Em alta" },
 ]
 
 interface BehaviourTableRow {
@@ -76,7 +76,7 @@ const signalChartColors = [
 
 const signalColorAt = (index: number) => signalChartColors[index % signalChartColors.length]
 const metricLabel = (metric: BehaviourTrajectoryMetric) =>
-  metric === "churnRisk" ? "Churn risk" : metric === "wins" ? "Wins" : signalLabel(metric)
+  metric === "churnRisk" ? "Risco de abandono" : metric === "wins" ? "Sucessos" : signalLabel(metric)
 
 const momentKindsForTrajectoryMetric = (metric: BehaviourTrajectoryMetric): readonly MomentKind[] => {
   switch (metric) {
@@ -164,7 +164,7 @@ function BehaviourNameCell({
       {row.hasChildren ? (
         <button
           type="button"
-          aria-label={`${expanded ? "Collapse" : "Expand"} ${row.node.cluster.name}`}
+          aria-label={`${expanded ? "Recolher" : "Expandir"} ${row.node.cluster.name}`}
           aria-expanded={expanded}
           className="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded hover:bg-muted/60"
           onClick={(event) => {
@@ -364,7 +364,7 @@ export function BehaviourDetailDrawer({
           <div className="flex flex-col gap-2 pt-2">
             <div className="flex flex-row items-center gap-2 text-muted-foreground">
               <BrainIcon className="h-4 w-4" />
-              <Text.H6 color="foregroundMuted">Conversation intelligence</Text.H6>
+              <Text.H6 color="foregroundMuted">Inteligência de conversa</Text.H6>
               <hr className="mx-2 flex-1 border-t-2 border-dashed border-border" />
             </div>
             <div className="flex flex-col gap-4 pt-2">
@@ -409,7 +409,7 @@ export function BehaviourDetailDrawer({
                     </div>
                   ) : null}
                   <div className="flex flex-col gap-2 pt-4">
-                    <Text.H5>Associated sessions</Text.H5>
+                    <Text.H5>Sessões associadas</Text.H5>
                     {momentRange ? (
                       <TurnRangeSlider
                         range={momentRange}
@@ -449,12 +449,12 @@ export function BehaviourDetailDrawer({
                         onLoadMore={() => void fetchNextBehaviourSessionsPage()}
                       />
                     ) : (
-                      <Text.H5 color="foregroundMuted">No sessions match this filter.</Text.H5>
+                      <Text.H5 color="foregroundMuted">Nenhuma sessão corresponde a este filtro.</Text.H5>
                     )}
                   </div>
                 </>
               ) : (
-                <Text.H5 color="foregroundMuted">Conversation intelligence is not available yet.</Text.H5>
+                <Text.H5 color="foregroundMuted">A inteligência de conversa ainda não está disponível.</Text.H5>
               )}
             </div>
           </div>
@@ -543,14 +543,14 @@ function TurnRangeSlider({
   return (
     <div className="flex flex-col gap-3 rounded-lg bg-secondary px-3 py-3">
       <div className="flex items-center justify-between gap-3">
-        <Text.H6 color="foregroundMuted">Turn range</Text.H6>
+        <Text.H6 color="foregroundMuted">Intervalo de turnos</Text.H6>
         <Text.H6B className="tabular-nums">
           {draftFrom + 1}
           {draftTo === draftFrom ? "" : `-${draftTo + 1}`}
         </Text.H6B>
       </div>
       <Slider
-        aria-label="Selected turn range"
+        aria-label="Intervalo de turnos selecionado"
         min={0}
         max={sliderMax}
         step={1}
@@ -638,7 +638,7 @@ function BehaviourSessionsTable({
         scrollAreaLayout="intrinsic"
         className="max-h-[min(28rem,50vh)]"
         infiniteScroll={{ hasMore, isLoadingMore, onLoadMore }}
-        blankSlate="No sessions match this filter."
+        blankSlate="Nenhuma sessão corresponde a este filtro."
       />
     </ProjectStyleTableFrame>
   )
@@ -729,9 +729,9 @@ function DetectedSignalsChart({
 
   return (
     <div className="flex h-full flex-col rounded-lg bg-secondary">
-      <ChartPanelHeader title="Moments" />
+      <ChartPanelHeader title="Momentos" />
       <div className="flex flex-1 items-center justify-center px-2 pb-2">
-        <svg className="size-24 shrink-0" viewBox="0 0 160 160" role="img" aria-label="Moment distribution">
+        <svg className="size-24 shrink-0" viewBox="0 0 160 160" role="img" aria-label="Distribuição de momentos">
           <circle cx="80" cy="80" r="78" className="fill-muted" />
           {slices.map((slice) => (
             <Tooltip
@@ -788,14 +788,14 @@ function BehaviourSessionsHistogram({
 
   return (
     <div className="flex h-full flex-col rounded-lg bg-secondary">
-      <ChartPanelHeader title="Session activity" subtitle={`${formatCount(total)} sessions`} />
+      <ChartPanelHeader title="Atividade das sessões" subtitle={`${formatCount(total)} sessões`} />
       {isLoading ? (
         <div className="px-2 pb-2">
           <HistogramSkeleton height={height} />
         </div>
       ) : data.length === 0 || data.every((bucket) => bucket.value === 0) ? (
         <div className="flex min-h-[80px] flex-1 items-center justify-center px-2 pb-2">
-          <Text.H6 color="foregroundMuted">No sessions in this time window</Text.H6>
+          <Text.H6 color="foregroundMuted">Nenhuma sessão neste período</Text.H6>
         </div>
       ) : (
         <div className="px-2 pb-2">
@@ -804,7 +804,7 @@ function BehaviourSessionsHistogram({
             height={height}
             showYAxis={false}
             xAxisLabelFontSize={10}
-            ariaLabel="Behavior sessions over time"
+            ariaLabel="Sessões do comportamento ao longo do tempo"
             formatTooltip={(category, value) => formatSessionHistogramTooltip(category, value)}
           />
         </div>
@@ -1057,14 +1057,14 @@ export function BehavioursView({
             }
           >
             <div className="flex flex-col gap-1">
-              <Text.H6 color="foregroundMuted">First seen</Text.H6>
+              <Text.H6 color="foregroundMuted">Primeira ocorrência</Text.H6>
               <Text.H6B>
                 {bounded ? `On or before ${formatDate(firstObservedAt)}` : formatDate(firstObservedAt)}
               </Text.H6B>
               {bounded ? (
-                <Text.H6 color="foregroundMuted">Grouping does not reach further back, so it may be older.</Text.H6>
+                <Text.H6 color="foregroundMuted">O agrupamento não alcança períodos anteriores, então pode ser mais antigo.</Text.H6>
               ) : null}
-              <Text.H6 color="foregroundMuted">Last seen</Text.H6>
+              <Text.H6 color="foregroundMuted">Última ocorrência</Text.H6>
               <Text.H6B>{new Date(row.node.cluster.lastObservedAt).toLocaleString()}</Text.H6B>
             </div>
           </Tooltip>
@@ -1149,7 +1149,7 @@ export function BehavioursView({
                   onMomentRangeChange(undefined)
                 }}
                 {...(activeBehaviourId ? { activeRowKey: activeBehaviourId, activeRowAutoScroll: true } : {})}
-                blankSlate="No behaviors match the current filters"
+                blankSlate="Nenhum comportamento corresponde aos filtros atuais"
               />
             </>
           )}

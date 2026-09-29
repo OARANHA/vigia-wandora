@@ -1,0 +1,76 @@
+name: Vigia auth validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - apps/web/public/brand/**
+      - apps/web/src/components/vigia-brand.tsx
+      - apps/web/src/lib/auth/**
+      - apps/web/src/lib/i18n/pt-BR.ts
+      - apps/web/src/lib/product.ts
+      - apps/web/src/routes/login.tsx
+      - apps/web/src/routes/auth/verify.tsx
+      - apps/workers/src/workers/domain-events/magic-link-email-copy.test.ts
+      - packages/domain/email/src/components/ContainerLayout.tsx
+      - packages/domain/email/src/templates/magic-link/**
+      - .github/workflows/vigia-auth-validation.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 25
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Create test environment
+        run: cp .env.example .env.test
+
+      - name: Check changed auth files
+        run: >-
+          pnpm exec biome check
+          apps/web/src/components/vigia-brand.tsx
+          apps/web/src/lib/auth/oauth-errors.ts
+          apps/web/src/lib/auth/oauth-errors.test.ts
+          apps/web/src/lib/i18n/pt-BR.ts
+          apps/web/src/lib/product.ts
+          apps/web/src/routes/auth/verify.tsx
+          apps/web/src/routes/login.tsx
+          apps/workers/src/workers/domain-events/magic-link-email-copy.test.ts
+          packages/domain/email/src/components/ContainerLayout.tsx
+          packages/domain/email/src/templates/magic-link/EmailTemplate.tsx
+          packages/domain/email/src/templates/magic-link/index.tsx
+
+      - name: Test auth callback copy
+        run: pnpm --filter @app/web exec vitest run src/lib/auth/oauth-errors.test.ts
+
+      - name: Test magic-link email copy
+        run: pnpm --filter @app/workers exec vitest run src/workers/domain-events/magic-link-email-copy.test.ts
+
+      - name: Typecheck affected workspaces
+        run: >-
+          pnpm turbo typecheck
+          --filter=@domain/email
+          --filter=@app/web
+          --filter=@app/workers
+
+      - name: Build web
+        run: pnpm --filter @app/web build

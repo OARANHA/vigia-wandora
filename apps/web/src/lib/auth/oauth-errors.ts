@@ -1,51 +1,39 @@
 /**
- * User-facing messages for OAuth callback failures.
+ * Mensagens visíveis ao usuário para falhas no callback OAuth.
  *
- * When a social sign-in fails at the Better Auth callback, BA redirects to
- * our `errorCallbackURL` (`/login`, see `oauth-redirects.ts`) with the error
- * code appended as `?error=<code>`. This maps the known codes to friendly
- * copy. Unknown codes get a generic message — the raw query value is never
- * echoed into the UI, so crafted links can't inject arbitrary text.
+ * O valor cru de `?error=` nunca é exibido na interface.
  */
 
-const SIGN_IN_EXPIRED_MESSAGE = "That sign-in attempt expired or was interrupted. Please try again."
+const SIGN_IN_EXPIRED_MESSAGE = "Esta tentativa de acesso expirou ou foi interrompida. Tente novamente."
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   account_not_linked:
-    "This email already has an account that isn't linked to that provider. Sign in with your email below, then link the provider under Settings → Account.",
-  access_denied: "Sign-in was cancelled before it completed. Please try again.",
+    "Este e-mail já possui uma conta que não está vinculada a esse provedor. Entre com seu e-mail abaixo e depois vincule o provedor em Configurações → Conta.",
+  access_denied: "O acesso foi cancelado antes de ser concluído. Tente novamente.",
   please_restart_the_process: SIGN_IN_EXPIRED_MESSAGE,
   state_mismatch: SIGN_IN_EXPIRED_MESSAGE,
   state_not_found: SIGN_IN_EXPIRED_MESSAGE,
-  signup_disabled: "New sign-ups are currently disabled for this provider. Continue with email below instead.",
-  email_not_verified: "Your email address is not verified with that provider. Verify it there and try again.",
+  signup_disabled: "Novos cadastros estão desativados para este provedor. Continue com seu e-mail abaixo.",
+  email_not_verified: "Seu e-mail não está verificado nesse provedor. Verifique-o e tente novamente.",
 }
 
-const GENERIC_OAUTH_ERROR_MESSAGE = "Could not complete the sign-in. Please try again or continue with email below."
+const GENERIC_OAUTH_ERROR_MESSAGE =
+  "Não foi possível concluir o acesso. Tente novamente ou continue com seu e-mail abaixo."
 
-/**
- * Resolve the `?error=` code from an OAuth callback redirect to a
- * user-facing message, or `undefined` when there is no error.
- */
 export function oauthCallbackErrorMessage(code: string | undefined): string | undefined {
   if (!code) return undefined
   return OAUTH_ERROR_MESSAGES[code] ?? GENERIC_OAUTH_ERROR_MESSAGE
 }
 
-/**
- * Same idea for the account-LINKING flow (`linkSocial` from settings):
- * the codes BA's `/callback/:id` emits when `state.link` is set.
- */
 const LINK_ERROR_MESSAGES: Record<string, string> = {
   "email_doesn't_match":
-    "That account uses a different email than your Latitude account. Pick the account that matches your Latitude email.",
-  account_already_linked_to_different_user: "That account is already connected to a different Latitude user.",
-  access_denied: "Connecting was cancelled before it completed.",
+    "Essa conta usa um e-mail diferente da sua conta Vigia. Escolha a conta que corresponde ao e-mail do Vigia.",
+  account_already_linked_to_different_user: "Essa conta já está conectada a outro usuário do Vigia.",
+  access_denied: "A conexão foi cancelada antes de ser concluída.",
 }
 
-const GENERIC_LINK_ERROR_MESSAGE = "Could not connect the account. Please try again."
+const GENERIC_LINK_ERROR_MESSAGE = "Não foi possível conectar a conta. Tente novamente."
 
-/** Resolve a linking-callback `?error=` code to a user-facing message. */
 export function oauthLinkErrorMessage(code: string): string {
   return LINK_ERROR_MESSAGES[code] ?? GENERIC_LINK_ERROR_MESSAGE
 }

@@ -2,20 +2,21 @@ import { magicLinkTemplate } from "@domain/email"
 import { describe, expect, it } from "vitest"
 
 describe("magic link email copy", () => {
-  it("uses neutral account-existence copy", async () => {
+  it("uses Vigia branding and PT-BR copy", async () => {
     const rendered = await magicLinkTemplate({
       userName: "there",
-      magicLinkUrl: "https://console.latitude.so/api/auth/magic-link/verify?token=test",
+      magicLinkUrl: "https://vigia.wandora.com.br/auth/verify#preview",
     })
 
-    expect(rendered.subject).toBe("Continue to Latitude")
-    expect(rendered.text).toContain("use this link to continue to Latitude")
-    expect(rendered.html).toContain("Continue to Latitude")
-    expect(rendered.html).not.toContain("Welcome back")
-    expect(rendered.html).not.toContain("signing up")
-    expect(rendered.html).not.toContain("Sign In to Latitude")
-    expect(rendered.html).not.toContain("rgba(0,0,0,0.35)")
-    expect(rendered.html).not.toContain("rgb(7,107,213)")
-    expect(rendered.html).toContain("#0080FF")
+    expect(rendered.subject).toBe("Seu link de acesso ao Vigia")
+    expect(rendered.text).toContain("Recebemos uma solicitação de acesso ao Vigia")
+    expect(rendered.text).toContain("Entrar no Vigia")
+    expect(rendered.html).toContain("Confirme seu acesso")
+    expect(rendered.html).toContain("Entrar no Vigia")
+    expect(rendered.html).toContain("Vigia")
+    expect(rendered.html).toContain("by Wandora")
+    expect(rendered.html).toContain("/brand/vigia-logo.png")
+    expect(rendered.html).not.toContain("Latitude")
+    expect(rendered.text).not.toContain("Latitude")
   })
 })

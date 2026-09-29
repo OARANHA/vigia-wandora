@@ -83,21 +83,21 @@ export function ToolContextPanel({
     range,
     errorsOnly,
   })
-  const tracesNoun = errorsOnly ? "traces where it failed" : "traces calling it"
+  const tracesNoun = errorsOnly ? "traces em que falhou" : "traces que a chamaram"
 
   return (
     <div
       className={`flex min-w-0 flex-col gap-4 overflow-y-auto rounded-lg bg-secondary p-4 ${TOOL_DETAIL_PANEL_MAX_HEIGHT}`}
     >
-      <Text.H6 color="foregroundMuted">{errorsOnly ? "Where it fails" : "Where it's used"}</Text.H6>
+      <Text.H6 color="foregroundMuted">{errorsOnly ? "Onde falha" : "Onde é usada"}</Text.H6>
       {coOccurrenceLoading ? (
         <div className="flex flex-col gap-2">
-          <Text.H6 color="foregroundMuted">Often used with</Text.H6>
+          <Text.H6 color="foregroundMuted">Frequentemente usada com</Text.H6>
           <Skeleton className="h-5 w-full" />
         </div>
       ) : coOccurrence.length > 0 ? (
         <div className="flex flex-col gap-1">
-          <Text.H6 color="foregroundMuted">Often used with</Text.H6>
+          <Text.H6 color="foregroundMuted">Frequentemente usada com</Text.H6>
           {coOccurrence.map((row) => {
             const fraction = toolTracesUsed > 0 ? row.sharedTraces / toolTracesUsed : 0
             return (
@@ -163,8 +163,8 @@ export function ToolContextPanel({
       {!coOccurrenceLoading && !tagsLoading && coOccurrence.length === 0 && tagRows.length === 0 ? (
         <Text.H6 color="foregroundMuted">
           {errorsOnly
-            ? "No co-occurring tools or tags on failed calls in this window."
-            : "No co-occurring tools or tags in this window."}
+            ? "Nenhuma ferramenta ou tag associada às chamadas com falha neste período."
+            : "Nenhuma ferramenta ou tag associada neste período."}
         </Text.H6>
       ) : null}
     </div>

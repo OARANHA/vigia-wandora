@@ -9,6 +9,7 @@ import {
 import { formatCount, formatPrice } from "@repo/utils"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { type RefObject, useCallback, useMemo, useState } from "react"
+import { ptBR } from "../../../../../../lib/i18n/pt-BR.ts"
 import type { ProjectUserRecord } from "../../../../../../domains/end-users/end-users.functions.ts"
 import { ListingLayout as Layout } from "../../../../../../layouts/ListingLayout/index.tsx"
 import { useListRowKeyboardNav } from "../../../../../../lib/hooks/useListRowKeyboardNav.ts"
@@ -22,14 +23,14 @@ import {
 } from "./user-formatters.ts"
 
 export const USERS_COLUMN_OPTIONS = [
-  { id: "user", label: "User", required: true },
-  { id: "email", label: "Email" },
-  { id: "seenAt", label: "Seen at" },
-  { id: "activity", label: "Trend" },
-  { id: "sessions", label: "Sessions" },
-  { id: "errors", label: "Errors" },
-  { id: "tokens", label: "Tokens", defaultHidden: true },
-  { id: "cost", label: "Cost" },
+  { id: "user", label: ptBR.clientPages.users.columns.user, required: true },
+  { id: "email", label: ptBR.clientPages.users.columns.email },
+  { id: "seenAt", label: ptBR.clientPages.users.columns.seenAt },
+  { id: "activity", label: ptBR.clientPages.users.columns.activity },
+  { id: "sessions", label: ptBR.clientPages.users.columns.sessions },
+  { id: "errors", label: ptBR.clientPages.users.columns.errors },
+  { id: "tokens", label: ptBR.clientPages.users.columns.tokens, defaultHidden: true },
+  { id: "cost", label: ptBR.clientPages.users.columns.cost },
 ] as const
 
 export type UsersColumnId = (typeof USERS_COLUMN_OPTIONS)[number]["id"]
@@ -78,7 +79,7 @@ function CostModePill({
           e.stopPropagation()
           onCycle()
         }}
-        aria-label="Change how the cost is computed"
+        aria-label="Alterar forma de cálculo do custo"
       >
         <span className="shrink-0 font-medium text-muted-foreground tabular-nums">{COST_MODE_META[mode].label}</span>
         <span className="shrink-0 font-semibold text-foreground">
@@ -105,14 +106,14 @@ function SeenAtCell({ user }: { readonly user: ProjectUserRecord }) {
     <div className="flex min-w-0 items-center gap-1 whitespace-nowrap">
       <Tooltip asChild trigger={<span className="truncate">{formatAgoLabel(user.lastSeenAt)}</span>}>
         <div className="flex flex-col gap-0.5">
-          <Text.H6 color="foregroundMuted">Last seen in selected period</Text.H6>
+          <Text.H6 color="foregroundMuted">{ptBR.clientPages.users.lastSeen}</Text.H6>
           <Text.H6B>{new Date(user.lastSeenAt).toLocaleString()}</Text.H6B>
         </div>
       </Tooltip>
       <span className="text-muted-foreground">/</span>
       <Tooltip asChild trigger={<span className="truncate">{formatAgeLabel(user.firstSeenAt)}</span>}>
         <div className="flex flex-col gap-0.5">
-          <Text.H6 color="foregroundMuted">First seen in selected period</Text.H6>
+          <Text.H6 color="foregroundMuted">{ptBR.clientPages.users.firstSeen}</Text.H6>
           <Text.H6B>{new Date(user.firstSeenAt).toLocaleString()}</Text.H6B>
         </div>
       </Tooltip>
@@ -185,7 +186,7 @@ export function UsersView({
   const allColumns: readonly InfiniteTableColumn<ProjectUserRecord>[] = [
     {
       key: "user",
-      header: "User",
+      header: ptBR.clientPages.users.columns.user,
       width: 280,
       minWidth: 220,
       render: (user) => <UserCell user={user} />,
@@ -200,7 +201,7 @@ export function UsersView({
     },
     {
       key: "email",
-      header: "Email",
+      header: ptBR.clientPages.users.columns.email,
       width: 220,
       minWidth: 160,
       render: (user) =>
@@ -214,7 +215,7 @@ export function UsersView({
     },
     {
       key: "seenAt",
-      header: "Seen at",
+      header: ptBR.clientPages.users.columns.seenAt,
       width: 114,
       minWidth: 114,
       sortKey: "lastSeen",
@@ -222,14 +223,14 @@ export function UsersView({
     },
     {
       key: "activity",
-      header: "Trend",
+      header: ptBR.clientPages.users.columns.activity,
       width: 176,
       minWidth: 176,
       render: (user) => <UserActivityBar buckets={user.activity} height={36} bucketSeconds={activityBucketSeconds} />,
     },
     {
       key: "sessions",
-      header: "Sessions",
+      header: ptBR.clientPages.users.columns.sessions,
       width: 84,
       minWidth: 76,
       align: "end",
@@ -238,7 +239,7 @@ export function UsersView({
     },
     {
       key: "errors",
-      header: "Errors",
+      header: ptBR.clientPages.users.columns.errors,
       width: 110,
       minWidth: 96,
       align: "end",
@@ -263,7 +264,7 @@ export function UsersView({
     },
     {
       key: "tokens",
-      header: "Tokens",
+      header: ptBR.clientPages.users.columns.tokens,
       width: 90,
       minWidth: 80,
       align: "end",
@@ -272,7 +273,7 @@ export function UsersView({
     },
     {
       key: "cost",
-      header: "Cost",
+      header: ptBR.clientPages.users.columns.cost,
       width: 110,
       minWidth: 96,
       align: "end",
@@ -319,7 +320,7 @@ export function UsersView({
             <Link
               to="/projects/$projectSlug/users/$userId"
               params={{ projectSlug, userId: user.userId }}
-              aria-label={`Open user ${userDisplayName(user)}`}
+              aria-label={`Abrir usuário ${userDisplayName(user)}`}
               {...props}
             />
           )}
@@ -332,7 +333,7 @@ export function UsersView({
               direction: nextSorting.direction as UsersTableSorting["direction"],
             })
           }
-          blankSlate="No users match the current filters"
+          blankSlate={ptBR.clientPages.users.noMatches}
         />
       </Layout.List>
     </Layout.Body>

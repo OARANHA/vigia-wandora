@@ -1871,9 +1871,15 @@ export function getCodingAgentTelemetryPrompt(projectSlug: string): string {
   return `Instrument this app with OpenTelemetry tracing and export OTLP/HTTP traces to ${OTLP_TRACES_ENDPOINT}. Read the bearer token from the VIGIA_API_KEY environment variable; do not hard-code or print it. Send Authorization: Bearer <VIGIA_API_KEY> and X-Vigia-Project: ${projectSlug}. Preserve any existing telemetry setup, avoid changing unrelated application behavior, and verify the integration by sending one test trace to Vigia.`
 }
 
-/** Mirrors the memory-tracing docs prompt (docs.latitude.so/telemetry/memory). */
+/** Vigia-native prompt for standard OpenTelemetry GenAI memory spans. */
 export function getMemoryTelemetryPrompt(): string {
-  return "Install the `latitude-telemetry` skill from `github.com/latitude-dev/skills`, and use it to add Latitude memory observability to this app's long-term memory, following best practices."
+  return [
+    "Instrument this app's long-term memory with standard OpenTelemetry GenAI memory spans and send them through the existing Vigia OTLP exporter.",
+    "Do not add a second telemetry backend or expose credentials.",
+    "Use gen_ai.operation.name with the appropriate memory operation and stable gen_ai.memory.store.id and gen_ai.memory.record.id attributes.",
+    "When content capture is allowed, include gen_ai.memory.records and gen_ai.memory.query.text so Vigia can show record history, diffs, reads, and writes.",
+    "Preserve the app's existing memory behavior and verify the integration with one real memory read and one real memory write.",
+  ].join(" ")
 }
 
 export type CodingMachineAgentId = "claude-code" | "openclaw" | "hermes" | "pi"

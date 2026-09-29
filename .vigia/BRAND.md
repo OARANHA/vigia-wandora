@@ -8,6 +8,18 @@ Uso em comunicação: **o Vigia**.
 
 Assinatura institucional: **Vigia by Wandora**.
 
+## Cores
+
+A cor-base canônica do tema escuro do Vigia é **`#160521`**.
+
+Regras de aplicação:
+
+- usar `#160521` no fundo principal do tema escuro;
+- derivar cards, popovers, estados muted e bordas da mesma família roxa, preservando contraste;
+- usar a mesma família cromática nos acentos primários do tema claro e escuro;
+- preservar cores semânticas de sucesso, alerta e erro para não perder significado operacional;
+- manter a implementação centralizada nos tokens de `packages/ui/src/styles/globals.css`, evitando cores espalhadas por componentes.
+
 ## Princípios
 
 A interface deve falar com o empresário, não apenas com o engenheiro de LLM.

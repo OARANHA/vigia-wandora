@@ -214,11 +214,10 @@
   --card-foreground: 223 70% 4%;
   --popover: 0 0% 100%;
   --popover-foreground: 223 70% 4%;
-  /* --primary: 211 94% 43%; */
-  --primary: 210 100% 50%;
-  --primary-foreground: 210 20% 98%;
-  --primary-muted: 210 100% 96%;
-  --primary-muted-hover: 210 100% 97%;
+  --primary: 276 74% 42%;
+  --primary-foreground: 0 0% 98%;
+  --primary-muted: 276 60% 96%;
+  --primary-muted-hover: 276 55% 93%;
   --secondary: 210 20% 98%;
   --secondary-foreground: 221 39% 11%;
   --secondary-muted: 210 20% 96%;
@@ -230,9 +229,9 @@
   --phrase-foreground: 272 72% 47%;
   --muted: 220 14% 96%;
   --muted-foreground: 211 11% 45%;
-  --accent: 210 100% 97%;
-  --accent-button: 211 97% 35%;
-  --accent-foreground: 211 97% 35%;
+  --accent: 276 55% 96%;
+  --accent-button: 276 74% 38%;
+  --accent-foreground: 276 74% 38%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
   --destructive-muted: 0 93% 94%;
@@ -246,7 +245,7 @@
   --warning-muted-foreground: 26 90% 37%;
   --border: 0 0% 89.8%;
   --input: 0 0% 84.8%;
-  --ring: 211 94% 43%;
+  --ring: 276 74% 42%;
   --radius: 0.5rem;
   --button-face-inset-shadow: inset 0 3px 8px 0 rgb(255 255 255 / 0.48);
   --button-face-inset-shadow-hover: inset 0 3px 8px 0 rgb(255 255 255 / 0.3);
@@ -267,7 +266,7 @@
     0px 1px 3px 0px hsl(var(--background-shadow) / 0.1),
     0px 1px 2px -1px hsl(var(--background-shadow) / 0.1),
     0px 0px 6px 0px hsl(var(--background-shadow) / 0.04);
-  --scrollbar: 217.9 11.92% 64.26%;
+  --scrollbar: 276 12% 56%;
   --viz-blue: 210 65% 60%;
   --viz-blue-soft: 198 45% 70%;
   --viz-gold: 44 78% 62%;
@@ -281,33 +280,34 @@
 }
 
 .dark {
-  --background-code: 0 0% 11%;
-  --background-gray: 0 0% 10%;
-  --background: 0 0% 7%;
+  --background-code: 276 30% 12%;
+  --background-gray: 276 38% 9.5%;
+  /* Vigia brand base: #160521 */
+  --background: 276.43 73.68% 7.45%;
   --background-shadow: 0 0% 100%;
   --foreground: 0 0% 98%;
-  --card: 0 0% 3.9%;
+  --card: 276 50% 9%;
   --card-foreground: 0 0% 98%;
-  --popover: 0 0% 13%;
+  --popover: 276 42% 13%;
   --popover-foreground: 0 0% 98%;
-  --primary: 211 94% 43%;
-  --primary-foreground: 210 20% 98%;
-  --primary-muted: 210 100% 12%;
-  --primary-muted-hover: 210 100% 16%;
-  --secondary: 0 0% 10%;
+  --primary: 276 70% 58%;
+  --primary-foreground: 0 0% 98%;
+  --primary-muted: 276 60% 15%;
+  --primary-muted-hover: 276 55% 20%;
+  --secondary: 276 35% 11%;
   --secondary-foreground: 0 0% 98%;
-  --secondary-muted: 0 0% 14%;
-  --secondary-muted-hover: 0 0% 18%;
+  --secondary-muted: 276 38% 15%;
+  --secondary-muted-hover: 276 40% 19%;
   --yellow: 41 90% 14%;
   --purple: 289 51% 14%;
   --purple-foreground: 289 51% 65%;
   --phrase: 271 91% 65%;
   --phrase-foreground: 269 97% 85%;
-  --muted: 0 0% 14.9%;
-  --muted-foreground: 0 0% 63.9%;
-  --accent: 211 88% 10%;
-  --accent-button: 211 97% 35%;
-  --accent-foreground: 211 94% 65%;
+  --muted: 276 35% 15%;
+  --muted-foreground: 276 10% 68%;
+  --accent: 276 55% 13%;
+  --accent-button: 276 68% 50%;
+  --accent-foreground: 276 75% 76%;
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
   --destructive-muted: 0 75% 15%;
@@ -319,9 +319,9 @@
   --success-muted-foreground: 142 76% 36%;
   --warning-muted: 48 100% 10%;
   --warning-muted-foreground: 49 100% 36%;
-  --border: 231 9% 12.9%;
-  --input: 0 0% 14.9%;
-  --ring: 205 91% 44%;
+  --border: 276 28% 18%;
+  --input: 276 28% 20%;
+  --ring: 276 70% 58%;
   --button-face-inset-shadow: inset 0 3px 8px 0 rgb(255 255 255 / 0.3);
   --button-face-inset-shadow-hover: inset 0 3px 8px 0 rgb(255 255 255 / 0.1);
   --chart-1: 220 70% 50%;
@@ -341,7 +341,7 @@
     0px 2px 4px 0px hsl(var(--background-shadow) / 0.4),
     0px 1px 3px -1px hsl(var(--background-shadow) / 0.3),
     0px 0px 8px 0px hsl(var(--background-shadow) / 0.2);
-  --scrollbar: 217.9 11.92% 64.26%;
+  --scrollbar: 276 12% 56%;
   --viz-blue: 210 50% 52%;
   --viz-blue-soft: 202 34% 54%;
   --viz-gold: 42 54% 52%;

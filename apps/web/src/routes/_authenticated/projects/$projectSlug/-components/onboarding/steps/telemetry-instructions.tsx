@@ -351,7 +351,6 @@ function CodingMachineInstructions({
     )
   }
 
-
   const vigiaRouting = getCodingMachineVigiaRoutingConfig(agent)
 
   return (
@@ -366,7 +365,7 @@ function CodingMachineInstructions({
         <div className="flex flex-col gap-2">
           <Text.H5M>Route telemetry to Vigia</Text.H5M>
           <Text.H5 color="foregroundMuted">
-            The upstream installer defaults to Latitude's cloud. After it finishes, add the field below{" "}
+            The compatibility installer defaults to its upstream cloud. After it finishes, add the field below{" "}
             {vigiaRouting.target}, preserving the existing API key, project, and other settings.
           </Text.H5>
           <CodeBlock value={vigiaRouting.value} copyable />
@@ -594,8 +593,8 @@ export function TelemetryInstructions({
           </Text.H5>
           <CodeBlock value={codingAgentPrompt} copyable wrapLines />
           <Text.H5 color="foregroundMuted">
-            This path uses standard OpenTelemetry and the public Vigia ingest contract. No Latitude skill or Latitude MCP
-            setup is required.
+            This path uses standard OpenTelemetry and the public Vigia ingest contract. No Latitude skill or Latitude
+            MCP setup is required.
           </Text.H5>
         </div>
       ) : (
@@ -672,8 +671,7 @@ export function TelemetryInstructions({
                             "The authorization header is prefilled with your default Vigia API key."
                           ) : (
                             <>
-                              Replace <code className="text-xs">YOUR_API_KEY</code> with a Vigia API key from
-                              Settings.
+                              Replace <code className="text-xs">YOUR_API_KEY</code> with a Vigia API key from Settings.
                             </>
                           )}{" "}
                           Expect <code className="text-xs">200</code> and an empty JSON body on success. Project slug is

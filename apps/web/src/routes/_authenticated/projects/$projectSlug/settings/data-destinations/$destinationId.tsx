@@ -21,7 +21,7 @@ function BackLink({ projectSlug }: { readonly projectSlug: string }) {
       asChild
       side="bottom"
       trigger={
-        <Button asChild variant="ghost" size="sm" className="w-fit" aria-label="Back to data destinations">
+        <Button asChild variant="ghost" size="sm" className="w-fit" aria-label="Voltar aos destinos de dados">
           <Link to="/projects/$projectSlug/settings/data-destinations" params={{ projectSlug }}>
             <Icon icon={ArrowLeftIcon} size="sm" />
             Back
@@ -29,7 +29,7 @@ function BackLink({ projectSlug }: { readonly projectSlug: string }) {
         </Button>
       }
     >
-      Back to data destinations
+      Voltar aos destinos de dados
     </Tooltip>
   )
 }
@@ -49,7 +49,7 @@ function DestinationDetailPage() {
     return (
       <div className="flex flex-col gap-4">
         <BackLink projectSlug={projectSlug} />
-        <Text.H6 color="foregroundMuted">This destination no longer exists.</Text.H6>
+        <Text.H6 color="foregroundMuted">Este destino não existe mais.</Text.H6>
       </div>
     )
   }

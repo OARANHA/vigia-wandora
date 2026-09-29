@@ -26,6 +26,7 @@ import { getLatestWrappedReportForProject } from "../../../domains/wrapped/wrapp
 import { AppSidebar, NavItem } from "../../../layouts/AppSidebar/index.tsx"
 import { SidebarCollapseProvider } from "../../../layouts/AppSidebar/sidebar-collapse.tsx"
 import { ContentErrorBoundary } from "../../../lib/client-error-reporting.tsx"
+import { ptBR } from "../../../lib/i18n/pt-BR.ts"
 import { requireSession } from "../../../server/auth.ts"
 import { getPostgresClient } from "../../../server/clients.ts"
 import { BillingCreditCounter } from "../-components/billing-credit-counter.tsx"
@@ -94,7 +95,7 @@ function SidebarSearchButton({ collapsed }: { collapsed: boolean }) {
     <button
       type="button"
       onClick={() => commandPalette.setOpen(true)}
-      aria-label="Search"
+      aria-label={ptBR.clientShell.search}
       className={cn(
         "flex cursor-pointer items-center rounded-lg bg-secondary transition-colors hover:bg-secondary/80",
         {
@@ -107,7 +108,7 @@ function SidebarSearchButton({ collapsed }: { collapsed: boolean }) {
       {!collapsed ? (
         <>
           <Text.H5 color="foregroundMuted" className="min-w-0 flex-1 text-left">
-            Search
+            {ptBR.clientShell.search}
           </Text.H5>
           <span className="text-muted-foreground">
             <HotkeyBadge hotkey="Mod+K" />
@@ -121,7 +122,7 @@ function SidebarSearchButton({ collapsed }: { collapsed: boolean }) {
 
   return (
     <Tooltip asChild trigger={button} side="right">
-      Search
+      {ptBR.clientShell.search}
     </Tooltip>
   )
 }
@@ -227,8 +228,8 @@ function SampleProjectStrip() {
   return (
     <div className="relative flex shrink-0 items-center justify-center gap-4 px-4 py-3 text-primary-foreground">
       <Text.H6 color="white" className="text-center opacity-95">
-        This sample project uses lightweight seed data. Some features, including semantic search and behavior detail
-        drill-downs, may not be fully functional.
+        Este projeto de exemplo usa dados simplificados. Alguns recursos, como busca semântica e detalhes de
+        comportamentos, podem não funcionar integralmente.
       </Text.H6>
     </div>
   )

@@ -3,6 +3,7 @@ import { formatCount, formatDuration, relativeTime } from "@repo/utils"
 import { Link, useNavigate } from "@tanstack/react-router"
 import { WrenchIcon } from "lucide-react"
 import { type RefObject, useCallback, useMemo } from "react"
+import { ptBR } from "../../../../../../lib/i18n/pt-BR.ts"
 import type { ToolSummaryRecord } from "../../../../../../domains/tools/tools.functions.ts"
 import { ListingLayout as Layout } from "../../../../../../layouts/ListingLayout/index.tsx"
 import { useListRowKeyboardNav } from "../../../../../../lib/hooks/useListRowKeyboardNav.ts"
@@ -11,15 +12,15 @@ import { ToolStatusBadges } from "./tool-status-badges.tsx"
 import { ToolTrendBar } from "./tool-trend-bar.tsx"
 
 export const TOOLS_COLUMN_OPTIONS = [
-  { id: "tool", label: "Tool", required: true },
-  { id: "trend", label: "Trend" },
-  { id: "calls", label: "Calls" },
-  { id: "tracesPct", label: "% of traces" },
-  { id: "selectionRate", label: "Calls per offer" },
-  { id: "offered", label: "Offered" },
-  { id: "errorRate", label: "Error rate" },
-  { id: "duration", label: "Duration" },
-  { id: "lastCalled", label: "Last called" },
+  { id: "tool", label: ptBR.clientPages.tools.columns.tool, required: true },
+  { id: "trend", label: ptBR.clientPages.tools.columns.trend },
+  { id: "calls", label: ptBR.clientPages.tools.columns.calls },
+  { id: "tracesPct", label: ptBR.clientPages.tools.columns.tracesPct },
+  { id: "selectionRate", label: ptBR.clientPages.tools.columns.selectionRate },
+  { id: "offered", label: ptBR.clientPages.tools.columns.offered },
+  { id: "errorRate", label: ptBR.clientPages.tools.columns.errorRate },
+  { id: "duration", label: ptBR.clientPages.tools.columns.duration },
+  { id: "lastCalled", label: ptBR.clientPages.tools.columns.lastCalled },
 ] as const
 
 export type ToolsColumnId = (typeof TOOLS_COLUMN_OPTIONS)[number]["id"]
@@ -111,7 +112,7 @@ export function ToolsView({
   const allColumns: readonly InfiniteTableColumn<ToolSummaryRecord>[] = [
     {
       key: "tool",
-      header: "Tool",
+      header: ptBR.clientPages.tools.columns.tool,
       width: 320,
       minWidth: 240,
       render: (tool) => (
@@ -133,7 +134,7 @@ export function ToolsView({
     },
     {
       key: "trend",
-      header: "Trend",
+      header: ptBR.clientPages.tools.columns.trend,
       width: 176,
       minWidth: 176,
       render: (tool) => (
@@ -159,7 +160,7 @@ export function ToolsView({
     },
     {
       key: "calls",
-      header: "Calls",
+      header: ptBR.clientPages.tools.columns.calls,
       width: 76,
       minWidth: 76,
       align: "end",
@@ -199,7 +200,7 @@ export function ToolsView({
     },
     {
       key: "selectionRate",
-      header: "Calls per offer",
+      header: ptBR.clientPages.tools.columns.selectionRate,
       width: 110,
       minWidth: 96,
       align: "end",
@@ -219,7 +220,7 @@ export function ToolsView({
     },
     {
       key: "offered",
-      header: "Offered",
+      header: ptBR.clientPages.tools.columns.offered,
       width: 100,
       minWidth: 90,
       align: "end",
@@ -233,7 +234,7 @@ export function ToolsView({
                 {formatCount(tool.offeredTraces)} traces.
               </span>
               {tool.lastOffered ? (
-                <Text.H6 color="foregroundMuted">Last offered {relativeTime(new Date(tool.lastOffered))}</Text.H6>
+                <Text.H6 color="foregroundMuted">Última oferta {relativeTime(new Date(tool.lastOffered))}</Text.H6>
               ) : null}
             </div>
           </Tooltip>
@@ -245,7 +246,7 @@ export function ToolsView({
     },
     {
       key: "errorRate",
-      header: "Error rate",
+      header: ptBR.clientPages.tools.columns.errorRate,
       width: 110,
       minWidth: 96,
       align: "end",
@@ -270,7 +271,7 @@ export function ToolsView({
     },
     {
       key: "duration",
-      header: "Duration",
+      header: ptBR.clientPages.tools.columns.duration,
       width: 130,
       minWidth: 110,
       align: "end",
@@ -286,8 +287,8 @@ export function ToolsView({
             }
           >
             <div className="flex flex-col gap-0.5">
-              <Text.H6 color="foregroundMuted">p50 / p95 call duration</Text.H6>
-              <Text.H6B>avg {formatDuration(tool.metrics.avgDurationNs)}</Text.H6B>
+              <Text.H6 color="foregroundMuted">Duração de chamada p50 / p95</Text.H6>
+              <Text.H6B>média {formatDuration(tool.metrics.avgDurationNs)}</Text.H6B>
             </div>
           </Tooltip>
         ) : (
@@ -296,7 +297,7 @@ export function ToolsView({
     },
     {
       key: "lastCalled",
-      header: "Last called",
+      header: ptBR.clientPages.tools.columns.lastCalled,
       width: 100,
       minWidth: 90,
       sortKey: "lastCalled",
@@ -304,7 +305,7 @@ export function ToolsView({
         tool.metrics ? (
           <Tooltip asChild trigger={<span className="truncate">{relativeTime(new Date(tool.metrics.lastUsed))}</span>}>
             <div className="flex flex-col gap-0.5">
-              <Text.H6 color="foregroundMuted">Last called at</Text.H6>
+              <Text.H6 color="foregroundMuted">Última chamada em</Text.H6>
               <Text.H6B>{new Date(tool.metrics.lastUsed).toLocaleString()}</Text.H6B>
             </div>
           </Tooltip>
@@ -335,7 +336,7 @@ export function ToolsView({
             <Link
               to="/projects/$projectSlug/tools/$toolName"
               params={{ projectSlug, toolName: tool.name }}
-              aria-label={`Open ${tool.name}`}
+              aria-label={`Abrir ${tool.name}`}
               {...props}
             />
           )}
@@ -347,7 +348,7 @@ export function ToolsView({
               direction: nextSorting.direction as ToolsTableSorting["direction"],
             })
           }
-          blankSlate="No tools match the current filters"
+          blankSlate={ptBR.clientPages.tools.noMatches}
         />
       </Layout.List>
     </Layout.Body>

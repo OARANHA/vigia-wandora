@@ -137,7 +137,7 @@ Configurações permanece **parcialmente concluída**.
 - [x] destinos de dados em PT-BR, incluindo PostHog, histórico, backfill/importação histórica e estados operacionais;
 - [x] remover links visíveis para `docs.latitude.so` nas superfícies de dispatch e destinos de dados cobertas;
 - [x] privacidade/redaction avançada;
-- [ ] GitHub/Slack avançados;
+- [x] GitHub/Slack avançados;
 - [ ] defaults e flaggers;
 - [ ] SSO e billing, quando habilitados e após decisão comercial canônica quando necessária.
 
@@ -167,3 +167,22 @@ Próximos itens de Configurações:
 
 Depois, verificar na aplicação real se Custos e Pontuação do agente estão habilitados. O `/backoffice` continua separado como **Administração Vigia**.
 
+## Checkpoint 2026-09-29 — GitHub e Slack avançados
+
+Este slice conclui a revisão das superfícies avançadas de GitHub e Slack em Configurações:
+
+- [x] conexão, desconexão e estados de atenção em Vigia/PT-BR;
+- [x] configuração de repositório, branch, monitoramento e palavras de ação do GitHub em PT-BR;
+- [x] entregas recentes de webhook do GitHub com apresentação localizada;
+- [x] roteamento de notificações do Slack, canais, tópicos, severidade e estados operacionais em PT-BR;
+- [x] remoção dos links visíveis para `docs.latitude.so` de GitHub e Slack enquanto não existe documentação canônica equivalente do Vigia;
+- [x] remoção das referências comerciais visíveis ao Latitude nas superfícies cobertas.
+
+Enums, schemas, OAuth, tokens, webhooks, persistence, eventos e demais contratos técnicos permanecem inalterados. O formato técnico de slug de sinal exemplificado como `LAT-XY9Z` foi preservado por compatibilidade; a mudança é somente de apresentação.
+
+Próximos itens de Configurações:
+
+- [ ] defaults e flaggers;
+- [ ] SSO e billing, quando habilitados e após decisão comercial canônica quando necessária.
+
+Depois, verificar na aplicação real se Custos e Pontuação do agente estão habilitados. O `/backoffice` continua separado como **Administração Vigia**.

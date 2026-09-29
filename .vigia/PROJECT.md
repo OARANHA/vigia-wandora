@@ -302,3 +302,29 @@ O CLA Assistant continua falhando por configuração herdada do upstream: aponta
 
 Depois dessas superfícies, verificar na aplicação real se **Custos** e **Pontuação do agente** estão habilitados. O `/backoffice` permanece separado como futura **Administração Vigia**.
 
+## Configurações avançadas — GitHub e Slack — 2026-09-29
+
+Este slice conclui a revisão da experiência avançada de **GitHub e Slack** nas Configurações do cliente.
+
+Superfícies cobertas:
+
+- catálogo e estados de conexão das integrações;
+- conexão, desconexão, suspensão e necessidade de reconexão;
+- configuração de repositório e branch do GitHub nos escopos empresa e projeto;
+- monitoramento de pull requests/commits, fontes de referência e palavras de ação;
+- histórico recente de entregas de webhook do GitHub;
+- workspace, roteamento por canal, tópicos e severidade do Slack;
+- confirmações de alteração do padrão da empresa usadas por essas configurações.
+
+A experiência visível foi alinhada ao Vigia/PT-BR. Links para `docs.latitude.so` foram removidos de GitHub e Slack enquanto não existe documentação canônica equivalente do Vigia, e as referências comerciais visíveis ao Latitude foram removidas das superfícies cobertas.
+
+A revisão preserva os contratos técnicos existentes do motor: OAuth, instalação de GitHub App/Slack, webhooks, enums, schemas, persistência, tokens, nomes de eventos, rotas e APIs não foram renomeados. O exemplo técnico de slug de sinal `LAT-XY9Z` permanece porque representa o formato real consumido pela integração, não branding de interface.
+
+**Configurações continua parcialmente concluída.** Permanecem pendentes:
+
+- defaults;
+- flaggers;
+- SSO, quando habilitado e após decisão comercial canônica;
+- billing, quando habilitado e após decisão comercial canônica.
+
+Depois dessas superfícies, verificar na aplicação real se **Custos** e **Pontuação do agente** estão habilitados. O `/backoffice` permanece separado como futura **Administração Vigia**.

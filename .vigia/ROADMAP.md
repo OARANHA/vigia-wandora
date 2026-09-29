@@ -95,7 +95,7 @@ Próximo slice da área do cliente:
 - [ ] Comportamentos;
 - [ ] Experimentos;
 - [ ] Monitores;
-- [ ] Conjuntos de dados;
+- [x] Conjuntos de dados;
 - [ ] Configurações;
 - [ ] Custos e Pontuação do agente quando habilitados.
 
@@ -120,3 +120,27 @@ Próximos slices da área do cliente:
 
 Depois disso, tratar o `/backoffice` como **Administração Vigia** em slice próprio.
 
+
+
+## Checkpoint 2026-09-29 — conjuntos de dados + configurações essenciais
+
+Concluído neste slice:
+
+- [x] Conjuntos de dados em PT-BR nas superfícies de lista, detalhe, linhas, colunas e CSV;
+- [x] Remover o link visível para `docs.latitude.so` em Conjuntos de dados;
+- [x] Configurações essenciais de projeto, conta, empresa, membros, chaves, sinais, importações e integrações básicas em PT-BR;
+- [x] Remover referências comerciais visíveis ao Latitude e links `docs.latitude.so` nas superfícies de Configurações cobertas.
+
+Configurações permanece **parcialmente concluída**. Próximo slice:
+
+- [ ] dispatch de agentes;
+- [ ] destinos de dados;
+- [ ] privacidade/redaction avançada;
+- [ ] GitHub/Slack avançados;
+- [ ] defaults e flaggers;
+- [ ] SSO e billing, quando habilitados.
+
+Depois:
+
+- [ ] Custos e Pontuação do agente quando habilitados;
+- [ ] `/backoffice` como **Administração Vigia** em slice separado.

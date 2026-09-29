@@ -117,7 +117,7 @@ export function RowDetailPanel({
       {isEditable && (
         <div className="flex flex-row items-center gap-2 rounded-md border border-dashed border-border bg-secondary/30 px-3 py-2">
           <Icon icon={PencilIcon} size="sm" color="foregroundMuted" />
-          <Text.H6 color="foregroundMuted">All sections below are editable. Cmd+S saves the row.</Text.H6>
+          <Text.H6 color="foregroundMuted">Todas as seções abaixo são editáveis. Cmd+S salva a linha.</Text.H6>
         </div>
       )}
       {visible.map((col) => {

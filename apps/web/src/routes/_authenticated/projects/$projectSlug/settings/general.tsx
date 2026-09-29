@@ -50,7 +50,7 @@ function ProjectGeneralSettingsPage() {
   const nameIsDirty = dirtyFields.includes("name")
   const samplingIsDirty = dirtyFields.includes("samplingEnabled") || dirtyFields.includes("samplingRate")
 
-  const nameError = view.name.trim() === "" ? ["Name is required"] : undefined
+  const nameError = view.name.trim() === "" ? ["O nome é obrigatório"] : undefined
   const canApply = hasDirty && !nameError && !isApplying
 
   const apply = async () => {
@@ -71,7 +71,7 @@ function ProjectGeneralSettingsPage() {
       const transaction = updateProjectMutation(currentProject.id, patch)
       await transaction.isPersisted.promise
       reset()
-      toast({ description: "Project settings updated" })
+      toast({ description: "Configurações do projeto atualizadas" })
     } catch (error) {
       toast({ variant: "destructive", description: toUserMessage(error) })
     } finally {
@@ -90,8 +90,8 @@ function ProjectGeneralSettingsPage() {
 
   return (
     <SettingsPage
-      title="Project settings"
-      description="Set up your project info"
+      title="Configurações do projeto"
+      description="Configure as informações do projeto"
       actions={
         <DirtyActions
           dirtyCount={dirtyCount}
@@ -115,8 +115,8 @@ function ProjectGeneralSettingsPage() {
           value={view.name}
           onChange={(e) => setField("name", e.target.value)}
           errors={nameError}
-          placeholder="Project name"
-          aria-label="Project name"
+          placeholder="Nome do projeto"
+          aria-label="Nome do projeto"
         />
       </div>
       <TraceSamplingSection
@@ -264,7 +264,7 @@ function ChangeSlugForm({ projectId, currentSlug }: { projectId: string; current
         onSuccess: async (normalized) => {
           setOpen(false)
           setConfirmText("")
-          toast({ description: `Project slug changed to "${normalized}".` })
+          toast({ description: `Slug do projeto alterado para "${normalized}".` })
           window.history.pushState(null, "", `/projects/${normalized}/settings/general`)
           await router.invalidate()
         },
@@ -307,7 +307,7 @@ function ChangeSlugForm({ projectId, currentSlug }: { projectId: string; current
               onChange={(e) => field.handleChange(e.target.value)}
               errors={fieldErrorsAsStrings(field.state.meta.errors)}
               placeholder={currentSlug}
-              aria-label="Project slug"
+              aria-label="Slug do projeto"
             />
           )}
         </form.Field>
@@ -338,8 +338,8 @@ function ChangeSlugForm({ projectId, currentSlug }: { projectId: string; current
           if (!v) closeAndReset()
           else setOpen(v)
         }}
-        title="Change project slug"
-        description={`Changing the slug from "${currentSlug}" breaks ingestion until your app points at the new slug. Existing traces stay under the project; only newly ingested traces are affected.`}
+        title="Alterar slug do projeto"
+        description={`Alterar o slug de "${currentSlug}" interrompe a ingestão até que sua aplicação use o novo slug. Os traces existentes permanecem no projeto; apenas novos traces serão afetados.`}
         footer={
           <form.Subscribe selector={(s) => [s.values.slug, s.isSubmitting] as const}>
             {([slugValue, isSubmitting]) => {
@@ -382,13 +382,13 @@ function ChangeSlugForm({ projectId, currentSlug }: { projectId: string; current
                   onChange={(e) => field.handleChange(e.target.value)}
                   errors={fieldErrorsAsStrings(field.state.meta.errors)}
                   placeholder={currentSlug}
-                  aria-label="New project slug"
+                  aria-label="Novo slug do projeto"
                 />
               )}
             </form.Field>
             <Input
               type="text"
-              label={`Type the current slug "${currentSlug}" to confirm`}
+              label={`Digite o slug atual "${currentSlug}" para confirmar`}
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
               placeholder={currentSlug}
@@ -417,14 +417,14 @@ function DeleteProjectConfirmModal({
   const [confirmText, setConfirmText] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const expectedText = "delete my project"
+  const expectedText = "excluir meu projeto"
   const isConfirmed = confirmText.toLowerCase() === expectedText
 
   const handleDelete = async () => {
     setIsDeleting(true)
     try {
       await deleteProjectMutation(projectId).isPersisted.promise
-      toast({ description: `Project "${projectName}" has been deleted.` })
+      toast({ description: `Projeto "${projectName}" excluído.` })
       // The parent `_authenticated` loader runs with `staleTime: Infinity`,
       // so a plain `navigate({ to: "/" })` reuses its cached projects list
       // and skips the "no projects → onboarding" branch. Invalidate first so
@@ -447,15 +447,15 @@ function DeleteProjectConfirmModal({
         if (!v) setConfirmText("")
         setOpen(v)
       }}
-      title="Delete Project"
-      description={`This action is permanent and cannot be undone. The project "${projectName}" and all of its data will be deleted.`}
+      title="Excluir projeto"
+      description={`Esta ação é permanente e não pode ser desfeita. O projeto "${projectName}" e todos os seus dados serão excluídos.`}
       footer={
         <>
           <Button variant="outline" onClick={() => setOpen(false)}>
             Cancel
           </Button>
           <Button variant="destructive" disabled={!isConfirmed || isDeleting} onClick={() => void handleDelete()}>
-            {isDeleting ? "Deleting..." : "Delete Project"}
+            {isDeleting ? "Excluindo..." : "Excluir projeto"}
           </Button>
         </>
       }

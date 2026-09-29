@@ -35,21 +35,20 @@ export function ImportsPage({
       {isLoading ? null : imports.length === 0 ? (
         <BlankSlate
           icon={ImportIcon}
-          title="No imports yet"
-          description="Import your existing sessions, traces and spans from other observability platforms into this project."
+          title="Nenhuma importação ainda"
+          description="Importe sessões, traces e spans existentes de outras plataformas de observabilidade para este projeto."
           action={{
-            label: "Import traces",
+            label: "Importar traces",
             icon: Plus,
             onClick: () => setCreating(true),
           }}
-          docsHref="https://docs.latitude.so/telemetry/imports/overview"
         />
       ) : (
         <>
           <div className="flex flex-row justify-end">
             <Button onClick={() => setCreating(true)}>
               <Icon icon={Plus} size="sm" />
-              Import traces
+              Importar traces
             </Button>
           </div>
           <ImportJobsTable

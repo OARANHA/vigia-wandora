@@ -32,9 +32,9 @@ export function DatasetTable({
           <TableHead className="w-10">
             <Checkbox checked={headerCheckboxState} onCheckedChange={onToggleAll} className="hit-area-3" />
           </TableHead>
-          <TableHead>Created</TableHead>
-          <TableHead>Input</TableHead>
-          <TableHead>Output</TableHead>
+          <TableHead>Criado em</TableHead>
+          <TableHead>Entrada</TableHead>
+          <TableHead>Saída</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

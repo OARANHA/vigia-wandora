@@ -15,8 +15,8 @@ export function IntegrationNotConnected({
     <Alert
       variant="default"
       showIcon
-      title={`${entry.label} is not connected`}
-      description="Connect it for the organization to configure it."
+      title={`${entry.label} não está conectada`}
+      description="Conecte-a na empresa para poder configurá-la."
       cta={
         <Button asChild variant="outline">
           <Link to="/projects/$projectSlug/settings/organization/integrations" params={{ projectSlug }}>
@@ -38,7 +38,7 @@ export function IntegrationDetailHeader({
   readonly projectSlug: string
   readonly scope: "organization" | "project"
 }) {
-  const label = scope === "organization" ? "Back to organization integrations" : "Back to integrations"
+  const label = scope === "organization" ? "Voltar às integrações da empresa" : "Voltar às integrações"
 
   return (
     <div className="flex min-w-0 flex-col gap-3">

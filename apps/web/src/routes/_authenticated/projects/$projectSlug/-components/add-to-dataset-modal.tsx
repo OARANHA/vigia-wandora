@@ -74,8 +74,8 @@ export function AddToDatasetModal({
         if (!newDatasetName.trim()) return
         const result = await onCreateNew(newDatasetName.trim())
         toast({
-          title: "Dataset created",
-          description: `"${newDatasetName.trim()}" created with ${result.rowCount} row${result.rowCount === 1 ? "" : "s"}.`,
+          title: "Conjunto de dados criado",
+          description: `"${newDatasetName.trim()}" criado com ${result.rowCount} linha${result.rowCount === 1 ? "" : "s"}.`,
         })
         const queryClient = getQueryClient()
         await Promise.all([
@@ -97,8 +97,8 @@ export function AddToDatasetModal({
         if (!selectedDatasetId) return
         const result = await onAddToExisting(selectedDatasetId)
         toast({
-          title: `${itemLabelTitle} added to dataset`,
-          description: `${result.rowCount} row${result.rowCount === 1 ? "" : "s"} added (version ${result.version}).`,
+          title: `${itemLabelTitle} adicionado ao conjunto de dados`,
+          description: `${result.rowCount} linha${result.rowCount === 1 ? "" : "s"} adicionada${result.rowCount === 1 ? "" : "s"} (versão ${result.version}).`,
         })
         const queryClient = getQueryClient()
         await Promise.all([
@@ -112,7 +112,7 @@ export function AddToDatasetModal({
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: "Erro",
         description: toUserMessage(error),
       })
     } finally {
@@ -145,15 +145,15 @@ export function AddToDatasetModal({
     <Modal
       open={open}
       onOpenChange={onOpenChange}
-      title={`Add ${itemLabel}s to dataset`}
-      description={description ?? `${selectedCount} ${itemLabel}${selectedCount === 1 ? "" : "s"} selected`}
+      title={`Adicionar ${itemLabel}s ao conjunto de dados`}
+      description={description ?? `${selectedCount} ${itemLabel}${selectedCount === 1 ? "" : "s"} selecionada${selectedCount === 1 ? "" : "s"}`}
       dismissible
       footer={
         <div className="flex flex-row items-center gap-2">
           <CloseTrigger />
           <Button onClick={handleSubmit} disabled={!canSubmit} isLoading={submitting}>
             {!submitting && <Icon icon={Plus} size="sm" />}
-            {creatingNew ? "Create & add" : "Add to dataset"}
+            {creatingNew ? "Criar e adicionar" : "Adicionar ao conjunto"}
           </Button>
         </div>
       }
@@ -162,37 +162,37 @@ export function AddToDatasetModal({
         {exceedsLimit && (
           <Alert
             variant="destructive"
-            title="Selection too large"
-            description={`You selected ${selectedCount} ${itemLabel}s, but the maximum allowed is ${MAX_TRACES_PER_DATASET_IMPORT.toLocaleString()}. Please narrow your selection.`}
+            title="Seleção muito grande"
+            description={`Você selecionou ${selectedCount} ${itemLabel}s, mas o máximo permitido é ${MAX_TRACES_PER_DATASET_IMPORT.toLocaleString()}. Reduza a seleção.`}
           />
         )}
         {creatingNew ? (
           <div className="flex flex-col gap-2">
             <Input
-              label="New dataset name"
-              placeholder="My dataset"
+              label="Nome do novo conjunto de dados"
+              placeholder="Meu conjunto de dados"
               value={newDatasetName}
               onChange={(e) => setNewDatasetName(e.target.value)}
               autoFocus
             />
             <button type="button" onClick={() => setCreatingNew(false)} className="self-start">
-              <Text.H6 color="primary">Back to existing datasets</Text.H6>
+              <Text.H6 color="primary">Voltar aos conjuntos existentes</Text.H6>
             </button>
           </div>
         ) : (
           <Select<string>
             name="dataset"
-            label="Dataset"
-            placeholder="Select a dataset"
+            label="Conjunto de dados"
+            placeholder="Selecione um conjunto de dados"
             options={datasetOptions}
             value={selectedDatasetId ?? undefined}
             onChange={handleSelectChange}
             searchable
-            searchPlaceholder="Search datasets..."
+            searchPlaceholder="Buscar conjuntos de dados..."
             searchableEmptyMessage="No datasets found."
             side="bottom"
             footerAction={{
-              label: "Create new dataset",
+              label: "Criar novo conjunto de dados",
               icon: <Icon icon={Plus} size="sm" />,
               onClick: handleCreateNew,
             }}

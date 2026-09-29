@@ -7,8 +7,8 @@ export const Route = createFileRoute("/_authenticated/projects/$projectSlug/sett
   component: ImportsSettingsPage,
 })
 
-const PAGE_TITLE = "Imports"
-const PAGE_DESCRIPTION = "Import your existing sessions, traces and spans from other observability platforms."
+const PAGE_TITLE = "Importações"
+const PAGE_DESCRIPTION = "Importe sessões, traces e spans existentes de outras plataformas de observabilidade."
 
 function ImportsSettingsPage() {
   const project = useRouteProject()

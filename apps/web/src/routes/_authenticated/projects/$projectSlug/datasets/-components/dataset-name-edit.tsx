@@ -45,7 +45,7 @@ function DatasetEditModal({
           qc.invalidateQueries({ queryKey: ["dataset", dataset.id] })
           onOpenChange(false)
           onSuccess?.()
-          showToast({ description: "Dataset updated" })
+          showToast({ description: "Conjunto de dados atualizado" })
         },
         onError: (error) => {
           showToast({ variant: "destructive", description: toUserMessage(error) })
@@ -63,8 +63,8 @@ function DatasetEditModal({
           form.reset({ name: dataset.name, description: dataset.description ?? "" })
         }
       }}
-      title="Edit dataset"
-      description="Update the dataset name and description."
+      title="Editar conjunto de dados"
+      description="Atualize o nome e a descrição do conjunto de dados."
       dismissible
       footer={
         <div className="flex flex-row items-center gap-2 justify-end">
@@ -94,7 +94,7 @@ function DatasetEditModal({
           {(field) => (
             <Input
               id="dataset-edit-name"
-              label="Name"
+              label="Nome"
               value={field.state.value}
               onChange={(event) => field.handleChange(event.target.value)}
               onKeyDown={(event) => {
@@ -109,7 +109,7 @@ function DatasetEditModal({
           {(field) => (
             <Textarea
               id="dataset-edit-description"
-              label="Description"
+              label="Descrição"
               value={field.state.value}
               onChange={(event) => field.handleChange(event.target.value)}
               disabled={form.state.isSubmitting}
@@ -130,7 +130,7 @@ export function DatasetTitleBlock({ dataset }: { dataset: DatasetRecord }) {
       <Text.H3M className="min-w-0">{dataset.name}</Text.H3M>
       <div className="flex flex-row items-center gap-2 min-w-0">
         <div className="flex min-w-0 max-w-max shrink-0">
-          <CopyableText value={dataset.slug} size="sm" tooltip="Copy dataset slug" />
+          <CopyableText value={dataset.slug} size="sm" tooltip="Copiar slug do conjunto de dados" />
         </div>
         {dataset.description ? (
           <Tooltip
@@ -140,7 +140,7 @@ export function DatasetTitleBlock({ dataset }: { dataset: DatasetRecord }) {
             trigger={
               <button
                 type="button"
-                aria-label="Dataset description"
+                aria-label="Descrição do conjunto de dados"
                 className="inline-flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
               >
                 <Icon icon={Info} size="sm" />
@@ -177,7 +177,7 @@ export function DatasetActionsMenu({ dataset, onSuccess }: { dataset: DatasetRec
       qc.invalidateQueries({ queryKey: ["datasetRows", dataset.id] })
       qc.invalidateQueries({ queryKey: ["datasetRowCount", dataset.id] })
       setDeleteOpen(false)
-      toast({ description: "Dataset removed" })
+      toast({ description: "Conjunto de dados removido" })
       navigate({ to: "/projects/$projectSlug/datasets", params: { projectId } })
     } catch (e) {
       toast({
@@ -196,16 +196,16 @@ export function DatasetActionsMenu({ dataset, onSuccess }: { dataset: DatasetRec
         triggerButtonProps={{
           variant: "outline",
           size: "icon",
-          "aria-label": "Dataset actions",
+          "aria-label": "Ações do conjunto de dados",
           className: "shrink-0",
         }}
         options={[
           {
-            label: "Edit details",
+            label: "Editar detalhes",
             onClick: openEdit,
           },
           {
-            label: "Remove dataset",
+            label: "Remover conjunto de dados",
             type: "destructive" as const,
             onClick: () => setDeleteOpen(true),
           },
@@ -222,8 +222,8 @@ export function DatasetActionsMenu({ dataset, onSuccess }: { dataset: DatasetRec
       <Modal
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Remove dataset"
-        description="This will remove the dataset from the project. Row data will no longer be available. This cannot be undone."
+        title="Remover conjunto de dados"
+        description="Isso removerá o conjunto de dados do projeto. Os dados das linhas deixarão de estar disponíveis. Esta ação não pode ser desfeita."
         dismissible
         footer={
           <div className="flex flex-row items-center gap-2 justify-end">

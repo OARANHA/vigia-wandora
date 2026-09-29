@@ -55,7 +55,7 @@ export function UploadBlankSlate({
         if (headers.length === 0) {
           toast({
             variant: "destructive",
-            description: "Could not detect any columns in this CSV",
+            description: "Não foi possível detectar colunas neste CSV",
           })
           return
         }
@@ -64,7 +64,7 @@ export function UploadBlankSlate({
       } catch {
         toast({
           variant: "destructive",
-          description: "Failed to parse CSV file",
+          description: "Não foi possível interpretar o arquivo CSV",
         })
       } finally {
         setParsing(false)
@@ -119,13 +119,13 @@ export function UploadBlankSlate({
                 {parsing ? (
                   <>
                     <Loader2 className="h-12 w-12 animate-spin text-muted-foreground" />
-                    <Text.H5 color="foregroundMuted">Reading CSV...</Text.H5>
+                    <Text.H5 color="foregroundMuted">Lendo CSV...</Text.H5>
                   </>
                 ) : (
                   <>
                     <Icon icon={ImportIcon} size="md" color="primary" />
                     <div className="flex flex-col items-center gap-1">
-                      <Text.H4B>Upload a CSV file</Text.H4B>
+                      <Text.H4B>Enviar arquivo CSV</Text.H4B>
                       <Text.H5 color="foregroundMuted">
                         Drag and drop your CSV file in this area or start creating rows manually
                       </Text.H5>
@@ -161,8 +161,8 @@ export function UploadBlankSlate({
       <Modal
         open={addRowModalOpen}
         onOpenChange={setAddRowModalOpen}
-        title="Add row"
-        description="Enter input, output, and metadata for your first row. This creates a new dataset version."
+        title="Adicionar linha"
+        description="Informe entrada, saída e metadados para a primeira linha. Isso cria uma nova versão do conjunto de dados."
         dismissible
         footer={
           <>

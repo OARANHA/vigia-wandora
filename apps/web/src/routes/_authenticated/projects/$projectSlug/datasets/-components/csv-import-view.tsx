@@ -53,7 +53,7 @@ export function CsvImportView({ title, subtitle, parsedCsv, onCancel, onSave }: 
           {subtitle && <Text.H6 color="foregroundMuted">{subtitle}</Text.H6>}
         </div>
         <Button variant="outline" size="sm" onClick={onCancel}>
-          <Text.H6>Cancel</Text.H6>
+          <Text.H6>Cancelar</Text.H6>
         </Button>
       </div>
 

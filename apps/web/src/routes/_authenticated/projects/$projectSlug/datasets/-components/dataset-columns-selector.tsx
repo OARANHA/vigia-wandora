@@ -55,7 +55,7 @@ export function DatasetColumnsSelector({
     } catch (e) {
       toast({
         variant: "destructive",
-        description: e instanceof Error ? e.message : "Failed to update columns",
+        description: e instanceof Error ? e.message : "Não foi possível atualizar as colunas",
       })
       return false
     } finally {
@@ -70,7 +70,7 @@ export function DatasetColumnsSelector({
     const ok = await run(() => removeDatasetColumn({ data: { datasetId, identifier: column.identifier } }))
     if (!ok) return false
     toast({
-      description: `Column "${column.name}" removed. Re-add it any time from Removed columns.`,
+      description: `Coluna "${column.name}" removida. Você pode adicioná-la novamente em Colunas removidas.`,
       action: (
         <ToastAction altText="Undo column removal" onClick={() => void restore(column.identifier)}>
           Undo
@@ -91,7 +91,7 @@ export function DatasetColumnsSelector({
       <PopoverTrigger asChild>
         <Button variant="outline" size="sm" className="shrink-0 whitespace-nowrap">
           <Icon icon={Columns2Icon} size="sm" />
-          <Text.H6>Columns</Text.H6>
+          <Text.H6>Colunas</Text.H6>
           <Icon icon={ChevronDown} size="sm" />
         </Button>
       </PopoverTrigger>
@@ -191,7 +191,7 @@ function ColumnList({
   return (
     <div className="flex flex-col">
       <div className="px-3 py-2">
-        <Text.H6B>Columns</Text.H6B>
+        <Text.H6B>Colunas</Text.H6B>
       </div>
       <div className="border-t border-border" />
       <div className="flex flex-col p-1">
@@ -216,7 +216,7 @@ function ColumnList({
             ) : null}
             <button
               type="button"
-              aria-label={`Reorder ${column.name}`}
+              aria-label={`Reordenar ${column.name}`}
               draggable
               onDragStart={(e) => {
                 e.dataTransfer.effectAllowed = "move"
@@ -236,7 +236,7 @@ function ColumnList({
             </span>
             <button
               type="button"
-              aria-label={`Rename ${column.name}`}
+              aria-label={`Renomear ${column.name}`}
               disabled={busy}
               onClick={() => onEdit(column)}
               className="flex items-center text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100"
@@ -245,7 +245,7 @@ function ColumnList({
             </button>
             <button
               type="button"
-              aria-label={`Remove ${column.name}`}
+              aria-label={`Remover ${column.name}`}
               disabled={busy}
               onClick={() => onRemove(column)}
               className="flex items-center text-muted-foreground hover:text-destructive"
@@ -259,7 +259,7 @@ function ColumnList({
         <>
           <div className="border-t border-border" />
           <div className="px-3 pb-1 pt-2">
-            <Text.H6 color="foregroundMuted">Removed columns</Text.H6>
+            <Text.H6 color="foregroundMuted">Colunas removidas</Text.H6>
           </div>
           <div className="flex flex-col p-1 pt-0">
             {removedColumns.map((column) => (
@@ -271,13 +271,13 @@ function ColumnList({
                 </span>
                 <button
                   type="button"
-                  aria-label={`Re-add ${column.name}`}
+                  aria-label={`Adicionar novamente ${column.name}`}
                   disabled={busy}
                   onClick={() => onRestore(column.identifier)}
                   className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
                 >
                   <Icon icon={RotateCcw} size="sm" />
-                  <Text.H6>Re-add</Text.H6>
+                  <Text.H6>Adicionar novamente</Text.H6>
                 </button>
               </div>
             ))}
@@ -292,7 +292,7 @@ function ColumnList({
         className="flex items-center gap-2 px-3 py-2 text-left text-muted-foreground hover:bg-accent hover:text-foreground"
       >
         <Icon icon={Plus} size="sm" />
-        <Text.H6>New column</Text.H6>
+        <Text.H6>Nova coluna</Text.H6>
       </button>
     </div>
   )
@@ -317,13 +317,13 @@ function EditColumnForm({
       <div className="flex items-center gap-1 px-2 py-2">
         <button
           type="button"
-          aria-label="Back"
+          aria-label="Voltar"
           onClick={onBack}
           className="text-muted-foreground hover:text-foreground"
         >
           <Icon icon={ChevronLeft} size="sm" />
         </button>
-        <Text.H6B>Edit column</Text.H6B>
+        <Text.H6B>Editar coluna</Text.H6B>
       </div>
       <div className="border-t border-border" />
       <div className="flex flex-col gap-3 p-3">
@@ -359,19 +359,19 @@ function AddColumnForm({ busy, onBack, onAdd }: { busy: boolean; onBack: () => v
       <div className="flex items-center gap-1 px-2 py-2">
         <button
           type="button"
-          aria-label="Back"
+          aria-label="Voltar"
           onClick={onBack}
           className="text-muted-foreground hover:text-foreground"
         >
           <Icon icon={ChevronLeft} size="sm" />
         </button>
-        <Text.H6B>New column</Text.H6B>
+        <Text.H6B>Nova coluna</Text.H6B>
       </div>
       <div className="border-t border-border" />
       <div className="flex flex-col gap-3 p-3">
         <Input
           autoFocus
-          placeholder="Column name"
+          placeholder="Nome da coluna"
           value={name}
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => {

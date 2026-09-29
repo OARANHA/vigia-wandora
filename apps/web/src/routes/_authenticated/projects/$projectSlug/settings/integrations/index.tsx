@@ -74,7 +74,7 @@ function IntegrationsSettingsPage() {
   }))
 
   return (
-    <SettingsPage title="Integrations" description="Connect Latitude to the tools your team already uses.">
+    <SettingsPage title="Integrações" description="Conecte o Vigia às ferramentas que sua equipe já utiliza.">
       <div className="flex w-full flex-col gap-8">
         {isLoading ? (
           <Skeleton className="h-32 w-full" />
@@ -103,7 +103,7 @@ function IntegrationsSettingsPage() {
           </div>
         ) : (
           <div className="flex flex-col items-start gap-3 rounded-lg border border-border p-6">
-            <Text.H5M>No integrations to configure yet</Text.H5M>
+            <Text.H5M>Nenhuma integração para configurar ainda</Text.H5M>
             <Text.H6 color="foregroundMuted">
               Integrations are connected once for the whole organization. Connect one, then come back to tune it for
               this project.

@@ -205,3 +205,35 @@ Termos técnicos e contratos internos do Latitude continuam preservados quando f
 
 Permanecem como próximos slices da área do cliente: Conjuntos de dados, Configurações e as superfícies de Custos/Pontuação do agente quando habilitadas. O `/backoffice` segue separado para um rebranding posterior como **Administração Vigia**.
 
+
+
+## Conjuntos de dados e Configurações essenciais — 2026-09-29
+
+O slice da branch `feat/vigia-client-ptbr-datasets-settings` conclui a tradução/revisão de **Conjuntos de dados** e avança a camada PT-BR das **Configurações essenciais** do cliente.
+
+Conjuntos de dados cobertos:
+
+- lista, busca e estado vazio;
+- detalhe e tabela de linhas;
+- criação/edição/remoção;
+- adição de traces/linhas;
+- importação e prévia de CSV;
+- mapeamento e gerenciamento de colunas;
+- importação/exportação e mensagens de operação.
+
+Também foi removido o link visível para `docs.latitude.so` no estado vazio de conjuntos de dados.
+
+Configurações essenciais cobertas neste slice:
+
+- projeto e conta;
+- empresa e membros;
+- chaves de API/OAuth;
+- sinais;
+- importações;
+- páginas e cabeçalhos básicos de integrações.
+
+As superfícies cobertas usam linguagem Vigia/PT-BR e deixam de expor referências comerciais ao Latitude ou links para `docs.latitude.so` onde foram revisadas. Contratos técnicos internos permanecem inalterados.
+
+**Configurações ainda não está concluída como área total.** Permanecem para um slice próprio os fluxos avançados e/ou condicionais: dispatch de agentes, destinos de dados, políticas avançadas de privacidade/redaction, configurações profundas de GitHub/Slack, defaults, flaggers, SSO e billing.
+
+Depois de fechar essas configurações avançadas, o próximo item canônico continua sendo Custos/Pontuação do agente quando habilitados e, em seguida, `/backoffice` como **Administração Vigia**.

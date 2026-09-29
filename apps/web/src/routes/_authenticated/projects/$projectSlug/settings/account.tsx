@@ -84,7 +84,7 @@ function DeleteAccountConfirmModal({ open, setOpen }: { open: boolean; setOpen: 
   const [confirmText, setConfirmText] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const expectedText = "delete my account"
+  const expectedText = "excluir minha conta"
   const isConfirmed = confirmText.toLowerCase() === expectedText
 
   const handleDelete = async () => {
@@ -107,15 +107,15 @@ function DeleteAccountConfirmModal({ open, setOpen }: { open: boolean; setOpen: 
         if (!v) setConfirmText("")
         setOpen(v)
       }}
-      title="Delete Account"
-      description="This action is permanent and cannot be undone. All your data will be deleted. If you are the sole member of an organization, that organization will also be permanently deleted."
+      title="Excluir conta"
+      description="Esta ação é permanente e não pode ser desfeita. Todos os seus dados serão excluídos. Se você for o único membro de uma empresa, ela também será excluída permanentemente."
       footer={
         <>
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
+            Cancelar
           </Button>
           <Button variant="destructive" disabled={!isConfirmed || isDeleting} onClick={() => void handleDelete()}>
-            {isDeleting ? "Deleting..." : "Delete Account"}
+            {isDeleting ? "Excluindo..." : "Excluir conta"}
           </Button>
         </>
       }
@@ -123,7 +123,7 @@ function DeleteAccountConfirmModal({ open, setOpen }: { open: boolean; setOpen: 
       <FormWrapper>
         <Input
           type="text"
-          label={`Type "${expectedText}" to confirm`}
+          label={`Digite "${expectedText}" para confirmar`}
           value={confirmText}
           onChange={(e) => setConfirmText(e.target.value)}
           placeholder={expectedText}
@@ -134,15 +134,15 @@ function DeleteAccountConfirmModal({ open, setOpen }: { open: boolean; setOpen: 
 }
 
 const formatSessionLocation = (session: UserSessionDto): string => {
-  if (!session.geo) return "Unknown location"
+  if (!session.geo) return "Localização desconhecida"
   const parts = [session.geo.city, session.geo.region, session.geo.country].filter((p): p is string => Boolean(p))
-  if (parts.length === 0) return "Unknown location"
+  if (parts.length === 0) return "Localização desconhecida"
   return parts.join(", ")
 }
 
 const formatDeviceLine = (session: UserSessionDto): string => {
-  const browser = session.browserName ? toTitle(session.browserName) : "Unknown browser"
-  const os = session.osName ? ` on ${toTitle(session.osName)}` : " on a"
+  const browser = session.browserName ? toTitle(session.browserName) : "Navegador desconhecido"
+  const os = session.osName ? ` em ${toTitle(session.osName)}` : " em um"
   const device = ` ${session.deviceKind.toLowerCase()}`
   return `${browser}${os}${device}`
 }
@@ -171,7 +171,7 @@ function RevokeSessionConfirmModal({ session, onClose }: { session: UserSessionD
     setRevoking(true)
     try {
       await revokeUserSession({ data: { token: session.token } })
-      toast({ description: "Session signed out" })
+      toast({ description: "Sessão encerrada" })
       await queryClient.invalidateQueries({ queryKey: ["userSessions"] })
       onClose()
     } catch (error) {
@@ -186,17 +186,17 @@ function RevokeSessionConfirmModal({ session, onClose }: { session: UserSessionD
       onOpenChange={(open) => {
         if (!open && !revoking) onClose()
       }}
-      title="Sign device out"
-      description={`Are you sure you want to sign out "${formatDeviceLine(session)}" of your account? This device will immediately lose access and will need to sign in again.`}
+      title="Encerrar sessão do dispositivo"
+      description={`Deseja encerrar a sessão de "${formatDeviceLine(session)}"? Este dispositivo perderá o acesso imediatamente e precisará entrar novamente.`}
       dismissible
       footer={
         <div className="flex flex-row items-center gap-2">
           <Button variant="outline" onClick={onClose} disabled={revoking}>
-            <Text.H5>Cancel</Text.H5>
+            <Text.H5>Cancelar</Text.H5>
           </Button>
           <Button variant="destructive" onClick={() => void handleConfirm()} disabled={revoking}>
             {revoking ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-            <Text.H5 color="white">{revoking ? "Signing out..." : "Sign out"}</Text.H5>
+            <Text.H5 color="white">{revoking ? "Encerrando sessão..." : "Encerrar sessão"}</Text.H5>
           </Button>
         </div>
       }
@@ -213,7 +213,7 @@ function RevokeAllOtherSessionsConfirmModal({ otherCount, onClose }: { otherCoun
     setRevoking(true)
     try {
       await revokeAllOtherUserSessions()
-      toast({ description: "Signed out everywhere else" })
+      toast({ description: "Sessões encerradas nos outros dispositivos" })
       await queryClient.invalidateQueries({ queryKey: ["userSessions"] })
       onClose()
     } catch (error) {
@@ -222,7 +222,7 @@ function RevokeAllOtherSessionsConfirmModal({ otherCount, onClose }: { otherCoun
     }
   }
 
-  const deviceLabel = otherCount === 1 ? "1 other device" : `${otherCount} other devices`
+  const deviceLabel = otherCount === 1 ? "1 outro dispositivo" : `${otherCount} outros dispositivos`
 
   return (
     <Modal
@@ -230,17 +230,17 @@ function RevokeAllOtherSessionsConfirmModal({ otherCount, onClose }: { otherCoun
       onOpenChange={(open) => {
         if (!open && !revoking) onClose()
       }}
-      title="Sign out everywhere else"
-      description={`Are you sure you want to sign out of ${deviceLabel}? They will immediately lose access and will need to sign in again. This device will stay signed in.`}
+      title="Encerrar sessões nos outros dispositivos"
+      description={`Deseja encerrar a sessão de ${deviceLabel}? O acesso será perdido imediatamente e será necessário entrar novamente. Este dispositivo permanecerá conectado.`}
       dismissible
       footer={
         <div className="flex flex-row items-center gap-2">
           <Button variant="outline" onClick={onClose} disabled={revoking}>
-            <Text.H5>Cancel</Text.H5>
+            <Text.H5>Cancelar</Text.H5>
           </Button>
           <Button variant="destructive" onClick={() => void handleConfirm()} disabled={revoking}>
             {revoking ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-            <Text.H5 color="white">{revoking ? "Signing out..." : "Sign out everywhere else"}</Text.H5>
+            <Text.H5 color="white">{revoking ? "Encerrando sessões..." : "Encerrar outras sessões"}</Text.H5>
           </Button>
         </div>
       }
@@ -280,7 +280,7 @@ function DisconnectAccountConfirmModal({
       await unlinkUserAccount({
         data: { providerId: provider.id, accountId: account.accountId },
       })
-      toast({ description: `${provider.label} disconnected` })
+      toast({ description: `${provider.label} desconectado` })
       await queryClient.invalidateQueries({ queryKey: ["userAccounts"] })
       onClose()
     } catch (error) {
@@ -295,16 +295,16 @@ function DisconnectAccountConfirmModal({
       onOpenChange={(open) => {
         if (!open && !disconnecting) onClose()
       }}
-      title={`Disconnect ${provider.label}`}
-      description={`You'll no longer be able to sign in with ${provider.label}. Email sign-in keeps working, and you can reconnect ${provider.label} at any time.`}
+      title={`Desconectar ${provider.label}`}
+      description={`Você não poderá mais entrar com ${provider.label}. O acesso por email continuará funcionando e você poderá reconectar ${provider.label} quando quiser.`}
       dismissible
       footer={
         <div className="flex flex-row items-center gap-2">
           <Button variant="outline" onClick={onClose} disabled={disconnecting}>
-            Cancel
+            Cancelar
           </Button>
           <Button variant="destructive" onClick={() => void handleConfirm()} disabled={disconnecting}>
-            {disconnecting ? "Disconnecting..." : "Disconnect"}
+            {disconnecting ? "Desconectando..." : "Desconectar"}
           </Button>
         </div>
       }
@@ -338,7 +338,7 @@ function ConnectedAccountsSection() {
     if (error) {
       toast({
         variant: "destructive",
-        description: error.message ?? `Could not start connecting ${provider.label}`,
+        description: error.message ?? `Não foi possível iniciar a conexão com ${provider.label}`,
       })
       setConnecting(null)
       return
@@ -351,9 +351,9 @@ function ConnectedAccountsSection() {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <Text.H5 weight="semibold">Connected accounts</Text.H5>
+        <Text.H5 weight="semibold">Contas conectadas</Text.H5>
         <Text.H5 color="foregroundMuted">
-          Connect Google or GitHub to sign in with one click. Signing in with your email always keeps working
+          Conecte Google ou GitHub para entrar com um clique. O acesso por email continuará sempre disponível
         </Text.H5>
       </div>
       <div className="flex w-full flex-col gap-1">
@@ -383,18 +383,18 @@ function ConnectedAccountsSection() {
                     {isLoading
                       ? "…"
                       : account
-                        ? (profile?.email ?? `Connected ${relativeTime(account.createdAt)}`)
-                        : "Not connected"}
+                        ? (profile?.email ?? `Conectada ${relativeTime(account.createdAt)}`)
+                        : "Não conectada"}
                   </Text.H6>
                 </div>
               </div>
               {isLoading ? null : account ? (
                 <Button variant="destructive" onClick={() => setToDisconnect({ provider, account })}>
-                  Disconnect
+                  Desconectar
                 </Button>
               ) : (
                 <Button variant="outline" disabled={connecting !== null} onClick={() => void handleConnect(provider)}>
-                  {connecting === provider.id ? "Redirecting…" : "Connect"}
+                  {connecting === provider.id ? "Redirecionando…" : "Conectar"}
                 </Button>
               )}
             </div>
@@ -433,7 +433,7 @@ function SessionsSection() {
     <section className="flex flex-col gap-4">
       <div className="flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex flex-col gap-1">
-          <Text.H5 weight="semibold">Sessions</Text.H5>
+          <Text.H5 weight="semibold">Sessões</Text.H5>
           <Text.H5 color="foregroundMuted">
             Devices currently signed in to your account. Sign out of any device you don't recognize
           </Text.H5>
@@ -449,14 +449,14 @@ function SessionsSection() {
         {isLoading ? (
           <TableSkeleton cols={4} rows={2} />
         ) : sessions.length === 0 ? (
-          <Text.H5 color="foregroundMuted">No active sessions.</Text.H5>
+          <Text.H5 color="foregroundMuted">Nenhuma sessão ativa.</Text.H5>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Device</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Created at</TableHead>
+                <TableHead>Dispositivo</TableHead>
+                <TableHead>Localização</TableHead>
+                <TableHead>Criada em</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -472,7 +472,7 @@ function SessionsSection() {
                         {formatDeviceLine(s)}
                         {s.current ? (
                           <Text.H5 color="foregroundMuted" asChild>
-                            <span>&nbsp;· This device</span>
+                            <span>&nbsp;· Este dispositivo</span>
                           </Text.H5>
                         ) : null}
                       </Text.H5>
@@ -592,7 +592,7 @@ function NotificationsSection() {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <Text.H5 weight="semibold">Email notifications</Text.H5>
+        <Text.H5 weight="semibold">Notificações por email</Text.H5>
         <Text.H5 color="foregroundMuted">
           Choose which kinds of notifications you'd like to receive by email. In-app notifications always appear in the
           bell.
@@ -619,7 +619,7 @@ function NotificationsSection() {
                     id={inputId}
                     checked={enabled}
                     onCheckedChange={(checked) => setGroupEmail(group, checked)}
-                    aria-label={`Toggle email notifications for ${meta.label}`}
+                    aria-label={`Alternar notificações por email para ${meta.label}`}
                   />
                 ) : (
                   // Sized to the switch it stands in for, so the row doesn't move when it arrives.
@@ -650,7 +650,7 @@ function NotificationsSection() {
               {isLoaded && enabled && meta.severityFiltered ? (
                 <div className="flex flex-row items-center justify-between gap-4 rounded-lg bg-muted/80 px-3 py-2">
                   <div className="flex flex-row items-baseline gap-1.5">
-                    <Text.H6M>Severity</Text.H6M>
+                    <Text.H6M>Severidade</Text.H6M>
                     <Text.H6 color="foregroundMuted">
                       · {minSeverityHint(prefs[group]?.emailMinSeverity ?? "low")}
                     </Text.H6>
@@ -681,7 +681,7 @@ function AccountSettingsPage() {
   // params so a refresh doesn't repeat the toast.
   useMountEffect(() => {
     if (search.linked) {
-      toast({ description: `${providerLabel(search.linked)} connected` })
+      toast({ description: `${providerLabel(search.linked)} conectado` })
     } else if (search.error) {
       toast({
         variant: "destructive",
@@ -702,7 +702,7 @@ function AccountSettingsPage() {
       {
         resetOnSuccess: false,
         onSuccess: () => {
-          toast({ description: "Name updated" })
+          toast({ description: "Nome atualizado" })
           // `useAuthenticatedUser` is sourced from route data; refresh so
           // the new name shows up wherever the user is rendered.
           void router.invalidate()
@@ -715,7 +715,7 @@ function AccountSettingsPage() {
   })
 
   return (
-    <SettingsPage title="Account" description="Manage your personal account">
+    <SettingsPage title="Conta" description="Gerencie sua conta pessoal">
       <form
         className="flex w-full flex-col gap-3"
         onSubmit={(e) => {
@@ -730,12 +730,12 @@ function AccountSettingsPage() {
               required
               type="text"
               name={field.name}
-              label="Name"
+              label="Nome"
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               errors={fieldErrorsAsStrings(field.state.meta.errors)}
-              placeholder="Your name"
-              aria-label="Your name"
+              placeholder="Seu nome"
+              aria-label="Seu nome"
             />
           )}
         </form.Field>

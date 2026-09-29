@@ -3,6 +3,7 @@ import { Button, Chart, type ChartSeries, HistogramSkeleton, Icon, Skeleton, Tex
 import { formatCount } from "@repo/utils"
 import { BarChart2, ChevronDown, ChevronUp } from "lucide-react"
 import { useMemo, useState } from "react"
+import { ptBR } from "../../../../../../lib/i18n/pt-BR.ts"
 import type { ToolsAnalyticsRecord } from "../../../../../../domains/tools/tools.functions.ts"
 import { ChartHeader } from "../../-components/chart-header.tsx"
 import { formatBucketLabel, formatPercent, getToolStatuses } from "./tool-formatters.ts"
@@ -68,20 +69,20 @@ export function ToolsAnalyticsPanel({
     const totalErrors = tools.reduce((sum, tool) => sum + (tool.metrics?.errors ?? 0), 0)
     const unusedCount = tools.filter((tool) => getToolStatuses(tool).includes("unused")).length
     return [
-      { key: "tools", label: "Tools", value: formatCount(tools.length) },
-      { key: "calls", label: "Tool calls", value: formatCount(totalCalls) },
-      { key: "errorRate", label: "Error rate", value: totalCalls > 0 ? formatPercent(totalErrors / totalCalls) : "-" },
+      { key: "tools", label: ptBR.clientPages.tools.toolCount, value: formatCount(tools.length) },
+      { key: "calls", label: ptBR.clientPages.tools.toolCalls, value: formatCount(totalCalls) },
+      { key: "errorRate", label: ptBR.clientPages.tools.columns.errorRate, value: totalCalls > 0 ? formatPercent(totalErrors / totalCalls) : "-" },
       {
         key: "traces",
-        label: "Traces using tools",
+        label: ptBR.clientPages.tools.tracesUsingTools,
         value: countWithShare(totals.tracesWithToolCalls, totals.traces),
       },
       {
         key: "sessions",
-        label: "Sessions using tools",
+        label: ptBR.clientPages.tools.sessionsUsingTools,
         value: countWithShare(totals.sessionsWithToolCalls, totals.sessions),
       },
-      { key: "unused", label: "Unused tools", value: formatCount(unusedCount) },
+      { key: "unused", label: ptBR.clientPages.tools.unusedTools, value: formatCount(unusedCount) },
     ]
   }, [analytics])
 
@@ -96,7 +97,7 @@ export function ToolsAnalyticsPanel({
       // bottom, where a shared baseline makes error volumes comparable.
       {
         kind: "bar",
-        name: "Failed calls",
+        name: ptBR.clientPages.tools.failedCalls,
         values: histogram.map((bucket) => bucket.errors),
         color: FAILED_CALLS_COLOR,
         axis: "left",
@@ -104,7 +105,7 @@ export function ToolsAnalyticsPanel({
       },
       {
         kind: "bar",
-        name: "Successful calls",
+        name: ptBR.clientPages.tools.successfulCalls,
         values: histogram.map((bucket) => bucket.calls - bucket.errors),
         color: OK_CALLS_COLOR,
         axis: "left",
@@ -112,7 +113,7 @@ export function ToolsAnalyticsPanel({
       },
       {
         kind: "line",
-        name: "Error rate %",
+        name: "Taxa de erro %",
         values: histogram.map((bucket) =>
           bucket.calls > 0 ? Math.round((bucket.errors / bucket.calls) * 1000) / 10 : 0,
         ),
@@ -130,9 +131,9 @@ export function ToolsAnalyticsPanel({
         <div className="flex items-center justify-between px-4 py-2">
           <div className="flex items-center gap-1.5">
             <Icon icon={BarChart2} size="sm" color="foregroundMuted" />
-            <Text.H6 color="foregroundMuted">Tools statistics</Text.H6>
+            <Text.H6 color="foregroundMuted">{ptBR.clientPages.tools.statistics}</Text.H6>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setCollapsed(false)} aria-label="Expand statistics">
+          <Button variant="ghost" size="icon" onClick={() => setCollapsed(false)} aria-label="Expandir estatísticas">
             <Icon icon={ChevronDown} size="sm" />
           </Button>
         </div>
@@ -168,7 +169,7 @@ export function ToolsAnalyticsPanel({
             variant="ghost"
             size="icon"
             onClick={() => setCollapsed(true)}
-            aria-label="Collapse statistics"
+            aria-label="Recolher estatísticas"
             className="shrink-0"
           >
             <Icon icon={ChevronUp} size="sm" />
@@ -181,18 +182,18 @@ export function ToolsAnalyticsPanel({
           </div>
         ) : histogram.length === 0 || histogram.every((bucket) => bucket.calls === 0) ? (
           <div className="flex w-full min-h-[80px] items-center justify-center px-4 py-3">
-            <Text.H6 color="foregroundMuted">No tool calls in this time window</Text.H6>
+            <Text.H6 color="foregroundMuted">{ptBR.clientPages.tools.noCalls}</Text.H6>
           </div>
         ) : (
           <>
-            <ChartHeader title="Tool calls over time" fromIso={rangeFromIso} toIso={rangeToIso} isAllTime={isAllTime} />
+            <ChartHeader title={ptBR.clientPages.tools.callsOverTime} fromIso={rangeFromIso} toIso={rangeToIso} isAllTime={isAllTime} />
             <div className="px-4 py-3">
               <Chart
                 categories={categories}
                 series={series}
                 height={160}
                 xAxisLabelFontSize={10}
-                ariaLabel="Tool calls over time"
+                ariaLabel={ptBR.clientPages.tools.callsOverTime}
               />
             </div>
           </>

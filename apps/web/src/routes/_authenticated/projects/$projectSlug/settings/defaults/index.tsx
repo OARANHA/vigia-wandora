@@ -140,7 +140,7 @@ function RedactionDefaultRow({
     <>
       <DefaultRow
         icon={EyeOffIcon}
-        title="Redação de PII"
+        title="Remoção de PII"
         value={value}
         projectCount={projectCount}
         overrideCount={overrideCount}

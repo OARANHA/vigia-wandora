@@ -1,5 +1,6 @@
-import { Button, Icon, Text } from "@repo/ui"
-import { ExternalLinkIcon, WrenchIcon } from "lucide-react"
+import { Icon, Text } from "@repo/ui"
+import { WrenchIcon } from "lucide-react"
+import { ptBR } from "../../../../../../lib/i18n/pt-BR.ts"
 
 export function ToolsEmptyState({ isLoading = false }: { readonly isLoading?: boolean }) {
   return (
@@ -9,21 +10,13 @@ export function ToolsEmptyState({ isLoading = false }: { readonly isLoading?: bo
           <Icon icon={WrenchIcon} size="lg" color="foregroundMuted" />
         </div>
         <div className="flex flex-col items-center gap-2">
-          <Text.H3 centered>{isLoading ? "Loading tools" : "No tools detected yet"}</Text.H3>
+          <Text.H3 centered>{isLoading ? ptBR.clientPages.tools.loadingTitle : ptBR.clientPages.tools.emptyTitle}</Text.H3>
           <Text.H5 color="foregroundMuted" centered>
             {isLoading
-              ? "Preparing your tools view."
-              : "Tools appear automatically when your traces include tool definitions on LLM spans or tool-call spans."}
+              ? ptBR.clientPages.tools.loadingDescription
+              : ptBR.clientPages.tools.emptyDescription}
           </Text.H5>
         </div>
-        {!isLoading ? (
-          <a href="https://docs.latitude.so/observability/tools" target="_blank" rel="noopener noreferrer">
-            <Button>
-              <Icon size="sm" icon={ExternalLinkIcon} />
-              Read the docs
-            </Button>
-          </a>
-        ) : null}
       </div>
     </div>
   )

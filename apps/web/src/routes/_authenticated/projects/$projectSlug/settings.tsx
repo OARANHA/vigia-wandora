@@ -2,6 +2,7 @@ import { isShowcaseProjectSlug } from "@domain/shared"
 import { cn } from "@repo/ui"
 import { createFileRoute, Outlet, redirect } from "@tanstack/react-router"
 import { useHasMatchStaticData } from "../../../../lib/hooks/use-router-selectors.ts"
+import { ptBR } from "../../../../lib/i18n/pt-BR.ts"
 import { BreadcrumbText } from "../../-components/breadcrumb-ui.tsx"
 import { SettingsSubNav } from "./settings/-components/settings-sub-nav.tsx"
 
@@ -15,7 +16,7 @@ export const Route = createFileRoute("/_authenticated/projects/$projectSlug/sett
     }
   },
   staticData: {
-    breadcrumb: () => <BreadcrumbText variant="current">Settings</BreadcrumbText>,
+    breadcrumb: () => <BreadcrumbText variant="current">{ptBR.clientShell.sections.settings}</BreadcrumbText>,
     collapseSidebar: true,
   },
   component: SettingsLayout,

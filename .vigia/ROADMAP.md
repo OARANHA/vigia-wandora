@@ -103,7 +103,7 @@ Depois de a área do cliente ficar satisfatória, tratar o `/backoffice` como **
 
 ## Checkpoint 2026-09-29 — áreas operacionais do cliente
 
-Implementado no PR #35 e aguardando validação/merge:
+Concluído no PR #35:
 
 - [x] Sinais em PT-BR nas superfícies principais;
 - [x] Comportamentos em PT-BR nas superfícies principais;

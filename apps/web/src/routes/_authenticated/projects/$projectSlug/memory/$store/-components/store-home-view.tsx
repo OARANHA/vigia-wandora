@@ -72,14 +72,14 @@ function storeOverviewTiles(
       key: "tokens",
       label: "Total de tokens",
       value: formatCount(o?.liveTokens ?? 0),
-      ...(o && o.liveTokens > 0 ? { subtext: `${formatPercent(o.deadTokens / o.liveTokens)} dead` } : {}),
+      ...(o && o.liveTokens > 0 ? { subtext: `${formatPercent(o.deadTokens / o.liveTokens)} inativos` } : {}),
     },
     { key: "ratio", label: "Leitura:gravação", value: formatRatio(o?.recordsRetrieved ?? 0, o?.writes ?? 0) },
     {
       key: "searches",
       label: "Buscas",
       value: formatCount(o?.searches ?? 0),
-      ...(o && o.searches > 0 ? { subtext: `${formatPercent(o.zeroHitSearches / o.searches)} zero-hit` } : {}),
+      ...(o && o.searches > 0 ? { subtext: `${formatPercent(o.zeroHitSearches / o.searches)} sem resultado` } : {}),
     },
   ]
 }
@@ -90,7 +90,7 @@ function mostReadItems(insights: StoreInsightsRecord | undefined) {
   return rows.map((row) => ({
     key: row.recordId,
     label: recordDisplayLabel(row.recordId),
-    value: `${formatCount(row.reads)} reads`,
+    value: `${formatCount(row.reads)} leituras`,
     fraction: max > 0 ? row.reads / max : 0,
     recordId: row.recordId,
   }))
@@ -107,7 +107,7 @@ function coldItems(insights: StoreInsightsRecord | undefined, nowMs: number) {
   return rows.map((row) => ({
     key: row.recordId,
     label: recordDisplayLabel(row.recordId),
-    value: `${formatElapsed(idleOf(row))} without activity`,
+    value: `${formatElapsed(idleOf(row))} sem atividade`,
     fraction: maxIdle > 0 ? idleOf(row) / maxIdle : 0,
     recordId: row.recordId,
   }))
@@ -118,7 +118,7 @@ function queryItems(rows: readonly { readonly queryText: string; readonly search
   return rows.map((row, index) => ({
     key: `${index}:${row.queryText}`,
     label: row.queryText,
-    value: `${formatCount(row.searches)} searches`,
+    value: `${formatCount(row.searches)} buscas`,
     fraction: max > 0 ? row.searches / max : 0,
   }))
 }

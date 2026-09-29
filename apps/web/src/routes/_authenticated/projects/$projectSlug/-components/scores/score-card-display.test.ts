@@ -153,7 +153,6 @@ describe("scoreCardEvaluationVerdict", () => {
   })
 })
 
-
 describe("business event presentation", () => {
   const businessScore = {
     source: "custom",

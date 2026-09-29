@@ -101,3 +101,22 @@ Próximo slice da área do cliente:
 
 Depois de a área do cliente ficar satisfatória, tratar o `/backoffice` como **Administração Vigia** em slice próprio.
 
+## Checkpoint 2026-09-29 — áreas operacionais do cliente
+
+Implementado no PR #35 e aguardando validação/merge:
+
+- [x] Sinais em PT-BR nas superfícies principais;
+- [x] Comportamentos em PT-BR nas superfícies principais;
+- [x] Experimentos em PT-BR nas superfícies principais;
+- [x] Monitores em PT-BR nas superfícies principais;
+- [x] Remover referências visíveis ao Latitude nas superfícies cobertas;
+- [x] Remover links visíveis para `docs.latitude.so` nas superfícies cobertas.
+
+Próximos slices da área do cliente:
+
+- [ ] Conjuntos de dados;
+- [ ] Configurações;
+- [ ] Custos e Pontuação do agente quando habilitados.
+
+Depois disso, tratar o `/backoffice` como **Administração Vigia** em slice próprio.
+

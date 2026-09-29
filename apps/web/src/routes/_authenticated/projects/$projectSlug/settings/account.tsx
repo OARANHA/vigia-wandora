@@ -112,7 +112,7 @@ function DeleteAccountConfirmModal({ open, setOpen }: { open: boolean; setOpen: 
       footer={
         <>
           <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
+            Cancelar
           </Button>
           <Button variant="destructive" disabled={!isConfirmed || isDeleting} onClick={() => void handleDelete()}>
             {isDeleting ? "Excluindo..." : "Excluir conta"}
@@ -123,7 +123,7 @@ function DeleteAccountConfirmModal({ open, setOpen }: { open: boolean; setOpen: 
       <FormWrapper>
         <Input
           type="text"
-          label={`Type "${expectedText}" to confirm`}
+          label={`Digite "${expectedText}" para confirmar`}
           value={confirmText}
           onChange={(e) => setConfirmText(e.target.value)}
           placeholder={expectedText}
@@ -134,15 +134,15 @@ function DeleteAccountConfirmModal({ open, setOpen }: { open: boolean; setOpen: 
 }
 
 const formatSessionLocation = (session: UserSessionDto): string => {
-  if (!session.geo) return "Unknown location"
+  if (!session.geo) return "Localização desconhecida"
   const parts = [session.geo.city, session.geo.region, session.geo.country].filter((p): p is string => Boolean(p))
-  if (parts.length === 0) return "Unknown location"
+  if (parts.length === 0) return "Localização desconhecida"
   return parts.join(", ")
 }
 
 const formatDeviceLine = (session: UserSessionDto): string => {
-  const browser = session.browserName ? toTitle(session.browserName) : "Unknown browser"
-  const os = session.osName ? ` on ${toTitle(session.osName)}` : " on a"
+  const browser = session.browserName ? toTitle(session.browserName) : "Navegador desconhecido"
+  const os = session.osName ? ` em ${toTitle(session.osName)}` : " em um"
   const device = ` ${session.deviceKind.toLowerCase()}`
   return `${browser}${os}${device}`
 }
@@ -196,7 +196,7 @@ function RevokeSessionConfirmModal({ session, onClose }: { session: UserSessionD
           </Button>
           <Button variant="destructive" onClick={() => void handleConfirm()} disabled={revoking}>
             {revoking ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-            <Text.H5 color="white">{revoking ? "Signing out..." : "Sign out"}</Text.H5>
+            <Text.H5 color="white">{revoking ? "Encerrando sessão..." : "Encerrar sessão"}</Text.H5>
           </Button>
         </div>
       }
@@ -222,7 +222,7 @@ function RevokeAllOtherSessionsConfirmModal({ otherCount, onClose }: { otherCoun
     }
   }
 
-  const deviceLabel = otherCount === 1 ? "1 other device" : `${otherCount} other devices`
+  const deviceLabel = otherCount === 1 ? "1 outro dispositivo" : `${otherCount} outros dispositivos`
 
   return (
     <Modal
@@ -230,7 +230,7 @@ function RevokeAllOtherSessionsConfirmModal({ otherCount, onClose }: { otherCoun
       onOpenChange={(open) => {
         if (!open && !revoking) onClose()
       }}
-      title="Sign out everywhere else"
+      title="Encerrar sessões nos outros dispositivos"
       description={`Deseja encerrar a sessão de ${deviceLabel}? O acesso será perdido imediatamente e será necessário entrar novamente. Este dispositivo permanecerá conectado.`}
       dismissible
       footer={
@@ -240,7 +240,7 @@ function RevokeAllOtherSessionsConfirmModal({ otherCount, onClose }: { otherCoun
           </Button>
           <Button variant="destructive" onClick={() => void handleConfirm()} disabled={revoking}>
             {revoking ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
-            <Text.H5 color="white">{revoking ? "Signing out..." : "Sign out everywhere else"}</Text.H5>
+            <Text.H5 color="white">{revoking ? "Encerrando sessões..." : "Encerrar outras sessões"}</Text.H5>
           </Button>
         </div>
       }
@@ -301,7 +301,7 @@ function DisconnectAccountConfirmModal({
       footer={
         <div className="flex flex-row items-center gap-2">
           <Button variant="outline" onClick={onClose} disabled={disconnecting}>
-            Cancel
+            Cancelar
           </Button>
           <Button variant="destructive" onClick={() => void handleConfirm()} disabled={disconnecting}>
             {disconnecting ? "Desconectando..." : "Desconectar"}
@@ -353,7 +353,7 @@ function ConnectedAccountsSection() {
       <div className="flex flex-col gap-1">
         <Text.H5 weight="semibold">Contas conectadas</Text.H5>
         <Text.H5 color="foregroundMuted">
-          Connect Google or GitHub to sign in with one click. Signing in with your email always keeps working
+          Conecte Google ou GitHub para entrar com um clique. O acesso por email continuará sempre disponível
         </Text.H5>
       </div>
       <div className="flex w-full flex-col gap-1">
@@ -384,17 +384,17 @@ function ConnectedAccountsSection() {
                       ? "…"
                       : account
                         ? (profile?.email ?? `Conectada ${relativeTime(account.createdAt)}`)
-                        : "Not connected"}
+                        : "Não conectada"}
                   </Text.H6>
                 </div>
               </div>
               {isLoading ? null : account ? (
                 <Button variant="destructive" onClick={() => setToDisconnect({ provider, account })}>
-                  Disconnect
+                  Desconectar
                 </Button>
               ) : (
                 <Button variant="outline" disabled={connecting !== null} onClick={() => void handleConnect(provider)}>
-                  {connecting === provider.id ? "Redirecting…" : "Connect"}
+                  {connecting === provider.id ? "Redirecionando…" : "Conectar"}
                 </Button>
               )}
             </div>

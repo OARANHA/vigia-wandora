@@ -346,7 +346,7 @@ function OAuthKeysTable({ oauthKeys }: { oauthKeys: OAuthKeyRecord[] }) {
                     </Button>
                   }
                 >
-                  Revoke OAuth key
+                  Revogar chave OAuth
                 </Tooltip>
               </TableCell>
             </TableRow>

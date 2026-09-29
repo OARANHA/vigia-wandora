@@ -118,19 +118,19 @@ function ToolDetailPageContent() {
                 asChild
                 side="bottom"
                 trigger={
-                  <Button asChild variant="ghost" size="sm" className="w-fit" aria-label="Back to tools">
+                  <Button asChild variant="ghost" size="sm" className="w-fit" aria-label="Voltar para ferramentas">
                     <Link to="/projects/$projectSlug/tools" params={{ projectSlug }}>
                       <Icon icon={ArrowLeftIcon} size="sm" />
-                      Back
+                      Voltar
                     </Link>
                   </Button>
                 }
               >
-                Back to tools
+                Voltar para ferramentas
               </Tooltip>
               <div className="flex min-w-0 items-center gap-3">
                 <WrenchIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
-                <Text.H4M className="min-w-0 truncate font-mono">{notFound ? "Tool not found" : toolName}</Text.H4M>
+                <Text.H4M className="min-w-0 truncate font-mono">{notFound ? "Ferramenta não encontrada" : toolName}</Text.H4M>
               </div>
             </div>
           }
@@ -147,7 +147,7 @@ function ToolDetailPageContent() {
               <div className="mx-1 h-5 w-px bg-border" />
               <Label htmlFor="tool-errors-only" className="cursor-pointer">
                 <Text.H6 color="foregroundMuted" noWrap>
-                  Error view
+                  Ver erros
                 </Text.H6>
               </Label>
               <Switch
@@ -176,7 +176,7 @@ function ToolDetailPageContent() {
                   }}
                 >
                   <Icon icon={TextAlignStartIcon} size="sm" />
-                  View sessions
+                  Ver sessões
                 </Link>
               </Button>
               {notFound ? null : (
@@ -199,8 +199,8 @@ function ToolDetailPageContent() {
             ) : (
               <Text.H5 color="foregroundMuted" italic>
                 {notFound
-                  ? "No definition or calls were found for this tool in the selected time window."
-                  : "Definition not found. This tool was called, but no chat span in this window carried its definition."}
+                  ? "Nenhuma definição ou chamada foi encontrada para esta ferramenta no período selecionado."
+                  : "Definição não encontrada. A ferramenta foi chamada, mas nenhum span de chat neste período trouxe sua definição."}
               </Text.H5>
             )
           }
@@ -210,39 +210,39 @@ function ToolDetailPageContent() {
               errors-only switch is on (error rate stays global). */}
           <div className="flex min-w-0 flex-col gap-3 rounded-lg bg-secondary p-4">
             <div className="flex items-center gap-2">
-              <Text.H6 color="foregroundMuted">Usage</Text.H6>
-              {errorsOnly ? <Status variant="destructive" label="failed calls only" /> : null}
+              <Text.H6 color="foregroundMuted">Uso</Text.H6>
+              {errorsOnly ? <Status variant="destructive" label="somente chamadas com falha" /> : null}
             </div>
             {!isLoading && usage === null ? (
               <Text.H5 color="foregroundMuted">
-                No calls in this window.
+                Nenhuma chamada neste período.
                 {definition
-                  ? ` It was offered to the model ${formatCount(definition.offeredCount)} times but never selected.`
+                  ? ` Ela foi oferecida ao modelo ${formatCount(definition.offeredCount)} vezes, mas nunca selecionada.`
                   : ""}
               </Text.H5>
             ) : !isLoading && errorsOnly && errorsUsage === null ? (
               <Text.H5 color="foregroundMuted">
-                No failed calls in this window. All {usage ? formatCount(usage.calls) : ""} succeeded.
+                Nenhuma chamada falhou neste período. Todas as {usage ? formatCount(usage.calls) : ""} chamadas foram bem-sucedidas.
               </Text.H5>
             ) : errorsOnly ? (
               <div className="flex flex-row flex-wrap gap-x-8 gap-y-4">
                 <MetricTile
-                  label="Failed calls"
+                  label="Chamadas com falha"
                   value={errorsUsage ? formatCount(errorsUsage.calls) : "-"}
                   isLoading={isLoading}
                 />
                 <MetricTile
-                  label="Affected traces"
+                  label="Traces afetados"
                   value={
                     errorsUsage
                       ? `${formatCount(errorsUsage.tracesUsed)} · ${formatPercent(errorsUsage.traceUsageRate)}`
                       : "-"
                   }
-                  tooltip="Distinct traces with at least one FAILED call of this tool, and their share of all traces in the window."
+                  tooltip="Traces distintos com pelo menos uma chamada com falha desta ferramenta e sua participação no total do período."
                   isLoading={isLoading}
                 />
                 <MetricTile
-                  label="Affected sessions"
+                  label="Sessões afetadas"
                   value={
                     errorsUsage
                       ? `${formatCount(errorsUsage.sessionsUsed)} · ${formatPercent(errorsUsage.sessionUsageRate)}`
@@ -251,29 +251,29 @@ function ToolDetailPageContent() {
                   isLoading={isLoading}
                 />
                 <MetricTile
-                  label="Error rate"
+                  label="Taxa de erro"
                   value={usage ? formatPercent(usage.errorRate) : "-"}
                   tooltip={
                     usage
-                      ? `Across ALL calls in this window: ${formatCount(usage.errors)} of ${formatCount(usage.calls)} failed.`
+                      ? `Considerando todas as chamadas neste período: ${formatCount(usage.errors)} de ${formatCount(usage.calls)} falharam.`
                       : null
                   }
                   isLoading={isLoading}
                 />
                 <MetricTile
-                  label="Duration"
+                  label="Duração"
                   value={
                     errorsUsage
                       ? `${formatDuration(errorsUsage.p50DurationNs)} / ${formatDuration(errorsUsage.p95DurationNs)}`
                       : "-"
                   }
                   tooltip={
-                    errorsUsage ? `p50 / p95 of failed calls (avg ${formatDuration(errorsUsage.avgDurationNs)})` : null
+                    errorsUsage ? `p50 / p95 das chamadas com falha (média ${formatDuration(errorsUsage.avgDurationNs)})` : null
                   }
                   isLoading={isLoading}
                 />
                 <MetricTile
-                  label="Last failed"
+                  label="Última falha"
                   value={errorsUsage ? relativeTime(new Date(errorsUsage.lastUsed)) : "-"}
                   tooltip={errorsUsage ? new Date(errorsUsage.lastUsed).toLocaleString() : null}
                   isLoading={isLoading}
@@ -281,20 +281,20 @@ function ToolDetailPageContent() {
               </div>
             ) : (
               <div className="flex flex-row flex-wrap gap-x-8 gap-y-4">
-                <MetricTile label="Calls" value={usage ? formatCount(usage.calls) : "-"} isLoading={isLoading} />
+                <MetricTile label="Chamadas" value={usage ? formatCount(usage.calls) : "-"} isLoading={isLoading} />
                 <MetricTile
-                  label="Traces using it"
+                  label="Traces que usam a ferramenta"
                   value={usage ? `${formatCount(usage.tracesUsed)} · ${formatPercent(usage.traceUsageRate)}` : "-"}
-                  tooltip="Distinct traces with at least one call of this tool, and their share of all traces in the window."
+                  tooltip="Traces distintos com pelo menos uma chamada desta ferramenta e sua participação no total do período."
                   isLoading={isLoading}
                 />
                 <MetricTile
-                  label="Sessions using it"
+                  label="Sessões que usam a ferramenta"
                   value={usage ? `${formatCount(usage.sessionsUsed)} · ${formatPercent(usage.sessionUsageRate)}` : "-"}
                   isLoading={isLoading}
                 />
                 <MetricTile
-                  label="Calls per offer"
+                  label="Chamadas por oferta"
                   value={
                     definition && usage
                       ? formatPercent(definition.offeredCount > 0 ? usage.calls / definition.offeredCount : 0)
@@ -302,27 +302,27 @@ function ToolDetailPageContent() {
                   }
                   tooltip={
                     definition
-                      ? `How often the model picks this tool when it's available, across ${formatCount(definition.offeredCount)} offers. Can exceed 100% when one turn calls it multiple times.`
-                      : "Calls per offer needs tool definitions on chat spans."
+                      ? `Frequência com que o modelo escolhe esta ferramenta quando ela está disponível, em ${formatCount(definition.offeredCount)} ofertas. Pode passar de 100% quando uma mesma interação chama a ferramenta várias vezes.`
+                      : "Chamadas por oferta exige definições de ferramenta nos spans de chat."
                   }
                   isLoading={isLoading}
                 />
                 <MetricTile
-                  label="Error rate"
+                  label="Taxa de erro"
                   value={usage ? formatPercent(usage.errorRate) : "-"}
-                  tooltip={usage ? `${formatCount(usage.errors)} of ${formatCount(usage.calls)} calls failed.` : null}
+                  tooltip={usage ? `${formatCount(usage.errors)} de ${formatCount(usage.calls)} chamadas falharam.` : null}
                   isLoading={isLoading}
                 />
                 <MetricTile
-                  label="Duration"
+                  label="Duração"
                   value={
                     usage ? `${formatDuration(usage.p50DurationNs)} / ${formatDuration(usage.p95DurationNs)}` : "-"
                   }
-                  tooltip={usage ? `p50 / p95 (avg ${formatDuration(usage.avgDurationNs)})` : null}
+                  tooltip={usage ? `p50 / p95 (média ${formatDuration(usage.avgDurationNs)})` : null}
                   isLoading={isLoading}
                 />
                 <MetricTile
-                  label="Last called"
+                  label="Última chamada"
                   value={usage ? relativeTime(new Date(usage.lastUsed)) : "-"}
                   tooltip={usage ? new Date(usage.lastUsed).toLocaleString() : null}
                   isLoading={isLoading}
@@ -389,7 +389,7 @@ function ToolDetailPageContent() {
                     }}
                   >
                     <Icon icon={TextAlignStartIcon} size="sm" />
-                    View sessions
+                    Ver sessões
                   </Link>
                 </Button>
               }

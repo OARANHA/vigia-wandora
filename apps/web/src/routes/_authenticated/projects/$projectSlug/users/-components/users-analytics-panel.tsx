@@ -159,7 +159,7 @@ export function UsersAnalyticsPanel({
                 label={ptBR.clientPages.users.identifiedSessions}
                 value={formatCoverage(overview?.identifiedSessions ?? 0, overview?.totalSessions ?? 0)}
                 isLoading={showSkeletons}
-                tooltip="Share of sessions in this time window that carry a user id, and can therefore be attributed to a user."
+                tooltip="Percentual de sessões neste período que possuem ID de usuário e podem ser atribuídas a uma pessoa."
               />
               <AggregationItem
                 label={ptBR.clientPages.users.sessionsPerUser}

@@ -43,10 +43,10 @@ export function ExperimentsListPage() {
     () => [
       {
         id: "experiment:create",
-        title: "Create experiment",
+        title: "Criar experimento",
         icon: FlaskConical,
         section: "context",
-        group: "Experiments",
+        group: "Experimentos",
         keywords: "create experiment new add compare variant",
         perform: () => setCreateOpen(true),
       },
@@ -104,7 +104,7 @@ export function ExperimentsListPage() {
                 <Input
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
-                  placeholder="Search experiments"
+                  placeholder={ptBR.clientPages.experiments.searchPlaceholder}
                   size="sm"
                   className="w-64 pl-8 rounded-lg"
                 />
@@ -114,7 +114,7 @@ export function ExperimentsListPage() {
             <Layout.ActionRowItem>
               <Button onClick={() => setCreateOpen(true)}>
                 <Icon icon={PlusIcon} size="sm" />
-                Experiment
+                {ptBR.clientPages.experiments.create}
               </Button>
             </Layout.ActionRowItem>
           </Layout.ActionsRow>

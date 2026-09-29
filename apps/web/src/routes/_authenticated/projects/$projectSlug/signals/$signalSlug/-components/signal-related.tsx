@@ -116,7 +116,7 @@ export function SignalRelated({
   return (
     <DetailSection
       icon={<Icon icon={NetworkIcon} size="sm" />}
-      label="Related issues"
+      label="Sinais relacionados"
       defaultOpen
       contentClassName="pl-0 max-h-none overflow-visible"
     >

@@ -177,7 +177,7 @@ export function ToolsView({
     },
     {
       key: "tracesPct",
-      header: "% of traces",
+      header: ptBR.clientPages.tools.columns.tracesPct,
       width: 110,
       minWidth: 96,
       align: "end",
@@ -192,7 +192,7 @@ export function ToolsView({
               </span>
             }
           >
-            {formatCount(tool.metrics.tracesUsed)} traces in this window called {tool.name} at least once.
+            {formatCount(tool.metrics.tracesUsed)} traces neste período chamaram {tool.name} pelo menos uma vez.
           </Tooltip>
         ) : (
           "-"
@@ -208,13 +208,11 @@ export function ToolsView({
       render: (tool) =>
         tool.selectionRate !== null ? (
           <Tooltip asChild trigger={<span className="tabular-nums">{formatPercent(tool.selectionRate)}</span>}>
-            How often the model picks this tool when it's available: {formatCount(tool.metrics?.calls ?? 0)} calls
-            across {formatCount(tool.offeredCount)} chat turns that offered it. Can exceed 100% when a single turn calls
-            it multiple times.
+            Frequência com que o modelo escolhe esta ferramenta quando ela está disponível: {formatCount(tool.metrics?.calls ?? 0)} chamadas em {formatCount(tool.offeredCount)} interações de chat que a ofereceram. Pode passar de 100% quando uma única interação a chama várias vezes.
           </Tooltip>
         ) : (
           <Tooltip asChild trigger={<span>-</span>}>
-            Calls per offer needs tool definitions on chat spans. None were found for this tool.
+            Chamadas por oferta exige definições da ferramenta nos spans de chat. Nenhuma foi encontrada para esta ferramenta.
           </Tooltip>
         ),
     },
@@ -230,7 +228,7 @@ export function ToolsView({
           <Tooltip asChild trigger={<span className="tabular-nums">{formatCount(tool.offeredCount)}</span>}>
             <div className="flex flex-col gap-0.5">
               <span>
-                {tool.name} was offered to the model on {formatCount(tool.offeredCount)} chat turns across{" "}
+                {tool.name} foi oferecida ao modelo em {formatCount(tool.offeredCount)} interações de chat distribuídas por{" "}
                 {formatCount(tool.offeredTraces)} traces.
               </span>
               {tool.lastOffered ? (
@@ -240,7 +238,7 @@ export function ToolsView({
           </Tooltip>
         ) : (
           <Tooltip asChild trigger={<span>-</span>}>
-            No chat span in this window carried this tool's definition.
+            Nenhum span de chat neste período trouxe a definição desta ferramenta.
           </Tooltip>
         ),
     },
@@ -263,7 +261,7 @@ export function ToolsView({
               </span>
             }
           >
-            {formatCount(tool.metrics.errors)} of {formatCount(tool.metrics.calls)} calls of {tool.name} failed.
+            {formatCount(tool.metrics.errors)} de {formatCount(tool.metrics.calls)} chamadas de {tool.name} falharam.
           </Tooltip>
         ) : (
           "-"

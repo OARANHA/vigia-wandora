@@ -42,10 +42,9 @@ Futuramente, SSO pode conectar os dois produtos com um fluxo "Abrir no Vigia".
 
 - Nome oficial: **Vigia**
 - Assinatura: **Vigia by Wandora**
-- URL principal: `vigia.wandora.com.br` (**já existente no DNS/Cloudflare**)
-- App separado: `app.vigia.wandora.com.br` (opcional/futuro)
-- API: `api.vigia.wandora.com.br` (planejado)
-- Ingestão: `ingest.vigia.wandora.com.br` (planejado)
+- URL principal: `vigia.wandora.com.br` (**entrada pública canônica; web/API/ingest no MVP**)
+- Operação: `ops-vigia.wandora.com.br` (**Portainer/console operacional**)
+- Reservados no DNS para uso futuro, sem rota ativa por padrão: `app-vigia.wandora.com.br`, `api-vigia.wandora.com.br`, `ingest-vigia.wandora.com.br`, `docs-vigia.wandora.com.br` e `status-vigia.wandora.com.br`
 
 ## Estado
 
@@ -109,7 +108,7 @@ A observabilidade básica (ingestão e visualização de traces) funciona sem cr
 
 Decisão atual: o Vigia será publicado pela infraestrutura própria da VPS Vigia, não pelo Traefik da VPS Wandora.
 
-A VPS dedicada do Vigia usa Traefik e rede de borda próprios. O host público permanece `vigia.wandora.com.br`. O hostname administrativo canônico passa a ser `ops-vigia.wandora.com.br`, destinado ao Portainer/console operacional e separado da aplicação pública. `ops.vigia.wandora.com.br` fica somente como alias temporário de migração e deve ser removido após a validação do novo DNS/proxy.
+A VPS dedicada do Vigia usa Traefik e rede de borda próprios. O host público permanece `vigia.wandora.com.br`. O hostname administrativo canônico é `ops-vigia.wandora.com.br`, destinado ao Portainer/console operacional e separado da aplicação pública. O hostname aninhado anterior foi aposentado após a validação pública do novo endereço em 2026-09-29.
 
 O deploy só será considerado completo quando o DNS apontar para a VPS Vigia, o Traefik próprio emitir TLS válido e o smoke test HTTPS/OTLP funcionar sem depender da rede `wandora-edge` da Wandora.
 

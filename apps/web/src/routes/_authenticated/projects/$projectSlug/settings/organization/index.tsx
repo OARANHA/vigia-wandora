@@ -43,7 +43,7 @@ function OrganizationNameForm({ org }: { org: Organization }) {
       {
         resetOnSuccess: false,
         onSuccess: () => {
-          toast({ description: "Organization name updated" })
+          toast({ description: "Nome da empresa atualizado" })
         },
         onError: (error) => {
           toast({ variant: "destructive", description: toUserMessage(error) })
@@ -66,12 +66,12 @@ function OrganizationNameForm({ org }: { org: Organization }) {
             key={org.id}
             type="text"
             name={field.name}
-            label="Organization name"
+            label="Nome da empresa"
             value={field.state.value}
             onChange={(e) => field.handleChange(e.target.value)}
             errors={fieldErrorsAsStrings(field.state.meta.errors)}
-            placeholder="Organization name"
-            aria-label="Organization name"
+            placeholder="Nome da empresa"
+            aria-label="Nome da empresa"
           />
         )}
       </form.Field>
@@ -121,7 +121,7 @@ function DeleteOrganizationSection() {
         Permanently delete this organization and all of its projects and data. This action cannot be undone.
       </Text.H5>
       {!isSoleMember && (
-        <Text.H5 color="foregroundMuted">Remove all other members before you can delete this organization.</Text.H5>
+        <Text.H5 color="foregroundMuted">Remova todos os outros membros antes de excluir esta empresa.</Text.H5>
       )}
       <div>
         <DeleteOrganizationConfirmModal open={open} setOpen={setOpen} orgId={org.id} orgName={org.name} />
@@ -148,14 +148,14 @@ function DeleteOrganizationConfirmModal({
   const [confirmText, setConfirmText] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const expectedText = "delete my organization"
+  const expectedText = "excluir minha empresa"
   const isConfirmed = confirmText.toLowerCase() === expectedText
 
   const handleDelete = async () => {
     setIsDeleting(true)
     try {
       await deleteOrganization({ data: { id: orgId } })
-      toast({ description: `Organization "${orgName}" has been deleted.` })
+      toast({ description: `Empresa "${orgName}" excluída.` })
       // Full navigation to /welcome: its loader re-resolves the user's remaining
       // orgs and either auto-activates the last one, shows a picker, or prompts
       // to create one — which also clears the now-stale active org.
@@ -174,7 +174,7 @@ function DeleteOrganizationConfirmModal({
         if (!v) setConfirmText("")
         setOpen(v)
       }}
-      title="Delete Organization"
+      title="Excluir empresa"
       description={`This action is permanent and cannot be undone. The organization "${orgName}" and all of its projects and data will be deleted.`}
       footer={
         <>
@@ -182,7 +182,7 @@ function DeleteOrganizationConfirmModal({
             Cancel
           </Button>
           <Button variant="destructive" disabled={!isConfirmed || isDeleting} onClick={() => void handleDelete()}>
-            {isDeleting ? "Deleting..." : "Delete Organization"}
+            {isDeleting ? "Excluindo..." : "Excluir empresa"}
           </Button>
         </>
       }
@@ -202,7 +202,7 @@ function DeleteOrganizationConfirmModal({
 
 function OrganizationSettingsPage() {
   return (
-    <SettingsPage title="Organization" description="Manage your organization details">
+    <SettingsPage title="Empresa" description="Gerencie os dados da sua empresa">
       <div className="flex w-full flex-col gap-6">
         <OrganizationNameSection />
         <DeleteOrganizationSection />

@@ -36,13 +36,13 @@ const STATUS_META: Record<
   ImportRecord["status"],
   { readonly label: string; readonly variant: StatusProps["variant"] }
 > = {
-  created: { label: "Created", variant: "info" },
-  queued: { label: "Queued", variant: "info" },
-  running: { label: "Running", variant: "info" },
-  succeeded: { label: "Succeeded", variant: "success" },
-  capped: { label: "Capped", variant: "warning" },
-  failed: { label: "Failed", variant: "destructive" },
-  cancelled: { label: "Cancelled", variant: "neutral" },
+  created: { label: "Criado", variant: "info" },
+  queued: { label: "Na fila", variant: "info" },
+  running: { label: "Em execução", variant: "info" },
+  succeeded: { label: "Concluído", variant: "success" },
+  capped: { label: "Limitado", variant: "warning" },
+  failed: { label: "Falhou", variant: "destructive" },
+  cancelled: { label: "Cancelado", variant: "neutral" },
 }
 
 const numberFormatter = new Intl.NumberFormat("en-US")
@@ -125,7 +125,7 @@ function ActionsCell({
             variant="ghost"
             size="sm"
             className="h-6 w-6 p-0"
-            aria-label="Import actions"
+            aria-label="Ações da importação"
             disabled={!active && !resumable}
           >
             <Icon icon={EllipsisVerticalIcon} size="sm" />
@@ -141,7 +141,7 @@ function ActionsCell({
           {active ? (
             <DropdownMenuItem className="cursor-pointer items-center gap-2" onSelect={() => onCancelRequest(job)}>
               <Icon icon={BanIcon} size="sm" color="destructive" />
-              <Text.H5 color="destructive">Cancel import</Text.H5>
+              <Text.H5 color="destructive">Cancelar importação</Text.H5>
             </DropdownMenuItem>
           ) : null}
         </DropdownMenuContent>
@@ -177,7 +177,7 @@ function CancelImportConfirmModal({
       onOpenChange={(open) => {
         if (!open) onOpenChange(null)
       }}
-      title="Cancel import"
+      title="Cancelar importação"
       dismissible
       description={
         job

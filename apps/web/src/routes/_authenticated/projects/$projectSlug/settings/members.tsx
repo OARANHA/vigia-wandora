@@ -47,8 +47,8 @@ export const Route = createFileRoute("/_authenticated/projects/$projectSlug/sett
 })
 
 const INVITE_ROLE_OPTIONS: { label: string; value: "admin" | "member" }[] = [
-  { label: "Member", value: "member" },
-  { label: "Admin", value: "admin" },
+  { label: "Membro", value: "member" },
+  { label: "Administrador", value: "admin" },
 ]
 
 function InviteMemberModal({ open, setOpen }: { open: boolean; setOpen: (open: boolean) => void }) {
@@ -62,7 +62,7 @@ function InviteMemberModal({ open, setOpen }: { open: boolean; setOpen: (open: b
       {
         onSuccess: async () => {
           setOpen(false)
-          toast({ description: "Invitation sent" })
+          toast({ description: "Convite enviado" })
         },
         onError: (error) => {
           toast({ variant: "destructive", description: toUserMessage(error) })
@@ -80,7 +80,7 @@ function InviteMemberModal({ open, setOpen }: { open: boolean; setOpen: (open: b
             void form.handleSubmit()
           }}
         >
-          <Modal.Header title="Add New Member" description="Invite a new member to this organization by email." />
+          <Modal.Header title="Adicionar membro" description="Convide uma pessoa para esta empresa por email." />
           <Modal.Body>
             <FormWrapper>
               <form.Field name="email">
@@ -92,7 +92,7 @@ function InviteMemberModal({ open, setOpen }: { open: boolean; setOpen: (open: b
                     value={field.state.value}
                     onChange={(e) => field.handleChange(e.target.value)}
                     errors={fieldErrorsAsStrings(field.state.meta.errors)}
-                    placeholder="jon@latitude.so"
+                    placeholder="pessoa@empresa.com.br"
                   />
                 )}
               </form.Field>
@@ -100,7 +100,7 @@ function InviteMemberModal({ open, setOpen }: { open: boolean; setOpen: (open: b
                 {(field) => (
                   <Select
                     name="role"
-                    label="Role"
+                    label="Função"
                     options={INVITE_ROLE_OPTIONS}
                     value={field.state.value}
                     onChange={(value) => field.handleChange(value)}
@@ -150,7 +150,7 @@ function TransferOwnershipModal({
     try {
       await transferOwnershipMutation(selectedMemberId)
       setOpen(false)
-      toast({ description: "Ownership transferred successfully. You are now an admin." })
+      toast({ description: "Propriedade transferida com sucesso. Agora você é administrador." })
     } catch (error) {
       toast({ variant: "destructive", description: toUserMessage(error) })
     }
@@ -171,15 +171,15 @@ function TransferOwnershipModal({
               </Text.H5>
             ) : (
               <div className="flex flex-col gap-2">
-                <Label>Select new owner</Label>
+                <Label>Selecione o novo proprietário</Label>
                 <Select
                   name="newOwner"
                   options={memberOptions}
                   value={selectedMemberId ?? undefined}
                   onChange={(value) => setSelectedMemberId(value)}
-                  placeholder="Select a member..."
+                  placeholder="Selecione um membro..."
                   searchable
-                  searchPlaceholder="Search members..."
+                  searchPlaceholder="Buscar membros..."
                   searchableEmptyMessage="No members found"
                 />
               </div>
@@ -236,7 +236,7 @@ function ChangeRoleModal({
     try {
       await onRoleChange(member.userId, selectedRole)
       setOpen(false)
-      toast({ description: `Role updated to ${selectedRole}` })
+      toast({ description: `Função atualizada para ${selectedRole === "admin" ? "administrador" : "membro"}` })
     } catch (error) {
       toast({ variant: "destructive", description: toUserMessage(error) })
     } finally {
@@ -254,7 +254,7 @@ function ChangeRoleModal({
           <FormWrapper>
             <div className="flex flex-col gap-4">
               <div className="flex flex-col gap-2">
-                <Label>Select new role</Label>
+                <Label>Selecione a nova função</Label>
                 <div className="flex flex-col gap-2">
                   <label className="flex cursor-pointer items-center gap-2 rounded border p-3 hover:bg-muted">
                     <input
@@ -266,8 +266,8 @@ function ChangeRoleModal({
                       className="h-4 w-4"
                     />
                     <div className="flex flex-col">
-                      <Text.H5>Admin</Text.H5>
-                      <Text.H6 color="foregroundMuted">Can manage members and organization settings</Text.H6>
+                      <Text.H5>Administrador</Text.H5>
+                      <Text.H6 color="foregroundMuted">Pode gerenciar membros e configurações da empresa</Text.H6>
                     </div>
                   </label>
                   <label className="flex cursor-pointer items-center gap-2 rounded border p-3 hover:bg-muted">
@@ -280,8 +280,8 @@ function ChangeRoleModal({
                       className="h-4 w-4"
                     />
                     <div className="flex flex-col">
-                      <Text.H5>Member</Text.H5>
-                      <Text.H6 color="foregroundMuted">Standard member with limited permissions</Text.H6>
+                      <Text.H5>Membro</Text.H5>
+                      <Text.H6 color="foregroundMuted">Membro padrão com permissões limitadas</Text.H6>
                     </div>
                   </label>
                 </div>
@@ -357,7 +357,7 @@ function MembersTable({
       await transaction.isPersisted.promise
 
       toast({
-        description: pendingMemberMutation.type === "cancel-invite" ? "Invitation canceled" : "Member removed",
+        description: pendingMemberMutation.type === "cancel-invite" ? "Convite cancelado" : "Membro removido",
       })
       setPendingMemberMutation(null)
     } catch (error) {
@@ -394,7 +394,7 @@ function MembersTable({
       >
         <Modal.Content dismissible>
           <Modal.Header
-            title={isCancelInviteMutation ? "Cancel invitation?" : "Remove member?"}
+            title={isCancelInviteMutation ? "Cancelar convite?" : "Remover membro?"}
             description={
               isCancelInviteMutation
                 ? `Are you sure you want to cancel the pending invitation for ${pendingMemberDisplayName}?`
@@ -410,11 +410,11 @@ function MembersTable({
             >
               {isMutatingMember
                 ? isCancelInviteMutation
-                  ? "Canceling..."
+                  ? "Cancelando..."
                   : "Removing..."
                 : isCancelInviteMutation
-                  ? "Cancel invitation"
-                  : "Remove member"}
+                  ? "Cancelar convite"
+                  : "Remover membro"}
             </Button>
           </Modal.Footer>
         </Modal.Content>
@@ -422,11 +422,11 @@ function MembersTable({
       <Table>
         <TableHeader>
           <TableRow verticalPadding>
-            <TableHead>Member</TableHead>
+            <TableHead>Membro</TableHead>
             <TableHead>Email</TableHead>
-            <TableHead>Role</TableHead>
+            <TableHead>Função</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Invitation</TableHead>
+            <TableHead>Convite</TableHead>
             {isAdmin && <TableHead />}
           </TableRow>
         </TableHeader>
@@ -439,7 +439,7 @@ function MembersTable({
                     <Avatar name={member.name} size="sm" imageSrc={member.image} />
                     <Text.H5>
                       {member.name}{" "}
-                      {member.userId === currentUserId && <span className="text-muted-foreground">· You</span>}
+                      {member.userId === currentUserId && <span className="text-muted-foreground">· Você</span>}
                     </Text.H5>
                   </div>
                 ) : (
@@ -461,7 +461,7 @@ function MembersTable({
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="border-0">
                         {member.role === "owner" && isOwner ? (
-                          <DropdownMenuItem onSelect={() => setTransferOpen(true)}>Transfer ownership</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => setTransferOpen(true)}>Transferir propriedade</DropdownMenuItem>
                         ) : null}
                         {canChangeRole(member) ? (
                           <DropdownMenuItem
@@ -488,13 +488,13 @@ function MembersTable({
               <TableCell>
                 {member.status === "invited" ? (
                   member.expiresAt && isExpired(member.expiresAt) ? (
-                    <Text.H5 color="destructive">Expired</Text.H5>
+                    <Text.H5 color="destructive">Expirado</Text.H5>
                   ) : member.expiresAt ? (
                     <Text.H5 color="foregroundMuted">
                       Expires {relativeTime(member.expiresAt).replace(/^./, (c) => c.toLowerCase())}
                     </Text.H5>
                   ) : (
-                    <Text.H5 color="foregroundMuted">No expiration</Text.H5>
+                    <Text.H5 color="foregroundMuted">Sem expiração</Text.H5>
                   )
                 ) : (
                   <Text.H5 color="foregroundMuted">-</Text.H5>
@@ -532,7 +532,7 @@ function MembersTable({
                         </Button>
                       }
                     >
-                      {member.status === "invited" ? "Cancel invitation" : "Remove member"}
+                      {member.status === "invited" ? "Cancelar convite" : "Remover membro"}
                     </Tooltip>
                   ) : null}
                 </TableCell>
@@ -556,8 +556,8 @@ function MembersSettingsPage() {
 
   return (
     <SettingsPage
-      title="Members"
-      description="Members and pending invitations of this organization"
+      title="Membros"
+      description="Membros e convites pendentes desta empresa"
       actions={
         isAdmin ? (
           <Button variant="outline" onClick={() => setInviteOpen(true)}>

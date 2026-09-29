@@ -43,15 +43,15 @@ function GlobalIntegrationsPage() {
 
   useMountEffect(() => {
     if (search.installed === "ok") {
-      toast({ description: "Slack connected" })
+      toast({ description: "Slack conectado" })
     } else if (search.error === "oauth_failed") {
       toast({
         variant: "destructive",
-        description: "Couldn't complete the Slack install. Please try again.",
+        description: "Não foi possível concluir a instalação do Slack. Tente novamente.",
       })
     }
     if (search.githubInstalled === "ok") {
-      toast({ description: "GitHub connected" })
+      toast({ description: "GitHub conectado" })
     } else if (search.githubPending === "approval") {
       toast({
         variant: "warning",
@@ -61,15 +61,15 @@ function GlobalIntegrationsPage() {
     } else if (search.githubError === "installation_taken") {
       toast({
         variant: "destructive",
-        description: "This GitHub installation is already connected to another Latitude organization.",
+        description: "Esta instalação do GitHub já está conectada a outra empresa no Vigia.",
       })
     } else if (search.githubError === "verification_failed") {
       toast({
         variant: "destructive",
-        description: "Couldn't verify the GitHub installation. Please start the install from Latitude and try again.",
+        description: "Não foi possível verificar a instalação do GitHub. Inicie a instalação pelo Vigia e tente novamente.",
       })
     } else if (search.githubError === "oauth_failed") {
-      toast({ variant: "destructive", description: "Couldn't complete the GitHub install. Please try again." })
+      toast({ variant: "destructive", description: "Não foi possível concluir a instalação do GitHub. Tente novamente." })
     }
     if (search.installed || search.error || search.githubInstalled || search.githubPending || search.githubError) {
       void router.navigate({ to: Route.fullPath, search: {}, replace: true })
@@ -84,7 +84,7 @@ function GlobalIntegrationsPage() {
   }
 
   return (
-    <SettingsPage title="Integrations" description="Connect Latitude to the tools your team already uses.">
+    <SettingsPage title="Integrações" description="Conecte o Vigia às ferramentas que sua equipe já utiliza.">
       <div className="flex w-full flex-col gap-8">
         {isLoading ? (
           <Skeleton className="h-32 w-full" />
@@ -105,7 +105,7 @@ function GlobalIntegrationsPage() {
 
             {unconnected.length > 0 ? (
               <div className="flex flex-col gap-3">
-                <Text.H6M color="foregroundMuted">{connected.length > 0 ? "Available" : "Get started"}</Text.H6M>
+                <Text.H6M color="foregroundMuted">{connected.length > 0 ? "Disponíveis" : "Começar"}</Text.H6M>
                 <AvailableIntegrations available={unconnected} onConnectDispatchKind={openConnect} />
               </div>
             ) : null}

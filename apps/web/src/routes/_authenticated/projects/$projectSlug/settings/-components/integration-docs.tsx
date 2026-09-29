@@ -23,7 +23,7 @@ export function IntegrationDocsButton({
 export function IntegrationDocsFooter({ integration }: { readonly integration: IntegrationKey }) {
   return (
     <div className="flex flex-row flex-wrap items-center justify-between gap-4">
-      <Text.H6 color="foregroundMuted">Setup, configuration, and troubleshooting for this integration.</Text.H6>
+      <Text.H6 color="foregroundMuted">Configuração e solução de problemas desta integração.</Text.H6>
       <IntegrationDocsButton integration={integration} />
     </div>
   )

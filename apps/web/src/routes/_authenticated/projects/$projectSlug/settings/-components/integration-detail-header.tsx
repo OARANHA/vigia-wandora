@@ -38,7 +38,7 @@ export function IntegrationDetailHeader({
   readonly projectSlug: string
   readonly scope: "organization" | "project"
 }) {
-  const label = scope === "organization" ? "Back to organization integrations" : "Back to integrations"
+  const label = scope === "organization" ? "Voltar às integrações da empresa" : "Voltar às integrações"
 
   return (
     <div className="flex min-w-0 flex-col gap-3">

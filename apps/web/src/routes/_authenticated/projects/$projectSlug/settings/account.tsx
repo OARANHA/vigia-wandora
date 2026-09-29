@@ -84,7 +84,7 @@ function DeleteAccountConfirmModal({ open, setOpen }: { open: boolean; setOpen: 
   const [confirmText, setConfirmText] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
 
-  const expectedText = "delete my account"
+  const expectedText = "excluir minha conta"
   const isConfirmed = confirmText.toLowerCase() === expectedText
 
   const handleDelete = async () => {
@@ -107,7 +107,7 @@ function DeleteAccountConfirmModal({ open, setOpen }: { open: boolean; setOpen: 
         if (!v) setConfirmText("")
         setOpen(v)
       }}
-      title="Delete Account"
+      title="Excluir conta"
       description="This action is permanent and cannot be undone. All your data will be deleted. If you are the sole member of an organization, that organization will also be permanently deleted."
       footer={
         <>
@@ -115,7 +115,7 @@ function DeleteAccountConfirmModal({ open, setOpen }: { open: boolean; setOpen: 
             Cancel
           </Button>
           <Button variant="destructive" disabled={!isConfirmed || isDeleting} onClick={() => void handleDelete()}>
-            {isDeleting ? "Deleting..." : "Delete Account"}
+            {isDeleting ? "Excluindo..." : "Excluir conta"}
           </Button>
         </>
       }
@@ -171,7 +171,7 @@ function RevokeSessionConfirmModal({ session, onClose }: { session: UserSessionD
     setRevoking(true)
     try {
       await revokeUserSession({ data: { token: session.token } })
-      toast({ description: "Session signed out" })
+      toast({ description: "Sessão encerrada" })
       await queryClient.invalidateQueries({ queryKey: ["userSessions"] })
       onClose()
     } catch (error) {
@@ -192,7 +192,7 @@ function RevokeSessionConfirmModal({ session, onClose }: { session: UserSessionD
       footer={
         <div className="flex flex-row items-center gap-2">
           <Button variant="outline" onClick={onClose} disabled={revoking}>
-            <Text.H5>Cancel</Text.H5>
+            <Text.H5>Cancelar</Text.H5>
           </Button>
           <Button variant="destructive" onClick={() => void handleConfirm()} disabled={revoking}>
             {revoking ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
@@ -213,7 +213,7 @@ function RevokeAllOtherSessionsConfirmModal({ otherCount, onClose }: { otherCoun
     setRevoking(true)
     try {
       await revokeAllOtherUserSessions()
-      toast({ description: "Signed out everywhere else" })
+      toast({ description: "Sessões encerradas nos outros dispositivos" })
       await queryClient.invalidateQueries({ queryKey: ["userSessions"] })
       onClose()
     } catch (error) {
@@ -236,7 +236,7 @@ function RevokeAllOtherSessionsConfirmModal({ otherCount, onClose }: { otherCoun
       footer={
         <div className="flex flex-row items-center gap-2">
           <Button variant="outline" onClick={onClose} disabled={revoking}>
-            <Text.H5>Cancel</Text.H5>
+            <Text.H5>Cancelar</Text.H5>
           </Button>
           <Button variant="destructive" onClick={() => void handleConfirm()} disabled={revoking}>
             {revoking ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
@@ -351,7 +351,7 @@ function ConnectedAccountsSection() {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <Text.H5 weight="semibold">Connected accounts</Text.H5>
+        <Text.H5 weight="semibold">Contas conectadas</Text.H5>
         <Text.H5 color="foregroundMuted">
           Connect Google or GitHub to sign in with one click. Signing in with your email always keeps working
         </Text.H5>
@@ -383,7 +383,7 @@ function ConnectedAccountsSection() {
                     {isLoading
                       ? "…"
                       : account
-                        ? (profile?.email ?? `Connected ${relativeTime(account.createdAt)}`)
+                        ? (profile?.email ?? `Conectada ${relativeTime(account.createdAt)}`)
                         : "Not connected"}
                   </Text.H6>
                 </div>
@@ -433,7 +433,7 @@ function SessionsSection() {
     <section className="flex flex-col gap-4">
       <div className="flex flex-row flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="flex flex-col gap-1">
-          <Text.H5 weight="semibold">Sessions</Text.H5>
+          <Text.H5 weight="semibold">Sessões</Text.H5>
           <Text.H5 color="foregroundMuted">
             Devices currently signed in to your account. Sign out of any device you don't recognize
           </Text.H5>
@@ -449,14 +449,14 @@ function SessionsSection() {
         {isLoading ? (
           <TableSkeleton cols={4} rows={2} />
         ) : sessions.length === 0 ? (
-          <Text.H5 color="foregroundMuted">No active sessions.</Text.H5>
+          <Text.H5 color="foregroundMuted">Nenhuma sessão ativa.</Text.H5>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Device</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Created at</TableHead>
+                <TableHead>Dispositivo</TableHead>
+                <TableHead>Localização</TableHead>
+                <TableHead>Criada em</TableHead>
                 <TableHead />
               </TableRow>
             </TableHeader>
@@ -472,7 +472,7 @@ function SessionsSection() {
                         {formatDeviceLine(s)}
                         {s.current ? (
                           <Text.H5 color="foregroundMuted" asChild>
-                            <span>&nbsp;· This device</span>
+                            <span>&nbsp;· Este dispositivo</span>
                           </Text.H5>
                         ) : null}
                       </Text.H5>
@@ -592,7 +592,7 @@ function NotificationsSection() {
   return (
     <section className="flex flex-col gap-4">
       <div className="flex flex-col gap-1">
-        <Text.H5 weight="semibold">Email notifications</Text.H5>
+        <Text.H5 weight="semibold">Notificações por email</Text.H5>
         <Text.H5 color="foregroundMuted">
           Choose which kinds of notifications you'd like to receive by email. In-app notifications always appear in the
           bell.
@@ -650,7 +650,7 @@ function NotificationsSection() {
               {isLoaded && enabled && meta.severityFiltered ? (
                 <div className="flex flex-row items-center justify-between gap-4 rounded-lg bg-muted/80 px-3 py-2">
                   <div className="flex flex-row items-baseline gap-1.5">
-                    <Text.H6M>Severity</Text.H6M>
+                    <Text.H6M>Severidade</Text.H6M>
                     <Text.H6 color="foregroundMuted">
                       · {minSeverityHint(prefs[group]?.emailMinSeverity ?? "low")}
                     </Text.H6>
@@ -702,7 +702,7 @@ function AccountSettingsPage() {
       {
         resetOnSuccess: false,
         onSuccess: () => {
-          toast({ description: "Name updated" })
+          toast({ description: "Nome atualizado" })
           // `useAuthenticatedUser` is sourced from route data; refresh so
           // the new name shows up wherever the user is rendered.
           void router.invalidate()
@@ -715,7 +715,7 @@ function AccountSettingsPage() {
   })
 
   return (
-    <SettingsPage title="Account" description="Manage your personal account">
+    <SettingsPage title="Conta" description="Gerencie sua conta pessoal">
       <form
         className="flex w-full flex-col gap-3"
         onSubmit={(e) => {
@@ -730,11 +730,11 @@ function AccountSettingsPage() {
               required
               type="text"
               name={field.name}
-              label="Name"
+              label="Nome"
               value={field.state.value}
               onChange={(e) => field.handleChange(e.target.value)}
               errors={fieldErrorsAsStrings(field.state.meta.errors)}
-              placeholder="Your name"
+              placeholder="Seu nome"
               aria-label="Your name"
             />
           )}

@@ -41,7 +41,7 @@ export function IntegrationRow({
         {needsAttention ? (
           <Status variant="warning" label={attentionLabel ?? "Action needed"} />
         ) : (
-          <Status variant="success" label="Active" />
+          <Status variant="success" label="Ativa" />
         )}
         <Icon icon={ChevronRight} size="sm" color="foregroundMuted" />
       </div>
@@ -52,7 +52,7 @@ export function IntegrationRow({
     <Link
       to="/projects/$projectSlug/settings/organization/integrations/$integrationSlug"
       params={params}
-      aria-label={`Configure ${entry.label} for the organization`}
+      aria-label={`Configurar ${entry.label} para a empresa`}
       className={className}
     >
       {body}
@@ -61,7 +61,7 @@ export function IntegrationRow({
     <Link
       to="/projects/$projectSlug/settings/integrations/$integrationSlug"
       params={params}
-      aria-label={`Configure ${entry.label} for this project`}
+      aria-label={`Configurar ${entry.label} para este projeto`}
       className={className}
     >
       {body}

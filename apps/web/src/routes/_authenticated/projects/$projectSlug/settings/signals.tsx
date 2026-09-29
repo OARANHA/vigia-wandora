@@ -33,7 +33,7 @@ function ProjectSignalsSettingsPage() {
         settings: { ...currentProject.settings, keepMonitoring: checked },
       })
       await transaction.isPersisted.promise
-      toast({ description: "Monitoring preference updated" })
+      toast({ description: "Preferência de monitoramento atualizada" })
     } catch (error) {
       toast({ variant: "destructive", description: toUserMessage(error) })
     } finally {
@@ -42,11 +42,11 @@ function ProjectSignalsSettingsPage() {
   }
 
   return (
-    <SettingsPage title="Signals" description="Manage signals in your project">
+    <SettingsPage title="Sinais" description="Gerencie os sinais do seu projeto">
       <div className="flex w-full flex-col gap-1">
         <div className="flex w-full flex-row items-center justify-between gap-4 rounded-lg bg-muted/30 p-4">
           <div className="flex flex-col gap-1">
-            <Label htmlFor="keep-monitoring">Monitor resolved signals</Label>
+            <Label htmlFor="keep-monitoring">Monitorar sinais resolvidos</Label>
             <Text.H6 color="foregroundMuted">
               When enabled, evaluations monitoring active signals stay active after the signals are resolved to detect
               further regressions

@@ -91,7 +91,7 @@ function ProjectGeneralSettingsPage() {
   return (
     <SettingsPage
       title="Configurações do projeto"
-      description="Set up your project info"
+      description="Configure as informações do projeto"
       actions={
         <DirtyActions
           dirtyCount={dirtyCount}
@@ -338,8 +338,8 @@ function ChangeSlugForm({ projectId, currentSlug }: { projectId: string; current
           if (!v) closeAndReset()
           else setOpen(v)
         }}
-        title="Change project slug"
-        description={`Changing the slug from "${currentSlug}" breaks ingestion until your app points at the new slug. Existing traces stay under the project; only newly ingested traces are affected.`}
+        title="Alterar slug do projeto"
+        description={`Alterar o slug de "${currentSlug}" interrompe a ingestão até que sua aplicação use o novo slug. Os traces existentes permanecem no projeto; apenas novos traces serão afetados.`}
         footer={
           <form.Subscribe selector={(s) => [s.values.slug, s.isSubmitting] as const}>
             {([slugValue, isSubmitting]) => {
@@ -382,7 +382,7 @@ function ChangeSlugForm({ projectId, currentSlug }: { projectId: string; current
                   onChange={(e) => field.handleChange(e.target.value)}
                   errors={fieldErrorsAsStrings(field.state.meta.errors)}
                   placeholder={currentSlug}
-                  aria-label="New project slug"
+                  aria-label="Novo slug do projeto"
                 />
               )}
             </form.Field>
@@ -448,7 +448,7 @@ function DeleteProjectConfirmModal({
         setOpen(v)
       }}
       title="Excluir projeto"
-      description={`This action is permanent and cannot be undone. The project "${projectName}" and all of its data will be deleted.`}
+      description={`Esta ação é permanente e não pode ser desfeita. O projeto "${projectName}" e todos os seus dados serão excluídos.`}
       footer={
         <>
           <Button variant="outline" onClick={() => setOpen(false)}>

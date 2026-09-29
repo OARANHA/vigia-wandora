@@ -15,8 +15,8 @@ export function IntegrationNotConnected({
     <Alert
       variant="default"
       showIcon
-      title={`${entry.label} is not connected`}
-      description="Connect it for the organization to configure it."
+      title={`${entry.label} não está conectada`}
+      description="Conecte-a na empresa para poder configurá-la."
       cta={
         <Button asChild variant="outline">
           <Link to="/projects/$projectSlug/settings/organization/integrations" params={{ projectSlug }}>

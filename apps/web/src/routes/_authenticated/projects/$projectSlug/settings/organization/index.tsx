@@ -175,7 +175,7 @@ function DeleteOrganizationConfirmModal({
         setOpen(v)
       }}
       title="Excluir empresa"
-      description={`This action is permanent and cannot be undone. The organization "${orgName}" and all of its projects and data will be deleted.`}
+      description={`Esta ação é permanente e não pode ser desfeita. A empresa "${orgName}", seus projetos e todos os dados serão excluídos.`}
       footer={
         <>
           <Button variant="outline" onClick={() => setOpen(false)}>

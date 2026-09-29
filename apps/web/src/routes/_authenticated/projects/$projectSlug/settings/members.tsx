@@ -161,7 +161,7 @@ function TransferOwnershipModal({
       <Modal.Content dismissible>
         <Modal.Header
           title="Transfer Ownership"
-          description="Transfer ownership of this organization to another member. You will become an admin after the transfer."
+          description="Transfira a propriedade desta empresa para outro membro. Após a transferência, você será administrador."
         />
         <Modal.Body>
           <FormWrapper>
@@ -249,7 +249,7 @@ function ChangeRoleModal({
   return (
     <Modal.Root open={open} onOpenChange={handleOpenChange}>
       <Modal.Content dismissible>
-        <Modal.Header title="Change Member Role" description={`Update the role for ${member.name ?? member.email}`} />
+        <Modal.Header title="Alterar função do membro" description={`Atualize a função de ${member.name ?? member.email}`} />
         <Modal.Body>
           <FormWrapper>
             <div className="flex flex-col gap-4">

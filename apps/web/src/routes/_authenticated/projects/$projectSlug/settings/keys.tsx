@@ -22,7 +22,7 @@ import {
 import { relativeTime } from "@repo/utils"
 import { useForm } from "@tanstack/react-form"
 import { createFileRoute } from "@tanstack/react-router"
-import { ExternalLinkIcon, Loader2, Pencil, PlusIcon, Trash2 } from "lucide-react"
+import { Loader2, Pencil, PlusIcon, Trash2 } from "lucide-react"
 import { useState } from "react"
 import {
   deleteApiKeyMutation,
@@ -90,7 +90,7 @@ function CreateApiKeyModal({ open, setOpen }: { open: boolean; setOpen: (open: b
                     onChange={(e) => field.handleChange(e.target.value)}
                     errors={fieldErrorsAsStrings(field.state.meta.errors)}
                     placeholder="Minha chave de API"
-                    description="A descriptive name for this API key"
+                    description="Um nome descritivo para esta chave de API"
                   />
                 )}
               </form.Field>
@@ -141,7 +141,7 @@ function UpdateApiKeyModal({ apiKey, onClose }: { apiKey: ApiKeyRecord; onClose:
             void form.handleSubmit()
           }}
         >
-          <Modal.Header title="Update API key" description="Update the name for your API key." />
+          <Modal.Header title="Atualizar chave de API" description="Atualize o nome da sua chave de API." />
           <Modal.Body>
             <FormWrapper>
               <form.Field name="name">
@@ -195,7 +195,7 @@ function DeleteApiKeyModal({ apiKey, onClose }: { apiKey: ApiKeyRecord; onClose:
         if (!open && !deleting) onClose()
       }}
       title="Excluir chave de API"
-      description={`Are you sure you want to delete "${displayName}"? Qualquer aplicação que use esta chave perderá imediatamente o acesso à API do Vigia. Esta ação não pode ser desfeita.`}
+      description={`Deseja excluir "${displayName}"? Qualquer aplicação que use esta chave perderá imediatamente o acesso à API do Vigia. Esta ação não pode ser desfeita.`}
       dismissible
       footer={
         <div className="flex flex-row items-center gap-2">
@@ -360,8 +360,8 @@ function OAuthKeysTable({ oauthKeys }: { oauthKeys: OAuthKeyRecord[] }) {
           onOpenChange={(open) => {
             if (!open && !revoking) setKeyToRevoke(null)
           }}
-          title="Revoke OAuth key"
-          description={`Are you sure you want to revoke "${keyToRevoke.clientName ?? "this OAuth client"}" for ${
+          title="Revogar chave OAuth"
+          description={`Deseja revogar "${keyToRevoke.clientName ?? "este cliente OAuth"}" para ${
             keyToRevoke.userName ?? keyToRevoke.userEmail
           }? O cliente perderá imediatamente o acesso à API do Vigia. Esta ação não pode ser desfeita.`}
           dismissible
@@ -434,13 +434,7 @@ function KeysSettingsPage() {
             <TableBlankSlate
               description={
                 <div className="flex flex-col justify-center items-center gap-4">
-                  No OAuth clients connected yet
-                  <a href="https://docs.latitude.so/getting-started/mcp" target="_blank" rel="noopener noreferrer">
-                    <Button>
-                      <Icon size="sm" icon={ExternalLinkIcon} />
-                      Connect through MCP
-                    </Button>
-                  </a>
+                  Nenhum cliente OAuth conectado ainda
                 </div>
               }
             />

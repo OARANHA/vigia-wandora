@@ -35,21 +35,20 @@ export function ImportsPage({
       {isLoading ? null : imports.length === 0 ? (
         <BlankSlate
           icon={ImportIcon}
-          title="No imports yet"
+          title="Nenhuma importação ainda"
           description="Importe sessões, traces e spans existentes de outras plataformas de observabilidade para este projeto."
           action={{
             label: "Importar traces",
             icon: Plus,
             onClick: () => setCreating(true),
           }}
-          docsHref={undefined}
         />
       ) : (
         <>
           <div className="flex flex-row justify-end">
             <Button onClick={() => setCreating(true)}>
               <Icon icon={Plus} size="sm" />
-              Import traces
+              Importar traces
             </Button>
           </div>
           <ImportJobsTable

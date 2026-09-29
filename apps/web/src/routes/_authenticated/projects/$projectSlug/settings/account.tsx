@@ -108,7 +108,7 @@ function DeleteAccountConfirmModal({ open, setOpen }: { open: boolean; setOpen: 
         setOpen(v)
       }}
       title="Excluir conta"
-      description="This action is permanent and cannot be undone. All your data will be deleted. If you are the sole member of an organization, that organization will also be permanently deleted."
+      description="Esta ação é permanente e não pode ser desfeita. Todos os seus dados serão excluídos. Se você for o único membro de uma empresa, ela também será excluída permanentemente."
       footer={
         <>
           <Button variant="outline" onClick={() => setOpen(false)}>
@@ -186,8 +186,8 @@ function RevokeSessionConfirmModal({ session, onClose }: { session: UserSessionD
       onOpenChange={(open) => {
         if (!open && !revoking) onClose()
       }}
-      title="Sign device out"
-      description={`Are you sure you want to sign out "${formatDeviceLine(session)}" of your account? This device will immediately lose access and will need to sign in again.`}
+      title="Encerrar sessão do dispositivo"
+      description={`Deseja encerrar a sessão de "${formatDeviceLine(session)}"? Este dispositivo perderá o acesso imediatamente e precisará entrar novamente.`}
       dismissible
       footer={
         <div className="flex flex-row items-center gap-2">
@@ -231,7 +231,7 @@ function RevokeAllOtherSessionsConfirmModal({ otherCount, onClose }: { otherCoun
         if (!open && !revoking) onClose()
       }}
       title="Sign out everywhere else"
-      description={`Are you sure you want to sign out of ${deviceLabel}? They will immediately lose access and will need to sign in again. This device will stay signed in.`}
+      description={`Deseja encerrar a sessão de ${deviceLabel}? O acesso será perdido imediatamente e será necessário entrar novamente. Este dispositivo permanecerá conectado.`}
       dismissible
       footer={
         <div className="flex flex-row items-center gap-2">
@@ -619,7 +619,7 @@ function NotificationsSection() {
                     id={inputId}
                     checked={enabled}
                     onCheckedChange={(checked) => setGroupEmail(group, checked)}
-                    aria-label={`Toggle email notifications for ${meta.label}`}
+                    aria-label={`Alternar notificações por email para ${meta.label}`}
                   />
                 ) : (
                   // Sized to the switch it stands in for, so the row doesn't move when it arrives.
@@ -681,7 +681,7 @@ function AccountSettingsPage() {
   // params so a refresh doesn't repeat the toast.
   useMountEffect(() => {
     if (search.linked) {
-      toast({ description: `${providerLabel(search.linked)} connected` })
+      toast({ description: `${providerLabel(search.linked)} conectado` })
     } else if (search.error) {
       toast({
         variant: "destructive",
@@ -735,7 +735,7 @@ function AccountSettingsPage() {
               onChange={(e) => field.handleChange(e.target.value)}
               errors={fieldErrorsAsStrings(field.state.meta.errors)}
               placeholder="Seu nome"
-              aria-label="Your name"
+              aria-label="Seu nome"
             />
           )}
         </form.Field>

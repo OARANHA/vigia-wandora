@@ -35,7 +35,7 @@ const setup = () => {
   const onSave = vi.fn()
   render(<RedactionRuleSheet open rule={PATTERN} onClose={vi.fn()} onSave={onSave} />)
 
-  const save = () => screen.getByRole("button", { name: "Save rule" }) as HTMLButtonElement
+  const save = () => screen.getByRole("button", { name: "Salvar regra" }) as HTMLButtonElement
 
   return { onSave, save }
 }
@@ -53,10 +53,10 @@ describe("RedactionRuleSheet", () => {
 
     await waitFor(() => expect(save().disabled).toBe(false))
 
-    fireEvent.change(screen.getByLabelText("Pattern"), { target: { value: "\\d+\\d+" } })
+    fireEvent.change(screen.getByLabelText("Regex"), { target: { value: "\\d+\\d+" } })
 
     expect(save().disabled).toBe(true)
-    expect(screen.getByText("Checking the rule…")).toBeDefined()
+    expect(screen.getByText("Validando a regra…")).toBeDefined()
   })
 
   it("stamps the validator version from the verdict for the pattern being saved", async () => {
@@ -78,9 +78,9 @@ describe("RedactionRuleSheet", () => {
     validateRedactionRuleDraft.mockRejectedValue(new Error("network"))
     const { save } = setup()
 
-    await waitFor(() => expect(screen.getByText(/Could not check this rule/)).toBeDefined())
+    await waitFor(() => expect(screen.getByText(/Não foi possível validar esta regra/)).toBeDefined())
 
-    expect(screen.queryByText("Checking the rule…")).toBeNull()
+    expect(screen.queryByText("Validando a regra…")).toBeNull()
     expect(save().disabled).toBe(true)
   })
 
@@ -88,7 +88,7 @@ describe("RedactionRuleSheet", () => {
     validateRedactionRuleDraft.mockResolvedValue(verdict(false))
     const { save } = setup()
 
-    await waitFor(() => expect(screen.getByText(/backtracks/)).toBeDefined())
+    await waitFor(() => expect(screen.getByText(/backtracking por segundos/)).toBeDefined())
 
     expect(save().disabled).toBe(true)
   })

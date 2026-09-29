@@ -15,6 +15,7 @@ import { ListingLayout as Layout } from "../../../../../../layouts/ListingLayout
 import { toUserMessage } from "../../../../../../lib/errors.ts"
 import { useDebounce } from "../../../../../../lib/hooks/useDebounce.ts"
 import { useParamState } from "../../../../../../lib/hooks/useParamState.ts"
+import { ptBR } from "../../../../../../lib/i18n/pt-BR.ts"
 import {
   EMPTY_SELECTION,
   type SelectionState,
@@ -51,7 +52,7 @@ function parseSorting(raw: string): MonitorsTableSorting {
 }
 
 export function MonitorsBreadcrumb() {
-  return <BreadcrumbText variant="current">Monitors</BreadcrumbText>
+  return <BreadcrumbText variant="current">{ptBR.clientShell.sections.monitors}</BreadcrumbText>
 }
 
 export function MonitorsListPage() {

@@ -27,8 +27,8 @@ describe("RedactionIdentityChoice", () => {
     setup()
 
     expect(screen.getByText("anon_3f9a2b7c1d4e5f60")).toBeDefined()
-    expect(screen.getByText(/Searching and grouping by user work/)).toBeDefined()
-    expect(screen.getByText(/Grouping and per-user counts still work/)).toBeDefined()
+    expect(screen.getByText(/Busca e agrupamento por usuário continuam funcionando/)).toBeDefined()
+    expect(screen.getByText(/Agrupamentos e contagens por usuário continuam funcionando/)).toBeDefined()
   })
 
   it("shows the same input above each outcome, so the two are comparable", () => {
@@ -79,6 +79,6 @@ describe("RedactionIdentityChoice", () => {
   it("warns that a missing pseudonym secret removes the identifier instead", () => {
     setup("pseudonymize")
 
-    expect(screen.getByText(/no pseudonym secret configured/)).toBeDefined()
+    expect(screen.getByText(/sem segredo de pseudonimização configurado/)).toBeDefined()
   })
 })

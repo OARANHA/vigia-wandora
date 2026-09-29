@@ -1930,7 +1930,7 @@ export function getHermesConfigYamlBlock(): string {
 export function getHermesEnvBlock(projectSlug: string, apiKey: string | null): string {
   const slug = projectSlug.trim() || "your-project-slug"
   const key = apiKey ?? "lat_xxx"
-  return `LATITUDE_API_KEY=${key}\nLATITUDE_PROJECT=${slug}\nLATITUDE_TELEMETRY_URL=${VIGIA_TELEMETRY_BASE_URL}`
+  return `LATITUDE_API_KEY=${key}\nLATITUDE_PROJECT=${slug}\nLATITUDE_BASE_URL=${VIGIA_TELEMETRY_BASE_URL}`
 }
 
 export function getCodingMachineInstallDescription(agent: CodingMachineAgentId): string {

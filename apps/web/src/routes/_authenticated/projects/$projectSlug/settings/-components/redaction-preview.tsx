@@ -95,9 +95,9 @@ function PreviewResult({ result }: { readonly result: RedactionPreviewResult }) 
         <div className="flex flex-col gap-2">
           <Text.H6M>O que seria removido</Text.H6M>
           {result.labels.map((entry) => (
-            <div key={formatPreviewLabel(entry.label)} className="flex flex-row items-baseline gap-2">
+            <div key={entry.label} className="flex flex-row items-baseline gap-2">
               <Text.H6 color={entry.matches === 0 ? "foregroundMuted" : "foreground"}>
-                <span className="font-mono">{entry.label}</span>
+                <span className="font-mono">{formatPreviewLabel(entry.label)}</span>
               </Text.H6>
               <div className="min-w-0 flex-1 border-border border-b border-dashed" />
               {entry.matches === 0 ? (
@@ -114,7 +114,7 @@ function PreviewResult({ result }: { readonly result: RedactionPreviewResult }) 
         <div className="flex flex-col gap-3">
           <Text.H6M>Alterações</Text.H6M>
           {result.changes.map((change) => (
-            <ChangeRow key={`${formatPreviewLocation(change.location)}:${change.key ?? ""}:${change.before}`} change={change} />
+            <ChangeRow key={`${change.location}:${change.key ?? ""}:${change.before}`} change={change} />
           ))}
         </div>
       ) : null}
@@ -133,7 +133,7 @@ function ChangeRow({ change }: { readonly change: RedactionPreviewChange }) {
     <div className="flex flex-col gap-1 rounded-md border border-border p-3">
       <div className="flex flex-row items-baseline justify-between gap-3">
         <Text.H6 color="foregroundMuted" ellipsis noWrap>
-          {change.location}
+          {formatPreviewLocation(change.location)}
           {change.key ? <span className="font-mono"> · {change.key}</span> : null}
         </Text.H6>
         <Text.H6 color="foregroundMuted" noWrap>

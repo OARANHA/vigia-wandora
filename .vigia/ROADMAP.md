@@ -260,3 +260,17 @@ O v0 ainda não conclui **Métricas de impacto**: metadata de negócio não é m
 ### Próxima validação
 
 Implantar o PR #46, provar `trace -> evento de negócio -> resultado visível no Vigia` no runtime público e então marcar Events API/correlação como concluídas em produção. Em seguida, integrar a Wandora como primeiro emissor real antes de ampliar o modelo.
+
+
+## Checkpoint 2026-09-29 — Business Events v0 integrado, produção pendente
+
+- [x] PR #46 integrado ao `main` em `c845630556be695d6b8a49bee93b9b8ec6c9e4cb`;
+- [x] workflow de imagens de produção #86 concluído com sucesso;
+- [x] contrato, typecheck e testes específicos validados;
+- [ ] repull das imagens na VPS Vigia;
+- [ ] redeploy da stack `vigia`;
+- [ ] smoke público `trace -> evento de negócio -> Resultado`.
+
+Bloqueio atual: o Docker da VPS recebe `connection reset by peer` ao copiar blobs do GHCR por IPv6. Duas tentativas controladas abortaram antes do redeploy. A stack atual permanece saudável e inalterada no `ConfigHash 417b322c23f06d6c6d17e4839ec437e679c97219`.
+
+As caixas **Events API** e **Correlação trace_id -> resultado de negócio** permanecem abertas na Fase 2 até a validação em produção.

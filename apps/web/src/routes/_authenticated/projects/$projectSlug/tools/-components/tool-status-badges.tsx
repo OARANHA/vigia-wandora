@@ -10,8 +10,8 @@ export function ToolStatusBadges({ tool }: { readonly tool: ToolSummaryRecord })
   return (
     <div className="flex shrink-0 items-center gap-1">
       {statuses.includes("unused") ? (
-        <Tooltip asChild trigger={<Status variant="neutral" label="Unused" />}>
-          Defined and offered to the model {formatCount(tool.offeredCount)} times in this window, but never called.
+        <Tooltip asChild trigger={<Status variant="neutral" label="Não utilizada" />}>
+          Definida e oferecida ao modelo {formatCount(tool.offeredCount)} vezes neste período, mas nunca chamada.
         </Tooltip>
       ) : null}
       {statuses.includes("failing") && tool.metrics ? (
@@ -20,17 +20,17 @@ export function ToolStatusBadges({ tool }: { readonly tool: ToolSummaryRecord })
           trigger={
             <Status
               variant={tool.metrics.errorRate >= TOOL_CRITICAL_ERROR_RATE ? "destructive" : "warning"}
-              label="Failing"
+              label="Com falha"
             />
           }
         >
-          {formatPercent(tool.metrics.errorRate)} of calls failed in this window ({formatCount(tool.metrics.errors)} of{" "}
+          {formatPercent(tool.metrics.errorRate)} das chamadas falharam neste período ({formatCount(tool.metrics.errors)} de{" "}
           {formatCount(tool.metrics.calls)}).
         </Tooltip>
       ) : null}
       {statuses.includes("noDefinition") ? (
-        <Tooltip asChild trigger={<Status variant="neutral" label="No definition" />}>
-          This tool was called but no chat span in this window carried its definition.
+        <Tooltip asChild trigger={<Status variant="neutral" label="Sem definição" />}>
+          A ferramenta foi chamada, mas nenhum span de chat neste período trouxe sua definição.
         </Tooltip>
       ) : null}
     </div>

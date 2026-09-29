@@ -206,7 +206,7 @@ const ruleValidationIssueMessage = (issue: RuleValidation["errors"][number]): st
     case "glob_too_broad":
       return "usa um glob amplo demais e pode remover quase todos os atributos do span."
     case "uncompilable":
-      return "não contém um regex válido."
+      return "não contém uma regex válida."
     case "matches_empty":
       return "corresponde ao texto vazio e inseriria um marcador entre todos os caracteres."
     case "bound_too_large":

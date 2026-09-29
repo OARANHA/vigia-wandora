@@ -1,8 +1,7 @@
-import { Button, CodeBlock, cn, Icon, Skeleton, Text } from "@repo/ui"
-import { BrainIcon, ExternalLinkIcon } from "lucide-react"
+import { CodeBlock, cn, Icon, Skeleton, Text } from "@repo/ui"
+import { BrainIcon } from "lucide-react"
+import { ptBR } from "../../../../../../lib/i18n/pt-BR.ts"
 import { getMemoryTelemetryPrompt } from "../../-components/onboarding-integration-snippets.ts"
-
-const MEMORY_DOCS_HREF = "https://docs.latitude.so/telemetry/memory"
 
 export function MemoryEmptyState() {
   return (
@@ -32,24 +31,15 @@ function MemoryConnectCard() {
       </div>
 
       <div className="flex flex-col gap-2">
-        <Text.H3 weight="medium">Track how your agent's memory evolves</Text.H3>
-        <Text.H5 color="foregroundMuted">
-          See what your agent reads and writes to its memory. Point your memory operations at Latitude to start tracking
-          them.
-        </Text.H5>
+        <Text.H3 weight="medium">{ptBR.clientPages.memory.emptyTitle}</Text.H3>
+        <Text.H5 color="foregroundMuted">{ptBR.clientPages.memory.emptyDescription}</Text.H5>
       </div>
 
       <div className="flex w-full flex-col gap-1.5">
-        <Text.H6 color="foregroundMuted">Ask your coding agent</Text.H6>
+        <Text.H6 color="foregroundMuted">{ptBR.clientPages.memory.askCodingAgent}</Text.H6>
         <CodeBlock value={prompt} copyable wrapLines />
       </div>
 
-      <Button asChild variant="outline">
-        <a href={MEMORY_DOCS_HREF} target="_blank" rel="noopener noreferrer">
-          <Icon size="sm" icon={ExternalLinkIcon} />
-          Read the docs
-        </a>
-      </Button>
     </div>
   )
 }

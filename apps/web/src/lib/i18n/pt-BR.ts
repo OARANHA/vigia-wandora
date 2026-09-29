@@ -204,8 +204,7 @@ export const ptBR = {
       loadingTitle: "Carregando comportamentos de exemplo",
       loadingDescription:
         "Encontramos os traces e sinais de exemplo. A taxonomia de comportamentos ainda está sendo preparada; volte em cerca de um minuto.",
-      emptyDescription:
-        "Os comportamentos aparecem aqui depois que as sessões são agrupadas e analisadas.",
+      emptyDescription: "Os comportamentos aparecem aqui depois que as sessões são agrupadas e analisadas.",
       create: "Novo comportamento",
     },
     experiments: {

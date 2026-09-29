@@ -110,7 +110,7 @@ Decisão atual: o Vigia será publicado pela infraestrutura própria da VPS Vigi
 
 A VPS dedicada do Vigia usa Traefik e rede de borda próprios. O host público permanece `vigia.wandora.com.br`. O hostname administrativo canônico é `ops-vigia.wandora.com.br`, destinado ao Portainer/console operacional e separado da aplicação pública. O hostname aninhado anterior foi aposentado após a validação pública do novo endereço em 2026-09-29.
 
-O deploy só será considerado completo quando o DNS apontar para a VPS Vigia, o Traefik próprio emitir TLS válido e o smoke test HTTPS/OTLP funcionar sem depender da rede `wandora-edge` da Wandora.
+O deploy standalone foi validado na VPS Vigia sem depender da rede `wandora-edge` da Wandora. O HTTPS público está funcional e o primeiro smoke test OTLP real foi concluído em 2026-09-29.
 
 
 ## Onboarding de agente e conexão OTLP
@@ -130,6 +130,29 @@ O Vigia agora possui uma camada própria de produto para este fluxo:
 - fluxo legado de claim foi desacoplado dos tipos do onboarding novo para preservar compatibilidade.
 
 Não foi criado SDK próprio: o MVP usa OpenTelemetry/OTLP padrão e reaproveita o ingest existente do Latitude.
+
+### Validação do primeiro trace público — 2026-09-29
+
+O caminho real foi validado ponta a ponta no runtime de produção:
+
+```text
+cliente/smoke OTLP
+  -> https://vigia.wandora.com.br/v1/traces
+  -> vigia-ingest
+  -> persistência/processamento
+  -> API de leitura de traces do Vigia
+```
+
+Evidências:
+
+- stack `vigia` ativa no Portainer próprio da VPS Vigia;
+- serviços `web`, `api`, `ingest`, `workers`, `workflows`, Postgres, ClickHouse e Redis saudáveis;
+- envio OTLP JSON pelo domínio público retornou HTTP 200;
+- leitura do trace recém-enviado pela API do produto retornou HTTP 200;
+- `projects.first_trace_at` ficou preenchido;
+- nenhuma chave, token ou segredo foi exposto no chat ou persistido no repositório.
+
+Gap identificado durante o smoke: parte das instruções avançadas de onboarding ainda apresenta `ingest.latitude.so`, `X-Latitude-Project` e nomenclatura Latitude ao cliente. O próximo slice deve consolidar essas superfícies no contrato público do Vigia, mantendo compatibilidade Latitude apenas internamente.
 
 Validação do slice no SHA `2389b307d675e1ae95e6507144d07bafa5b48841`:
 

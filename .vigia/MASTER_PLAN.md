@@ -253,9 +253,16 @@ O onboarding de projeto/agente e a conexão OTLP já possuem uma camada própria
 
 O contrato público do MVP usa `https://vigia.wandora.com.br/v1/traces` e o cabeçalho `X-Vigia-Project`. O ingest mantém `X-Latitude-Project` apenas como alias de compatibilidade interna.
 
-Ainda existem referências e copy do Latitude em outras áreas autenticadas. Isso continua pendente.
+Ainda existem referências e copy do Latitude em áreas autenticadas e, principalmente, em parte das instruções avançadas de telemetria. Isso continua pendente.
 
-O próximo passo de runtime é publicar a primeira stack executável e validar um trace real pelo domínio público. Depois disso, o próximo slice de produto é responder: **“o que significa sucesso para este agente?”**.
+O primeiro trace OTLP real pelo domínio público foi validado em 2026-09-29:
+
+- `POST https://vigia.wandora.com.br/v1/traces` retornou HTTP 200 usando `Authorization: Bearer ...` e `X-Vigia-Project`;
+- o mesmo trace foi encontrado pela API de leitura do Vigia com HTTP 200;
+- `projects.first_trace_at` ficou preenchido no projeto usado no smoke test;
+- a stack `vigia` estava ativa e os serviços web, API, ingest, workers, workflows, Postgres, ClickHouse e Redis estavam saudáveis.
+
+Durante essa validação foi identificado um gap de produto: algumas instruções visíveis de onboarding ainda apontam para `ingest.latitude.so`, `X-Latitude-Project` e nomenclatura Latitude. O próximo slice imediato deve consolidar essas superfícies no contrato público do Vigia antes de avançar para a definição de sucesso por agente e Business Events.
 
 ## 10. Regra de customização
 
@@ -335,7 +342,7 @@ O runtime do Vigia deve continuar funcional mesmo se a VPS da Wandora estiver in
 1. [x] expor contrato Vigia sobre o ingest OTLP existente;
 2. [x] criar tela "Conecte seu agente";
 3. [x] mostrar endpoint/chave/projeto;
-4. [ ] receber primeiro trace no runtime público;
+4. [x] receber primeiro trace no runtime público;
 5. [x] detectar primeiro trace e mostrar estado "Conectado" na aplicação.
 
 ### Etapa D — produto vendável
@@ -372,9 +379,11 @@ O diferencial que merece código próprio é a combinação de:
 
 ## 14. Próxima ação objetiva
 
-**Concluir a migração administrativa para `ops-vigia.wandora.com.br` e validar o primeiro trace OTLP real ponta a ponta pelo runtime público já implantado.**
+**Consolidar o onboarding de telemetria para que toda instrução visível ao cliente use o contrato público do Vigia: `https://vigia.wandora.com.br/v1/traces`, `Authorization: Bearer <API key>` e `X-Vigia-Project`.**
 
-Depois do smoke test público, avançar para a definição de sucesso por agente e Business Events.
+Preservar `X-Latitude-Project` e demais contratos Latitude apenas como compatibilidade interna quando necessários ao motor.
+
+Depois desse ajuste de produto, avançar para a definição de sucesso por agente e Business Events.
 
 
 ### Checkpoint de preparação do primeiro runtime — 2026-09-28

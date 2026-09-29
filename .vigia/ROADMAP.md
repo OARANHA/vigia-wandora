@@ -25,7 +25,7 @@
 - [ ] Remover referências comerciais desnecessárias ao Latitude
 - [ ] Dashboard simplificado para visão empresarial
 - [x] Primeiro fluxo "Conecte seu agente"
-- [ ] Receber primeiro trace OTLP em runtime público (capability implementada; falta deploy/smoke test)
+- [x] Receber primeiro trace OTLP em runtime público
 
 ## Fase 2 — camada própria
 
@@ -54,7 +54,7 @@ Concluído em código e validado:
 - compatibilidade interna com `X-Latitude-Project`;
 - detecção do primeiro trace e estado de conexão.
 
-Próxima validação real: publicar a primeira stack executável, configurar o router dinâmico do Traefik e enviar um trace real pelo domínio público antes de marcar ingestão pública como concluída.
+Validação real concluída em 2026-09-29: a stack pública recebeu um trace OTLP pelo domínio canônico e o trace foi confirmado na API de leitura do Vigia.
 
 
 ## Checkpoint 2026-09-28 — preparação do runtime público
@@ -214,4 +214,21 @@ Depois, verificar na aplicação real se **Custos** e **Pontuação do agente** 
 - [x] Traefik do Vigia validado em 80/443 com file provider próprio;
 - [x] rota `ops-vigia.wandora.com.br` publicada e validada publicamente;
 - [x] DNS `ops-vigia.wandora.com.br` no Cloudflare validado como Proxied;
-- [x] HTTPS público do novo hostname validado; alias legado removido do Traefik.\n- [ ] remover o registro DNS legado `ops.vigia.wandora.com.br` no Cloudflare.
+- [x] HTTPS público do novo hostname validado; alias legado removido do Traefik.
+- [x] hostname legado `ops.vigia.wandora.com.br` não resolve mais em DNS.
+
+## Checkpoint 2026-09-29 — primeiro trace OTLP público
+
+- [x] stack `vigia` ativa no Portainer próprio;
+- [x] `web`, `api`, `ingest`, `workers`, `workflows`, Postgres, ClickHouse e Redis saudáveis;
+- [x] `POST https://vigia.wandora.com.br/v1/traces` validado com HTTP 200;
+- [x] contrato público validado com `Authorization: Bearer <API key>` e `X-Vigia-Project`;
+- [x] trace recém-enviado encontrado pela API de leitura do Vigia com HTTP 200;
+- [x] `projects.first_trace_at` preenchido no projeto do smoke test;
+- [x] nenhuma credencial exposta no chat ou no repositório.
+
+### Próximo slice
+
+Antes de Business Events, corrigir o onboarding de telemetria ainda visível ao cliente que aponta para `ingest.latitude.so`, `X-Latitude-Project` ou nomenclatura Latitude.
+
+Objetivo: toda instrução pública deve usar o contrato Vigia, preservando aliases e nomes técnicos do Latitude apenas internamente. Depois disso, avançar para **“o que significa sucesso para este agente?”** e Business Events.

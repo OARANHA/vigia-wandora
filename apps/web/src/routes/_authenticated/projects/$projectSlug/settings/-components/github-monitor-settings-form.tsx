@@ -86,17 +86,17 @@ export function GithubMonitorSettingsForm({
     <div className="flex flex-col gap-6">
       {extraFields}
       <div className="flex flex-col gap-3">
-        <Text.H5M>What to watch</Text.H5M>
+        <Text.H5M>O que monitorar</Text.H5M>
         <ToggleRow
           label="Pull requests"
-          description="Link and act on pull requests that target the configured branch."
+          description="Vincula e processa pull requests direcionados à branch configurada."
           checked={draft.monitorPullRequests}
           disabled={readOnly}
           onChange={(value) => setDraft((current) => ({ ...current, monitorPullRequests: value }))}
         />
         <ToggleRow
           label="Commits"
-          description="Link and act on commits pushed to the configured branch."
+          description="Vincula e processa commits enviados para a branch configurada."
           checked={draft.monitorCommits}
           disabled={readOnly}
           onChange={(value) => setDraft((current) => ({ ...current, monitorCommits: value }))}
@@ -104,32 +104,32 @@ export function GithubMonitorSettingsForm({
       </div>
 
       <div className="flex flex-col gap-3">
-        <Text.H5M>Where to look for references</Text.H5M>
+        <Text.H5M>Onde procurar referências</Text.H5M>
         <div className="flex flex-row flex-wrap gap-x-6 gap-y-2">
           <SourceCheckbox
             id={`${fieldId}-commit-message`}
-            label="Commit messages"
+            label="Mensagens de commit"
             checked={draft.sources.commitMessage}
             disabled={readOnly}
             onChange={(value) => setSource("commitMessage", value)}
           />
           <SourceCheckbox
             id={`${fieldId}-branch-name`}
-            label="Branch names"
+            label="Nomes de branches"
             checked={draft.sources.branchName}
             disabled={readOnly}
             onChange={(value) => setSource("branchName", value)}
           />
           <SourceCheckbox
             id={`${fieldId}-pr-title`}
-            label="Pull request titles"
+            label="Títulos de pull request"
             checked={draft.sources.prTitle}
             disabled={readOnly}
             onChange={(value) => setSource("prTitle", value)}
           />
           <SourceCheckbox
             id={`${fieldId}-pr-body`}
-            label="Pull request descriptions"
+            label="Descrições de pull request"
             checked={draft.sources.prBody}
             disabled={readOnly}
             onChange={(value) => setSource("prBody", value)}
@@ -139,14 +139,14 @@ export function GithubMonitorSettingsForm({
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-1">
-          <Text.H5M>Magic words</Text.H5M>
+          <Text.H5M>Palavras de ação</Text.H5M>
           <Text.H6 color="foregroundMuted">
-            A signal slug (e.g. LAT-XY9Z) next to one of these words in a watched source links the PR or commit, and on
-            merge applies the action.
+            Um slug de sinal (ex.: LAT-XY9Z) ao lado de uma destas palavras em uma fonte monitorada vincula o pull request
+            ou commit e, após o merge, aplica a ação.
           </Text.H6>
         </div>
         <KeywordListEditor
-          label="Resolve"
+          label="Resolver"
           value={draft.rules.resolveKeywords}
           disabled={readOnly}
           onChange={(next) => setRules("resolveKeywords", next)}
@@ -154,7 +154,7 @@ export function GithubMonitorSettingsForm({
           onReset={() => setRules("resolveKeywords", [...DEFAULT_RESOLVE_KEYWORDS])}
         />
         <KeywordListEditor
-          label="Reopen"
+          label="Reabrir"
           value={draft.rules.unresolveKeywords}
           disabled={readOnly}
           onChange={(next) => setRules("unresolveKeywords", next)}
@@ -162,7 +162,7 @@ export function GithubMonitorSettingsForm({
           onReset={() => setRules("unresolveKeywords", [...DEFAULT_UNRESOLVE_KEYWORDS])}
         />
         <KeywordListEditor
-          label="Reference"
+          label="Referenciar"
           value={draft.rules.referenceKeywords}
           disabled={readOnly}
           onChange={(next) => setRules("referenceKeywords", next)}

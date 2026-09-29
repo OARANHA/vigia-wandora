@@ -20,7 +20,7 @@ export function IntegrationNotConnected({
       cta={
         <Button asChild variant="outline">
           <Link to="/projects/$projectSlug/settings/organization/integrations" params={{ projectSlug }}>
-            Connect for the organization
+            Conectar para a empresa
           </Link>
         </Button>
       }

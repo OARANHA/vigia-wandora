@@ -11,63 +11,63 @@ import { toUserMessage } from "../../../../../../lib/errors.ts"
 type LifecycleConfirmationAction = "resolve" | "unresolve" | "ignore" | "unignore" | "mute" | "unmute"
 
 const CONFIRMATION_TOASTS: Record<LifecycleConfirmationAction, string> = {
-  resolve: "Signal resolved.",
-  unresolve: "Signal reopened.",
-  ignore: "Signal ignored.",
-  unignore: "Signal returned to the active list.",
-  mute: "Signal notifications muted.",
-  unmute: "Signal notifications unmuted.",
+  resolve: "Sinal resolvido.",
+  unresolve: "Sinal reaberto.",
+  ignore: "Sinal ignorado.",
+  unignore: "Sinal devolvido à lista de ativos.",
+  mute: "Notificações do sinal silenciadas.",
+  unmute: "Notificações do sinal reativadas.",
 }
 
 function getLifecycleConfirmation(action: LifecycleConfirmationAction) {
   switch (action) {
     case "resolve":
       return {
-        title: "Resolve signal",
+        title: "Resolver sinal",
         description:
-          "Mark this signal as resolved. If this signal starts occurring again we will alert you and promote it as regressed",
-        confirmLabel: "Resolve",
+          "Marque este sinal como resolvido. Se ele voltar a ocorrer, o Vigia alertará e o marcará como regressão",
+        confirmLabel: "Resolver",
         confirmIcon: CheckIcon,
         confirmVariant: undefined,
       }
     case "unresolve":
       return {
-        title: "Unresolve signal",
-        description: "Reopen this signal. New occurrences won't mark this signal as regressed",
-        confirmLabel: "Unresolve",
+        title: "Reabrir sinal",
+        description: "Reabra este sinal. Novas ocorrências não serão tratadas como regressão",
+        confirmLabel: "Reabrir",
         confirmIcon: UndoIcon,
         confirmVariant: undefined,
       }
     case "ignore":
       return {
-        title: "Ignore signal",
+        title: "Ignorar sinal",
         description:
-          "Mark this signal as ignored. We won't monitor or alert you about new occurrences of this signal anymore",
-        confirmLabel: "Ignore",
+          "Marque este sinal como ignorado. O Vigia deixará de monitorar e alertar sobre novas ocorrências",
+        confirmLabel: "Ignorar",
         confirmIcon: EyeOffIcon,
         confirmVariant: "destructive" as const,
       }
     case "unignore":
       return {
-        title: "Unignore signal",
-        description: "Stop ignoring this signal. New occurrences will surface it again",
-        confirmLabel: "Unignore",
+        title: "Voltar a acompanhar sinal",
+        description: "Volte a acompanhar este sinal. Novas ocorrências voltarão a aparecer",
+        confirmLabel: "Acompanhar",
         confirmIcon: EyeIcon,
         confirmVariant: undefined,
       }
     case "mute":
       return {
-        title: "Mute signal",
-        description: "Silence this signal. New occurrences still start incidents, but they won't send notifications",
-        confirmLabel: "Mute",
+        title: "Silenciar sinal",
+        description: "Silencie este sinal. Novas ocorrências ainda criam incidentes, mas não enviam notificações",
+        confirmLabel: "Silenciar",
         confirmIcon: BellOffIcon,
         confirmVariant: "destructive" as const,
       }
     case "unmute":
       return {
-        title: "Unmute signal",
-        description: "Unmute this signal. New occurrences will be notified again",
-        confirmLabel: "Unmute",
+        title: "Reativar notificações",
+        description: "Reative as notificações deste sinal. Novas ocorrências voltarão a gerar notificações",
+        confirmLabel: "Reativar",
         confirmIcon: BellIcon,
         confirmVariant: undefined,
       }
@@ -132,30 +132,30 @@ export function SignalLifecycleActions({
 
     commands.push({
       id: `issue:${signalId}:${issue.resolvedAt ? "unresolve" : "resolve"}`,
-      title: issue.resolvedAt ? "Unresolve signal" : "Resolve signal",
+      title: issue.resolvedAt ? "Reabrir sinal" : "Resolver sinal",
       icon: issue.resolvedAt ? UndoIcon : CheckIcon,
       section: "context",
-      group: "Signal",
+      group: "Sinal",
       keywords: issue.resolvedAt ? "unresolve reopen" : "resolve archive done fixed",
       perform: () => openConfirmation(issue.resolvedAt ? "unresolve" : "resolve"),
     })
 
     commands.push({
       id: `issue:${signalId}:${issue.ignoredAt ? "unignore" : "ignore"}`,
-      title: issue.ignoredAt ? "Unignore signal" : "Ignore signal",
+      title: issue.ignoredAt ? "Voltar a acompanhar sinal" : "Ignorar sinal",
       icon: issue.ignoredAt ? EyeIcon : EyeOffIcon,
       section: "context",
-      group: "Signal",
+      group: "Sinal",
       keywords: issue.ignoredAt ? "unignore restore" : "ignore archive dismiss noise",
       perform: () => openConfirmation(issue.ignoredAt ? "unignore" : "ignore"),
     })
 
     commands.push({
       id: `issue:${signalId}:${issue.mutedAt ? "unmute" : "mute"}`,
-      title: issue.mutedAt ? "Unmute signal" : "Mute signal",
+      title: issue.mutedAt ? "Reativar notificações" : "Silenciar sinal",
       icon: issue.mutedAt ? BellIcon : BellOffIcon,
       section: "context",
-      group: "Signal",
+      group: "Sinal",
       keywords: issue.mutedAt ? "unmute resume notifications" : "mute pause notifications",
       perform: () => openConfirmation(issue.mutedAt ? "unmute" : "mute"),
     })
@@ -163,14 +163,14 @@ export function SignalLifecycleActions({
     if (projectSlug) {
       commands.push({
         id: `issue:${signalId}:copy-link`,
-        title: "Copy signal link",
+        title: "Copiar link do sinal",
         icon: LinkIcon,
         section: "context",
-        group: "Signal",
+        group: "Sinal",
         keywords: "copy link url share",
         perform: () => {
           void navigator.clipboard.writeText(`${window.location.origin}/projects/${projectSlug}/signals/${signalId}`)
-          toast({ description: "Signal link copied to clipboard." })
+          toast({ description: "Link do sinal copiado." })
         },
       })
     }
@@ -202,7 +202,7 @@ export function SignalLifecycleActions({
         onClick={() => openConfirmation(primaryAction)}
       >
         <Icon icon={issue?.resolvedAt ? UndoIcon : CheckIcon} size="sm" />
-        {issue?.resolvedAt ? "Unresolve" : "Resolve"}
+        {issue?.resolvedAt ? "Reabrir" : "Resolver"}
       </Button>
 
       <Button
@@ -213,7 +213,7 @@ export function SignalLifecycleActions({
         onClick={() => openConfirmation(secondaryAction)}
       >
         <Icon icon={issue?.ignoredAt ? EyeIcon : EyeOffIcon} size="sm" />
-        {issue?.ignoredAt ? "Unignore" : "Ignore"}
+        {issue?.ignoredAt ? "Acompanhar" : "Ignorar"}
       </Button>
 
       <Tooltip
@@ -230,7 +230,7 @@ export function SignalLifecycleActions({
           </Button>
         }
       >
-        {issue?.mutedAt ? "Unmute incident notifications" : "Mute incident notifications"}
+        {issue?.mutedAt ? "Reativar notificações de incidentes" : "Silenciar notificações de incidentes"}
       </Tooltip>
 
       {lifecycleConfirmAction !== null && lifecycleConfirmation !== null ? (
@@ -263,17 +263,17 @@ export function SignalLifecycleActions({
             <div className="flex items-start gap-3">
               <Switch checked={keepMonitoring} onCheckedChange={setKeepMonitoring} disabled={isLifecycleLoading} />
               <div className="flex flex-col gap-1">
-                <Text.H6>Keep evaluating this signal</Text.H6>
+                <Text.H6>Continuar avaliando este sinal</Text.H6>
                 <Text.H6 color="foregroundMuted">
                   {keepMonitoring
-                    ? "Its evaluations keep running so a regression reopens the signal."
-                    : "Its evaluations will be archived; regressions won't be detected."}
+                    ? "As avaliações continuam ativas para que uma regressão reabra o sinal."
+                    : "As avaliações serão arquivadas; regressões não serão detectadas."}
                 </Text.H6>
               </div>
             </div>
           ) : lifecycleConfirmAction === "ignore" && issue?.origin === "user" ? (
             <Text.H6 color="foregroundMuted">
-              This signal's evaluation will be archived. Unignoring won't bring it back; re-create it from Edit.
+              A avaliação deste sinal será arquivada. Voltar a acompanhá-lo não restaurará a avaliação; recrie-a pela edição.
             </Text.H6>
           ) : null}
         </Modal>

@@ -8,16 +8,17 @@ import { buildIncidentMarkers } from "../../../../../../domains/alerts/incident-
 import { useIncidentBucketHoverPopover } from "../../../../../../domains/alerts/use-incident-bucket-hover-popover.ts"
 import { useShowIncidentsOverlay } from "../../../../../../domains/alerts/use-show-incidents-overlay.ts"
 import type { SignalsListResultRecord } from "../../../../../../domains/signals/signals.functions.ts"
+import { ptBR } from "../../../../../../lib/i18n/pt-BR.ts"
 import { ChartHeader } from "../../-components/chart-header.tsx"
 import { formatHistogramBucketLabel, formatHistogramBucketTooltipLabel } from "./signal-formatters.ts"
 
 const COUNT_CARDS = [
-  { key: "ongoingSignals", label: "Ongoing" },
-  { key: "newSignals", label: "New" },
-  { key: "escalatingSignals", label: "Escalating" },
-  { key: "resolvedSignals", label: "Resolved" },
-  { key: "ignoredSignals", label: "Ignored" },
-  { key: "seenOccurrences", label: "Occurrences" },
+  { key: "ongoingSignals", label: ptBR.clientPages.signals.ongoing },
+  { key: "newSignals", label: ptBR.clientPages.signals.new },
+  { key: "escalatingSignals", label: ptBR.clientPages.signals.escalating },
+  { key: "resolvedSignals", label: ptBR.clientPages.signals.resolved },
+  { key: "ignoredSignals", label: ptBR.clientPages.signals.ignored },
+  { key: "seenOccurrences", label: ptBR.clientPages.signals.occurrences },
 ] as const
 
 function AggregationItem({
@@ -123,7 +124,7 @@ export function SignalsAnalyticsPanel({
   // the tooltip floats near the cursor at the top of the chart, the popover anchors at the
   // bottom of the bar.
   const formatHistogramTooltip = useCallback(
-    (category: string, value: number) => `${category}<br/><b>${formatCount(value)}</b> occurrences`,
+    (category: string, value: number) => `${category}<br/><b>${formatCount(value)}</b> ocorrências`,
     [],
   )
 
@@ -165,9 +166,9 @@ export function SignalsAnalyticsPanel({
         <div className="flex items-center justify-between px-4 py-2">
           <div className="flex items-center gap-1.5">
             <Icon icon={BarChart2} size="sm" color="foregroundMuted" />
-            <Text.H6 color="foregroundMuted">Signals statistics</Text.H6>
+            <Text.H6 color="foregroundMuted">{ptBR.clientPages.signals.statistics}</Text.H6>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setCollapsed(false)} aria-label="Expand statistics">
+          <Button variant="ghost" size="icon" onClick={() => setCollapsed(false)} aria-label="Expandir estatísticas">
             <Icon icon={ChevronDown} size="sm" />
           </Button>
         </div>
@@ -203,7 +204,7 @@ export function SignalsAnalyticsPanel({
             variant="ghost"
             size="icon"
             onClick={() => setCollapsed(true)}
-            aria-label="Collapse statistics"
+            aria-label="Recolher estatísticas"
             className="shrink-0"
           >
             <Icon icon={ChevronUp} size="sm" />
@@ -216,12 +217,12 @@ export function SignalsAnalyticsPanel({
           </div>
         ) : analytics.histogram.length === 0 || analytics.histogram.every((bucket) => bucket.count === 0) ? (
           <div className="flex w-full min-h-[80px] items-center justify-center px-4 py-3">
-            <Text.H6 color="foregroundMuted">No signal occurrences in this time window</Text.H6>
+            <Text.H6 color="foregroundMuted">{ptBR.clientPages.signals.noOccurrences}</Text.H6>
           </div>
         ) : (
           <>
             <ChartHeader
-              title="Occurrences over time"
+              title={ptBR.clientPages.signals.occurrencesOverTime}
               fromIso={incidentRange?.fromIso ?? ""}
               toIso={incidentRange?.toIso ?? ""}
               isAllTime={isAllTime}
@@ -238,11 +239,11 @@ export function SignalsAnalyticsPanel({
                             aria-pressed={showIncidents}
                           >
                             <Icon icon={showIncidents ? ShieldAlertIcon : ShieldOffIcon} size="sm" />
-                            Incidents
+                            {ptBR.clientPages.signals.incidents}
                           </Button>
                         }
                       >
-                        Overlay incidents on the timeline
+                        Sobrepor incidentes na linha do tempo
                       </Tooltip>
                     ),
                   }
@@ -254,7 +255,7 @@ export function SignalsAnalyticsPanel({
                 height={160}
                 showYAxis={false}
                 xAxisLabelFontSize={10}
-                ariaLabel="Signal occurrences over time"
+                ariaLabel={ptBR.clientPages.signals.occurrencesOverTime}
                 formatTooltip={formatHistogramTooltip}
                 onSelect={onRangeSelect ? handleSelect : undefined}
                 {...(overlay ? { overlay } : {})}

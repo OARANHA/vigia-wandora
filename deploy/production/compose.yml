@@ -8,7 +8,7 @@ x-app-environment: &app-environment
   LAT_CLICKHOUSE_DB: vigia
   LAT_CLICKHOUSE_MIGRATION_URL: clickhouse://clickhouse:9000
   LAT_CLICKHOUSE_CLUSTER_ENABLED: "false"
-  LAT_DATABASE_URL: postgres://vigia_app:${POSTGRES_RUNTIME_PASSWORD:?POSTGRES_RUNTIME_PASSWORD is required}@postgres:5432/vigia
+  LAT_DATABASE_URL: postgres://latitude_app:${POSTGRES_RUNTIME_PASSWORD:?POSTGRES_RUNTIME_PASSWORD is required}@postgres:5432/vigia
   LAT_ADMIN_DATABASE_URL: postgres://vigia:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@postgres:5432/vigia
   LAT_REDIS_HOST: redis
   LAT_REDIS_PORT: "6379"
@@ -152,7 +152,7 @@ services:
       POSTGRES_USER: vigia
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       POSTGRES_DB: vigia
-      POSTGRES_RUNTIME_USER: vigia_app
+      POSTGRES_RUNTIME_USER: latitude_app
       POSTGRES_RUNTIME_PASSWORD: ${POSTGRES_RUNTIME_PASSWORD:?POSTGRES_RUNTIME_PASSWORD is required}
     command: postgres -c wal_level=logical
     volumes:

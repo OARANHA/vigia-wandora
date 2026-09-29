@@ -227,8 +227,16 @@ Depois, verificar na aplicação real se **Custos** e **Pontuação do agente** 
 - [x] `projects.first_trace_at` preenchido no projeto do smoke test;
 - [x] nenhuma credencial exposta no chat ou no repositório.
 
+## Checkpoint 2026-09-29 — onboarding público Vigia implantado
+
+- [x] PR #44 integrado ao `main`;
+- [x] workflow `Vigia container images` #74 publicado com sucesso;
+- [x] stack `vigia` redeployada no commit `417b322c23f06d6c6d17e4839ec437e679c97219`;
+- [x] serviços principais saudáveis e migrations com exit 0;
+- [x] HTTPS público validado com HTTP 200 e TLS válido;
+- [x] onboarding público consolidado no endpoint `https://vigia.wandora.com.br/v1/traces` e header `X-Vigia-Project`;
+- [x] smoke OTLP pós-deploy validado com ingest HTTP 200 e trace encontrado pela API do produto.
+
 ### Próximo slice
 
-Antes de Business Events, corrigir o onboarding de telemetria ainda visível ao cliente que aponta para `ingest.latitude.so`, `X-Latitude-Project` ou nomenclatura Latitude.
-
-Objetivo: toda instrução pública deve usar o contrato Vigia, preservando aliases e nomes técnicos do Latitude apenas internamente. Depois disso, avançar para **“o que significa sucesso para este agente?”** e Business Events.
+Investigar primeiro as capabilities existentes no Latitude/Vigia para events, signals, scores e correlação com traces. Depois, definir e implementar o menor contrato de **Business Events** capaz de responder **“o que significa sucesso para este agente?”** e provar `trace -> resultado de negócio` ponta a ponta.

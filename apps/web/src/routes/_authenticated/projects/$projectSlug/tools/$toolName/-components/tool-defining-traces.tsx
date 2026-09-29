@@ -31,7 +31,7 @@ export function ToolDefiningTraces({
   const columns: InfiniteTableColumn<RecentDefiningSpanRecord>[] = [
     {
       key: "time",
-      header: "Time",
+      header: "Horário",
       width: 110,
       minWidth: 100,
       render: (span) => (
@@ -51,7 +51,7 @@ export function ToolDefiningTraces({
     },
     {
       key: "service",
-      header: "Service",
+      header: "Serviço",
       width: 160,
       minWidth: 120,
       render: (span) => (
@@ -62,7 +62,7 @@ export function ToolDefiningTraces({
     },
     {
       key: "model",
-      header: "Model",
+      header: "Modelo",
       width: 180,
       minWidth: 120,
       render: (span) => (
@@ -80,7 +80,7 @@ export function ToolDefiningTraces({
         // Contain clicks/keys so copying the id doesn't open the sheet.
         // biome-ignore lint/a11y/noStaticElementInteractions: click containment only
         <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-          <CopyableText value={span.traceId} size="sm" ellipsis tooltip="Copy trace id" />
+          <CopyableText value={span.traceId} size="sm" ellipsis tooltip="Copiar ID do trace" />
         </div>
       ),
     },
@@ -89,7 +89,7 @@ export function ToolDefiningTraces({
   return (
     <div className="flex min-w-0 flex-col gap-3">
       <div className="flex items-center justify-between">
-        <Text.H5M color="foreground">Recent traces offering it</Text.H5M>
+        <Text.H5M color="foreground">Traces recentes que ofereceram a ferramenta</Text.H5M>
       </div>
       <InfiniteTable
         data={spans}
@@ -97,13 +97,13 @@ export function ToolDefiningTraces({
         columns={columns}
         getRowKey={(span) => span.spanId}
         onRowClick={(span) => openTrace({ traceId: span.traceId, spanId: span.spanId })}
-        getRowAriaLabel={(span) => `Open trace ${span.traceId}`}
+        getRowAriaLabel={(span) => `Abrir trace ${span.traceId}`}
         infiniteScroll={infiniteScroll}
         scrollAreaLayout="intrinsic"
         className="max-h-[420px]"
-        blankSlate="No chat spans offered this tool in this time window"
+        blankSlate="Nenhum span de chat ofereceu esta ferramenta neste período"
       />
-      <Sheet open={openSpan !== null} onClose={closeTrace} closeAriaLabel="Close trace panel">
+      <Sheet open={openSpan !== null} onClose={closeTrace} closeAriaLabel="Fechar painel do trace">
         {openSpan ? (
           <TraceDetailDrawer
             key={`${openSpan.traceId}-${openSpan.spanId}`}
@@ -116,7 +116,7 @@ export function ToolDefiningTraces({
             initialTab="spans"
             initialSpanId={openSpan.spanId}
             drawerStoreKey="tool-trace-detail-drawer-width"
-            closeLabel="Back to tool"
+            closeLabel="Voltar para ferramenta"
           />
         ) : null}
       </Sheet>

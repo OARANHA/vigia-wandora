@@ -9,38 +9,38 @@ interface RedactionEntityMeta {
 
 export const REDACTION_ENTITY_META: Record<RedactionEntity, RedactionEntityMeta> = {
   email: {
-    label: "Email addresses",
-    description: "Addresses with a domain and a two-or-more character suffix, such as ada@example.com.",
+    label: "Endereços de email",
+    description: "Endereços com domínio e sufixo de pelo menos dois caracteres, como ada@example.com.",
   },
   phone: {
-    label: "Phone numbers",
+    label: "Números de telefone",
     description:
-      "International numbers with or without separators, such as +44 20 7183 8750, and separated North American forms such as (555) 123-4567.",
-    caution: "Three numbers in a row, such as the latencies 250 300 1000, may be falsely redacted as phone numbers.",
+      "Números internacionais com ou sem separadores, como +44 20 7183 8750, e formatos norte-americanos com separadores, como (555) 123-4567.",
+    caution: "Três números em sequência, como as latências 250 300 1000, podem ser removidos indevidamente como telefones.",
   },
   credit_card: {
-    label: "Credit card numbers",
-    description: "13 to 19 digit numbers that pass a checksum and start with a known issuer prefix.",
+    label: "Números de cartão de crédito",
+    description: "Números de 13 a 19 dígitos que passam na validação de checksum e começam com um prefixo conhecido de emissor.",
     caution:
-      "About one in ten 16-digit numeric ids beginning with 4, and one in twenty beginning with 5, pass the checksum and may be falsely redacted.",
+      "Aproximadamente um em cada dez IDs numéricos de 16 dígitos iniciados por 4, e um em cada vinte iniciados por 5, passam no checksum e podem ser removidos indevidamente.",
   },
   iban: {
     label: "IBANs",
-    description: "International bank account numbers that pass the mod-97 checksum.",
+    description: "Números internacionais de conta bancária que passam no checksum mod-97.",
   },
   us_ssn: {
-    label: "US Social Security numbers",
-    description: "Separated NNN-NN-NNNN numbers in a valid range, and ITINs. Bare nine-digit runs are never matched.",
+    label: "Números de Social Security dos EUA (SSN)",
+    description: "Números NNN-NN-NNNN com separadores e faixa válida, além de ITINs. Sequências simples de nove dígitos nunca são detectadas.",
   },
   ip_address: {
-    label: "IP addresses",
-    description: "IPv4 and IPv6 addresses.",
-    caution: "Version numbers such as 1.2.3.4 may be falsely redacted as IP addresses.",
+    label: "Endereços IP",
+    description: "Endereços IPv4 e IPv6.",
+    caution: "Números de versão como 1.2.3.4 podem ser removidos indevidamente como endereços IP.",
   },
   secret: {
-    label: "API keys and secrets",
+    label: "Chaves de API e segredos",
     description:
-      "Recognizable key formats from common providers, private key blocks, connection-string passwords, and values assigned to a credential-shaped key such as DATABASE_PASSWORD.",
+      "Formatos reconhecíveis de chaves de provedores comuns, blocos de chave privada, senhas em connection strings e valores associados a chaves de credencial como DATABASE_PASSWORD.",
   },
 }
 

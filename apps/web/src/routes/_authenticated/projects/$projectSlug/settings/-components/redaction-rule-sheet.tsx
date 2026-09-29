@@ -87,19 +87,19 @@ export function RedactionRuleSheet({
   const canSave = ready && labelError === undefined && verdict.status === "checked" && verdict.validation.ok
 
   return (
-    <Sheet open={open} onClose={onClose} closeAriaLabel="Close rule editor">
+    <Sheet open={open} onClose={onClose} closeAriaLabel="Fechar editor de regra">
       {/* `Sheet` paints only the backdrop, so the panel's own background, border and width belong here. */}
       <div className="flex h-full w-[34rem] max-w-[100vw] flex-col gap-6 overflow-y-auto border-border border-l bg-background p-6">
         <div className="flex flex-col gap-1">
-          <Text.H4M>{rule ? "Edit rule" : "Add a rule"}</Text.H4M>
+          <Text.H4M>{rule ? "Editar regra" : "Adicionar regra"}</Text.H4M>
           <Text.H6 color="foregroundMuted">
-            Rules apply only to spans ingested after you save, and what they remove cannot be recovered.
+            As regras se aplicam apenas aos spans ingeridos depois de salvar, e o conteúdo removido não pode ser recuperado.
           </Text.H6>
         </div>
 
         <Select
           name="rule-kind"
-          label="Kind"
+          label="Tipo"
           options={KIND_OPTIONS}
           value={draft.kind}
           onChange={(next) => changeKind(next as RedactionRuleKind)}
@@ -107,7 +107,7 @@ export function RedactionRuleSheet({
         <Text.H6 color="foregroundMuted">{REDACTION_RULE_KIND_META[draft.kind].description}</Text.H6>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="rule-label">Label</Label>
+          <Label htmlFor="rule-label">Rótulo</Label>
           <Input
             id="rule-label"
             value={draft.label}
@@ -115,23 +115,29 @@ export function RedactionRuleSheet({
             onChange={(event) => setDraft({ ...draft, label: toRuleLabel(event.target.value) })}
           />
           <Text.H6 color={labelError ? "destructive" : "foregroundMuted"}>
-            {labelError ?? `Matches appear in stored content as [REDACTED_${draft.label || "LABEL"}].`}
+            {labelError ?? `As correspondências aparecem no conteúdo armazenado como [REDACTED_${draft.label || "LABEL"}].`}
           </Text.H6>
         </div>
 
         {draft.kind === "attribute_key" ? (
           <KeywordListEditor
-            label="Attribute keys"
+            label="Chaves de atributo"
             value={draft.keys}
             onChange={(keys) => setDraft({ ...draft, keys })}
+            placeholder="Adicionar valor…"
           />
         ) : null}
 
         {draft.kind === "terms" ? (
           <>
-            <KeywordListEditor label="Terms" value={draft.terms} onChange={(terms) => setDraft({ ...draft, terms })} />
+            <KeywordListEditor
+              label="Termos"
+              value={draft.terms}
+              onChange={(terms) => setDraft({ ...draft, terms })}
+              placeholder="Adicionar valor…"
+            />
             <div className="flex flex-row items-center justify-between gap-4">
-              <Label htmlFor="rule-whole-word">Match whole words only</Label>
+              <Label htmlFor="rule-whole-word">Corresponder apenas palavras inteiras</Label>
               <Switch
                 id="rule-whole-word"
                 checked={draft.wholeWord !== false}
@@ -139,7 +145,7 @@ export function RedactionRuleSheet({
               />
             </div>
             <div className="flex flex-row items-center justify-between gap-4">
-              <Label htmlFor="rule-case">Match case exactly</Label>
+              <Label htmlFor="rule-case">Diferenciar maiúsculas de minúsculas</Label>
               <Switch
                 id="rule-case"
                 checked={draft.caseSensitive === true}
@@ -152,7 +158,7 @@ export function RedactionRuleSheet({
         {draft.kind === "pattern" ? (
           <>
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="rule-pattern">Pattern</Label>
+              <Label htmlFor="rule-pattern">Regex</Label>
               <Input
                 id="rule-pattern"
                 value={draft.pattern}
@@ -161,7 +167,7 @@ export function RedactionRuleSheet({
               />
             </div>
             <div className="flex flex-row items-center justify-between gap-4">
-              <Label htmlFor="rule-ignore-case">Ignore case</Label>
+              <Label htmlFor="rule-ignore-case">Ignorar diferença entre maiúsculas e minúsculas</Label>
               <Switch
                 id="rule-ignore-case"
                 checked={draft.ignoreCase === true}
@@ -175,7 +181,7 @@ export function RedactionRuleSheet({
 
         <div className="mt-auto flex flex-row justify-end gap-2 border-border border-t pt-4">
           <Button variant="outline" onClick={onClose}>
-            Cancel
+            Cancelar
           </Button>
           <Button
             disabled={!canSave}
@@ -187,7 +193,7 @@ export function RedactionRuleSheet({
               )
             }
           >
-            Save rule
+            Salvar regra
           </Button>
         </div>
       </div>
@@ -195,16 +201,41 @@ export function RedactionRuleSheet({
   )
 }
 
+const ruleValidationIssueMessage = (issue: RuleValidation["errors"][number]): string => {
+  switch (issue.code) {
+    case "glob_too_broad":
+      return "usa um glob amplo demais e pode remover quase todos os atributos do span."
+    case "uncompilable":
+      return "não contém uma regex válida."
+    case "matches_empty":
+      return "corresponde ao texto vazio e inseriria um marcador entre todos os caracteres."
+    case "bound_too_large":
+      return "repete um trecho vezes demais; use um limite de até 1000 repetições."
+    case "adjacent_quantifier":
+      return "repete partes sobrepostas sem um trecho obrigatório entre elas, o que pode causar backtracking por segundos em entradas longas."
+    case "backreference":
+      return "usa backreference, que não é suportada."
+    case "nested_quantifier":
+      return "aninha repetições sem limite, o que pode causar backtracking exponencial."
+    case "ambiguous_alternation":
+      return "repete alternativas que podem começar com o mesmo caractere, o que pode causar backtracking exponencial."
+    case "catastrophic_backtracking":
+      return "apresenta backtracking catastrófico no teste de segurança."
+    default:
+      return `não passou na validação (${issue.code}).`
+  }
+}
+
 // Says whether the rule is safe to run; over-breadth is the preview's question, not this one's.
 function RuleVerdict({ ready, verdict }: { readonly ready: boolean; readonly verdict: Verdict }) {
   if (!ready) {
-    return <Text.H6 color="foregroundMuted">Fill in a label and at least one value to check this rule.</Text.H6>
+    return <Text.H6 color="foregroundMuted">Preencha o rótulo e pelo menos um valor para validar esta regra.</Text.H6>
   }
-  if (verdict.status === "checking") return <Text.H6 color="foregroundMuted">Checking the rule…</Text.H6>
+  if (verdict.status === "checking") return <Text.H6 color="foregroundMuted">Validando a regra…</Text.H6>
   if (verdict.status === "unavailable") {
     return (
       <Text.H6 color="destructive">
-        Could not check this rule. Saving stays disabled until the check succeeds, so edit the rule to try again.
+        Não foi possível validar esta regra. O salvamento fica desativado até a validação funcionar; edite a regra para tentar novamente.
       </Text.H6>
     )
   }
@@ -215,13 +246,13 @@ function RuleVerdict({ ready, verdict }: { readonly ready: boolean; readonly ver
     <div className="flex flex-col gap-2 rounded-md border border-border p-4">
       {validation.errors.map((issue) => (
         <Text.H6 key={issue.code} color="destructive">
-          This rule {issue.message}.
+          Esta regra {ruleValidationIssueMessage(issue)}
         </Text.H6>
       ))}
       {validation.ok ? (
         <Text.H6 color="foregroundMuted">
-          This rule is valid. Save it, then use <span className="font-medium">Check against recent spans</span> to see
-          what it would remove from this project's data.
+          Esta regra é válida. Salve-a e depois use <span className="font-medium">Testar em spans recentes</span> para ver
+          o que ela removeria dos dados deste projeto.
         </Text.H6>
       ) : null}
     </div>

@@ -6,6 +6,27 @@ import { useState } from "react"
 import { previewRedaction } from "../../../../../../domains/projects/projects.functions.ts"
 import { toUserMessage } from "../../../../../../lib/errors.ts"
 
+const PREVIEW_LOCATION_LABELS: Readonly<Record<string, string>> = {
+  Attributes: "Atributos",
+  "Resource attributes": "Atributos do recurso",
+  Metadata: "Metadata",
+  "User id": "ID do usuário",
+  "User email": "Email do usuário",
+  "Status message": "Mensagem de status",
+  "Tool input": "Entrada da ferramenta",
+  "Tool output": "Saída da ferramenta",
+  "Span events": "Eventos do span",
+  "Input messages": "Mensagens de entrada",
+  "Output messages": "Mensagens de saída",
+  "System instructions": "Instruções do sistema",
+  "Tool definitions": "Definições de ferramentas",
+  Tags: "Tags",
+}
+
+const formatPreviewLocation = (location: string): string => PREVIEW_LOCATION_LABELS[location] ?? location
+const formatPreviewLabel = (label: string): string =>
+  label === "User identifiers" ? "Identificadores de usuário" : label
+
 /**
  * Runs the policy currently on screen against spans already stored, and shows what it would remove.
  *
@@ -42,13 +63,13 @@ export function RedactionPreview({
     <div className="flex w-full flex-col gap-4 rounded-lg bg-muted/30 p-5">
       <div className="flex flex-row items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <Text.H5M>Check against recent spans</Text.H5M>
+          <Text.H5M>Testar em spans recentes</Text.H5M>
           <Text.H6 color="foregroundMuted">
-            Runs this policy over spans already stored to show what it would remove. Nothing is changed.
+            Executa esta política sobre spans já armazenados para mostrar o que seria removido. Nenhum dado é alterado.
           </Text.H6>
         </div>
         <Button variant="outline" disabled={disabled || isRunning} onClick={() => void run()} isLoading={isRunning}>
-          {result ? "Run again" : "Run check"}
+          {result ? "Executar novamente" : "Executar teste"}
         </Button>
       </div>
 
@@ -60,27 +81,27 @@ export function RedactionPreview({
 function PreviewResult({ result }: { readonly result: RedactionPreviewResult }) {
   if (result.spansSampled === 0) {
     return (
-      <Text.H6 color="foregroundMuted">This project has no spans stored yet, so there is nothing to check.</Text.H6>
+      <Text.H6 color="foregroundMuted">Este projeto ainda não tem spans armazenados, então não há o que testar.</Text.H6>
     )
   }
 
   return (
     <div className="flex flex-col gap-5 border-border border-t pt-4">
       <Text.H6 color="foregroundMuted">
-        {result.spansAffected} of the {result.spansSampled} most recent spans would change.
+        {result.spansAffected} de {result.spansSampled} spans recentes seriam alterados.
       </Text.H6>
 
       {result.labels.length > 0 ? (
         <div className="flex flex-col gap-2">
-          <Text.H6M>What would be removed</Text.H6M>
+          <Text.H6M>O que seria removido</Text.H6M>
           {result.labels.map((entry) => (
             <div key={entry.label} className="flex flex-row items-baseline gap-2">
               <Text.H6 color={entry.matches === 0 ? "foregroundMuted" : "foreground"}>
-                <span className="font-mono">{entry.label}</span>
+                <span className="font-mono">{formatPreviewLabel(entry.label)}</span>
               </Text.H6>
               <div className="min-w-0 flex-1 border-border border-b border-dashed" />
               {entry.matches === 0 ? (
-                <Text.H6 color="warningMutedForeground">nothing matched</Text.H6>
+                <Text.H6 color="warningMutedForeground">nenhuma correspondência</Text.H6>
               ) : (
                 <Text.H6>{entry.matches}</Text.H6>
               )}
@@ -91,7 +112,7 @@ function PreviewResult({ result }: { readonly result: RedactionPreviewResult }) 
 
       {result.changes.length > 0 ? (
         <div className="flex flex-col gap-3">
-          <Text.H6M>Changes</Text.H6M>
+          <Text.H6M>Alterações</Text.H6M>
           {result.changes.map((change) => (
             <ChangeRow key={`${change.location}:${change.key ?? ""}:${change.before}`} change={change} />
           ))}
@@ -112,7 +133,7 @@ function ChangeRow({ change }: { readonly change: RedactionPreviewChange }) {
     <div className="flex flex-col gap-1 rounded-md border border-border p-3">
       <div className="flex flex-row items-baseline justify-between gap-3">
         <Text.H6 color="foregroundMuted" ellipsis noWrap>
-          {change.location}
+          {formatPreviewLocation(change.location)}
           {change.key ? <span className="font-mono"> · {change.key}</span> : null}
         </Text.H6>
         <Text.H6 color="foregroundMuted" noWrap>

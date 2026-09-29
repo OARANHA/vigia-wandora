@@ -46,8 +46,8 @@ export function RedactionRulesSection({
     <div className="flex flex-col gap-4">
       <div className="flex flex-row items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <Text.H6M>Custom rules</Text.H6M>
-          <Text.H6 color="foregroundMuted">Identifier formats specific to you, on top of the categories above.</Text.H6>
+          <Text.H6M>Regras personalizadas</Text.H6M>
+          <Text.H6 color="foregroundMuted">Formatos de identificador específicos da sua operação, além das categorias acima.</Text.H6>
         </div>
         {disabled ? null : (
           <Button
@@ -58,13 +58,13 @@ export function RedactionRulesSection({
             }}
           >
             <Icon icon={Plus} size="sm" />
-            Add rule
+            Adicionar regra
           </Button>
         )}
       </div>
 
       {rules.length === 0 ? (
-        <Text.H6 color="foregroundMuted">No custom rules yet.</Text.H6>
+        <Text.H6 color="foregroundMuted">Nenhuma regra personalizada ainda.</Text.H6>
       ) : (
         rules.map((rule) => {
           const id = `${idPrefix}-rule-${rule.id}`
@@ -85,7 +85,7 @@ export function RedactionRulesSection({
                 </Text.H6>
                 {duplicateLabels.has(rule.label) ? (
                   <Text.H6 color="warningMutedForeground">
-                    Another rule uses this label, so their match counts are reported together.
+                    Outra regra usa este rótulo; por isso, as contagens de correspondências são somadas.
                   </Text.H6>
                 ) : null}
               </div>
@@ -95,7 +95,7 @@ export function RedactionRulesSection({
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label={`Edit ${rule.label}`}
+                    aria-label={`Editar ${rule.label}`}
                     onClick={() => {
                       setEditing(rule)
                       setIsSheetOpen(true)
@@ -107,7 +107,7 @@ export function RedactionRulesSection({
                   <Button
                     variant="ghost"
                     size="icon"
-                    aria-label={`Remove ${rule.label}`}
+                    aria-label={`Remover ${rule.label}`}
                     onClick={() => write(rules.filter((entry) => entry.id !== rule.id))}
                   >
                     <Icon icon={X} size="sm" />

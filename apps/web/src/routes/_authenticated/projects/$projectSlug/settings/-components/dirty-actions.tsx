@@ -18,13 +18,13 @@ export function DirtyActions({
   return (
     <div className="flex flex-row items-center gap-3">
       <Text.H5 color="foregroundMuted">
-        {dirtyCount} unsaved change{dirtyCount === 1 ? "" : "s"}
+        {dirtyCount} {dirtyCount === 1 ? "alteração não salva" : "alterações não salvas"}
       </Text.H5>
       <Button variant="outline" onClick={onDiscard} disabled={isApplying}>
-        Discard
+        Descartar
       </Button>
       <Button onClick={onApply} isLoading={isApplying} disabled={!canApply || isApplying}>
-        Apply
+        Aplicar
       </Button>
     </div>
   )

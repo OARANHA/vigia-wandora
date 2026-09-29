@@ -15,19 +15,19 @@ interface RedactionRuleKindMeta {
 
 export const REDACTION_RULE_KIND_META: Record<RedactionRuleKind, RedactionRuleKindMeta> = {
   attribute_key: {
-    label: "Attribute key",
+    label: "Chave de atributo",
     description:
-      "Removes a span attribute by name, wherever it appears. Nothing is scanned, so this cannot redact the wrong value.",
+      "Remove um atributo do span pelo nome, onde quer que apareça. Como nenhum valor é analisado, esta regra não remove o conteúdo errado.",
   },
   terms: {
-    label: "Exact terms",
+    label: "Termos exatos",
     description:
-      "Removes a list of exact strings, such as known account numbers or internal names. Matches only what you list.",
+      "Remove uma lista de textos exatos, como números de conta conhecidos ou nomes internos. Só corresponde ao que você informar.",
   },
   pattern: {
-    label: "Pattern",
+    label: "Regex",
     description:
-      "Removes anything matching a regular expression. The most powerful option and the only one that can match values you did not intend.",
+      "Remove qualquer valor que corresponda a uma expressão regular. É a opção mais poderosa e a única que pode atingir valores que você não pretendia.",
   },
 }
 
@@ -78,7 +78,7 @@ export const decodeRules = (encoded: string): RedactionRule[] => {
   return parsed.data
 }
 
-const DECODE_FAILURE_MESSAGE = "Could not read the redaction rules on this page. Reload and try again."
+const DECODE_FAILURE_MESSAGE = "Não foi possível ler as regras de privacidade desta página. Recarregue e tente novamente."
 
 // Unparseable and well-formed-but-wrong are the same failure to the user, so they read the same message.
 const parseJson = (encoded: string): unknown => {
@@ -108,9 +108,9 @@ export const toRuleLabel = (name: string): string =>
 
 export const labelIssue = (label: string): string | undefined => {
   if (label === "") return undefined
-  if (RESERVED_REDACTION_LABELS.has(label)) return `${label} is already used by a built-in category.`
+  if (RESERVED_REDACTION_LABELS.has(label)) return `${label} já é usado por uma categoria padrão.`
   if (!REDACTION_RULE_LABEL_PATTERN.test(label)) {
-    return "Use 3 to 32 characters: capitals, digits and underscores, starting with a letter."
+    return "Use de 3 a 32 caracteres: letras maiúsculas, números e sublinhados, começando por uma letra."
   }
 
   return undefined
@@ -129,7 +129,7 @@ export const describeRule = (rule: RedactionRule): string => {
   if (rule.kind === "attribute_key") return rule.keys.join(", ")
   if (rule.kind === "terms") {
     const shown = rule.terms.slice(0, 3).join(", ")
-    return rule.terms.length > 3 ? `${shown} and ${rule.terms.length - 3} more` : shown
+    return rule.terms.length > 3 ? `${shown} e mais ${rule.terms.length - 3}` : shown
   }
 
   return rule.pattern

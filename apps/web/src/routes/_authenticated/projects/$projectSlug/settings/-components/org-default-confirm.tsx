@@ -28,7 +28,7 @@ export function useInlineOrgDefaultConfirm(otherAffected: number) {
       setAwaitingConfirm(true)
       return false
     },
-    submitLabel: awaitingConfirm ? "Save anyway" : "Save default",
+    submitLabel: awaitingConfirm ? "Salvar mesmo assim" : "Salvar padrão",
   }
 }
 
@@ -48,8 +48,8 @@ export function OrgDefaultBlastRadius({
       <Alert
         variant="warning"
         showIcon
-        title={`This changes ${otherAffected} other ${otherAffected === 1 ? "project" : "projects"}`}
-        description="Save again to confirm. Projects that override this setting keep their own values."
+        title={`Isso altera ${otherAffected} ${otherAffected === 1 ? "outro projeto" : "outros projetos"}`}
+        description="Salve novamente para confirmar. Projetos com configuração própria mantêm seus valores."
       />
     )
   }
@@ -58,11 +58,11 @@ export function OrgDefaultBlastRadius({
     <Alert
       variant="default"
       showIcon
-      title={otherAffected > 0 ? "This affects other projects" : "This affects only this project"}
+      title={otherAffected > 0 ? "Isso afeta outros projetos" : "Isso afeta apenas este projeto"}
       description={
         overrideCount > 0
-          ? `${projectCount - overrideCount} of ${projectCount} projects use this default. ${overrideCount} override it and won't change.`
-          : `All ${projectCount} projects use this default.`
+          ? `${projectCount - overrideCount} de ${projectCount} projetos usam este padrão. ${overrideCount} têm configuração própria e não serão alterados.`
+          : `Todos os ${projectCount} projetos usam este padrão.`
       }
     />
   )

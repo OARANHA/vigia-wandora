@@ -136,7 +136,7 @@ Configurações permanece **parcialmente concluída**.
 - [x] dispatch de agentes em PT-BR/Vigia, preservando contratos técnicos necessários;
 - [x] destinos de dados em PT-BR, incluindo PostHog, histórico, backfill/importação histórica e estados operacionais;
 - [x] remover links visíveis para `docs.latitude.so` nas superfícies de dispatch e destinos de dados cobertas;
-- [ ] privacidade/redaction avançada;
+- [x] privacidade/redaction avançada;
 - [ ] GitHub/Slack avançados;
 - [ ] defaults e flaggers;
 - [ ] SSO e billing, quando habilitados e após decisão comercial canônica quando necessária.
@@ -146,3 +146,24 @@ Depois:
 - [ ] verificar na aplicação real se Custos e Pontuação do agente estão habilitados;
 - [ ] traduzir/revisar Custos e Pontuação do agente quando habilitados;
 - [ ] `/backoffice` como **Administração Vigia** em slice separado.
+
+## Checkpoint 2026-09-29 — privacidade e redaction avançada
+
+Concluído no PR #38:
+
+- [x] política de privacidade de projeto e empresa em Vigia/PT-BR;
+- [x] escopo empresa/projeto, override, lock e blast radius preservados;
+- [x] categorias de PII e identificadores de usuário revisados;
+- [x] metadata/tags e regras customizadas em PT-BR;
+- [x] editor e validação de regras com contratos técnicos preservados;
+- [x] preview contra spans recentes localizado apenas na camada de apresentação;
+- [x] ausência de referências comerciais visíveis ao Latitude ou links `docs.latitude.so` nas superfícies cobertas.
+
+Próximos itens de Configurações:
+
+- [ ] GitHub/Slack avançados;
+- [ ] defaults e flaggers;
+- [ ] SSO e billing, quando habilitados e após decisão comercial canônica quando necessária.
+
+Depois, verificar na aplicação real se Custos e Pontuação do agente estão habilitados. O `/backoffice` continua separado como **Administração Vigia**.
+

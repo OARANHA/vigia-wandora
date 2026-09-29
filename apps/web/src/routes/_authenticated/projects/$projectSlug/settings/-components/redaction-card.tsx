@@ -45,10 +45,10 @@ export function RedactionCard({
     <div className="flex w-full flex-col gap-6">
       <div className="flex w-full flex-row items-start justify-between gap-4">
         <div className="flex flex-col gap-1">
-          <Label htmlFor={`${idPrefix}-enabled`}>Redact personal data</Label>
+          <Label htmlFor={`${idPrefix}-enabled`}>Remover dados pessoais</Label>
           {/* At the switch rather than in the page intro: this is the moment the choice is made. */}
           <Text.H6 color="foregroundMuted">
-            Applies to spans ingested from now on. Redacted content cannot be recovered.
+            Aplica-se apenas aos spans ingeridos daqui em diante. O conteúdo removido não pode ser recuperado.
           </Text.H6>
         </div>
         <Switch
@@ -63,11 +63,11 @@ export function RedactionCard({
         <>
           <div className="flex flex-col gap-5 border-border border-t pt-6">
             <div className="flex flex-col gap-1">
-              <Text.H6M>What to redact</Text.H6M>
+              <Text.H6M>O que remover</Text.H6M>
               {/* The expectation gap that matters: "redact personal data" reads as covering names. */}
               <Text.H6 color="foregroundMuted">
-                Matching is by shape, so it catches structured identifiers reliably and does not catch names, addresses,
-                or free-form personal detail.
+                A detecção usa padrões estruturais, por isso encontra identificadores formatados com boa precisão, mas não detecta nomes, endereços
+                nem detalhes pessoais em texto livre.
               </Text.H6>
             </div>
 
@@ -102,21 +102,21 @@ export function RedactionCard({
 
           <div className="flex flex-col gap-4 border-border border-t pt-6">
             <div className="flex flex-col gap-1">
-              <Text.H6M>Where to look</Text.H6M>
+              <Text.H6M>Onde analisar</Text.H6M>
               {/* Nothing else in the product states this, so a project cannot otherwise tell whether
                   its tool output is covered. */}
               <Text.H6 color="foregroundMuted">
-                Messages, tool calls and their results, reasoning, span attributes, and span events are always scanned.
+                Mensagens, chamadas e resultados de ferramentas, raciocínio, atributos do span e eventos do span são sempre analisados.
               </Text.H6>
             </div>
 
             <div className="flex flex-row items-start justify-between gap-4">
               <div className="flex flex-col gap-1">
-                <Label htmlFor={`${idPrefix}-metadata`}>Also scan metadata and tags</Label>
+                <Label htmlFor={`${idPrefix}-metadata`}>Também analisar metadata e tags</Label>
                 <Text.H6 color="foregroundMuted">
-                  The values you attach yourself, such as <span className="font-mono">plan</span> or{" "}
-                  <span className="font-mono">region</span>. Off by default because scanning them can remove values you
-                  filter and group by.
+                  Valores adicionados por você, como <span className="font-mono">plan</span> ou{" "}
+                  <span className="font-mono">region</span>. Fica desativado por padrão porque a análise pode remover valores usados em filtros
+                  e agrupamentos.
                 </Text.H6>
               </div>
               <Switch

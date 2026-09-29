@@ -21,18 +21,18 @@ interface IdentityOption {
 const OPTIONS: readonly IdentityOption[] = [
   {
     value: "keep",
-    label: "Keep",
+    label: "Manter",
     icon: UserRoundIcon,
     stored: SAMPLE_IDENTITY,
-    consequence: "Stored as sent. Searching and grouping by user work.",
+    consequence: "Armazenado como enviado. Busca e agrupamento por usuário continuam funcionando.",
   },
   {
     value: "pseudonymize",
-    label: "Replace with a pseudonym",
+    label: "Substituir por pseudônimo",
     // Lucide's disguise icon, and the closest it has to a hat-and-glasses.
     icon: VenetianMaskIcon,
     stored: SAMPLE_PSEUDONYM,
-    consequence: "Not stored. Grouping and per-user counts still work.",
+    consequence: "O valor original não é armazenado. Agrupamentos e contagens por usuário continuam funcionando.",
   },
 ]
 
@@ -58,9 +58,9 @@ export function RedactionIdentityChoice({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <Text.H6M>User identifiers</Text.H6M>
+      <Text.H6M>Identificadores de usuário</Text.H6M>
 
-      <div role="radiogroup" aria-label="User identifiers" className="flex flex-col gap-3 @[540px]:flex-row">
+      <div role="radiogroup" aria-label="Identificadores de usuário" className="flex flex-col gap-3 @[540px]:flex-row">
         {OPTIONS.map((option) => {
           const selected = option.value === value
 
@@ -111,8 +111,8 @@ export function RedactionIdentityChoice({
       {/* The browser cannot know whether the deployment has a secret, so this is stated rather than
           shown as state on the card it applies to. */}
       <Text.H6 color="foregroundMuted">
-        Self-hosted deployments with no pseudonym secret configured remove the identifier entirely instead of
-        pseudonymizing it.
+        Em instalações próprias sem segredo de pseudonimização configurado, o identificador é removido por completo em vez de
+        ser pseudonimizado.
       </Text.H6>
     </div>
   )

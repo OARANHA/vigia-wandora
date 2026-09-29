@@ -39,6 +39,8 @@ services:
                 certResolver: letsencrypt
               service: vigia-web
 
+            # Ativar em produção somente com uma política de acesso administrativo
+            # na borda (preferencialmente Cloudflare Access ou equivalente).
             vigia-ops:
               rule: "Host(`ops.vigia.wandora.com.br`)"
               entryPoints:

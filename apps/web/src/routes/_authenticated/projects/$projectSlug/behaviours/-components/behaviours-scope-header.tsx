@@ -71,7 +71,7 @@ function ActionsMenu({ onEdit, onDelete }: { readonly onEdit?: () => void; reado
   return (
     <DropdownMenuRoot modal={false}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="Behavior actions">
+        <Button variant="ghost" size="icon" aria-label="Ações do comportamento">
           <Icon icon={MoreVerticalIcon} size="sm" />
         </Button>
       </DropdownMenuTrigger>
@@ -80,12 +80,12 @@ function ActionsMenu({ onEdit, onDelete }: { readonly onEdit?: () => void; reado
           {onEdit ? (
             <DropdownMenuItem className="cursor-pointer items-center gap-2" onSelect={onEdit}>
               <Icon icon={PencilIcon} size="sm" color="foregroundMuted" />
-              <Text.H5>Edit</Text.H5>
+              <Text.H5>Editar</Text.H5>
             </DropdownMenuItem>
           ) : null}
           <DropdownMenuItem className="cursor-pointer items-center gap-2" onSelect={onDelete}>
             <Icon icon={Trash2} size="sm" color="destructive" />
-            <Text.H5 color="destructive">Delete</Text.H5>
+            <Text.H5 color="destructive">Excluir</Text.H5>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenuPortal>
@@ -159,7 +159,7 @@ export function BehavioursScopeHeader({
     if (!deleteTarget) return
     try {
       await del.mutateAsync(deleteTarget.id)
-      toast({ description: view ? "View deleted." : "Behavior deleted." })
+      toast({ description: view ? "Visão excluída." : "Comportamento excluído." })
       setDeleteOpen(false)
       await (view
         ? navigate({
@@ -181,15 +181,15 @@ export function BehavioursScopeHeader({
               asChild
               side="bottom"
               trigger={
-                <Button asChild variant="ghost" size="sm" className="w-fit" aria-label="Back to behaviors">
+                <Button asChild variant="ghost" size="sm" className="w-fit" aria-label="Voltar para comportamentos">
                   <Link to="/projects/$projectSlug/behaviours" params={{ projectSlug }}>
                     <Icon icon={ArrowLeftIcon} size="sm" />
-                    Back
+                    Voltar
                   </Link>
                 </Button>
               }
             >
-              Back to behaviors
+              Voltar para comportamentos
             </Tooltip>
             <SectionHeader title={view ? view.name : main.name} description={main.description ?? undefined} />
           </div>
@@ -203,17 +203,17 @@ export function BehavioursScopeHeader({
                   <span>
                     <Button variant="outline" size="sm" className="h-8 w-auto" disabled>
                       <Icon icon={PlusIcon} size="sm" />
-                      View
+                      Visão
                     </Button>
                   </span>
                 }
               >
-                This behavior is still analyzing your sessions. You can add a view once it's ready.
+                Este comportamento ainda está analisando suas sessões. Você poderá adicionar uma visão quando estiver pronto.
               </Tooltip>
             ) : (
               <Button variant="outline" size="sm" className="h-8 w-auto" onClick={openCreateForm}>
                 <Icon icon={PlusIcon} size="sm" />
-                View
+                Visão
               </Button>
             )}
             {deleteTarget && !behaviorCooking ? (
@@ -250,16 +250,16 @@ export function BehavioursScopeHeader({
           onOpenChange={(next) => {
             if (!next && !del.isPending) setDeleteOpen(false)
           }}
-          title={view ? "Delete view" : "Delete behavior"}
+          title={view ? "Excluir visão" : "Excluir comportamento"}
           description={
             view
-              ? `Delete "${deleteTarget.name}"? This removes the view and its scoped taxonomy. This action cannot be undone.`
-              : `Delete "${deleteTarget.name}"? This removes the behavior, its views, and everything it grouped. This action cannot be undone.`
+              ? `Excluir "${deleteTarget.name}"? Isso remove a visão e sua taxonomia específica. Esta ação não pode ser desfeita.`
+              : `Excluir "${deleteTarget.name}"? Isso remove o comportamento, suas visões e tudo o que ele agrupou. Esta ação não pode ser desfeita.`
           }
           footer={
             <div className="flex flex-row items-center gap-2">
               <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={del.isPending}>
-                Cancel
+                Cancelar
               </Button>
               <Button variant="destructive" onClick={() => void handleDelete()} disabled={del.isPending}>
                 {del.isPending ? (
@@ -267,7 +267,7 @@ export function BehavioursScopeHeader({
                 ) : (
                   <Icon icon={Trash2} size="sm" />
                 )}
-                {del.isPending ? "Deleting…" : "Delete"}
+                {del.isPending ? "Excluindo…" : "Excluir"}
               </Button>
             </div>
           }

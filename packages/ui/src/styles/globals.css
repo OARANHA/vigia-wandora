@@ -282,6 +282,7 @@
 .dark {
   --background-code: 276 30% 12%;
   --background-gray: 276 38% 9.5%;
+  /* Vigia brand base: #160521 */
   --background: 276.43 73.68% 7.45%;
   --background-shadow: 0 0% 100%;
   --foreground: 0 0% 98%;
@@ -340,7 +341,7 @@
     0px 2px 4px 0px hsl(var(--background-shadow) / 0.4),
     0px 1px 3px -1px hsl(var(--background-shadow) / 0.3),
     0px 0px 8px 0px hsl(var(--background-shadow) / 0.2);
-  --scrollbar: 217.9 11.92% 64.26%;
+  --scrollbar: 276 12% 56%;
   --viz-blue: 210 50% 52%;
   --viz-blue-soft: 202 34% 54%;
   --viz-gold: 42 54% 52%;

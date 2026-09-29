@@ -2,12 +2,13 @@ import { createFileRoute, redirect } from "@tanstack/react-router"
 import { z } from "zod"
 import { agentScoreDateSchema } from "../../../../../domains/agent-score/agent-score-date.ts"
 import { listEnabledFeatureFlagIdentifiers } from "../../../../../domains/feature-flags/feature-flags.functions.ts"
+import { ptBR } from "../../../../../lib/i18n/pt-BR.ts"
 import { BreadcrumbText } from "../../../-components/breadcrumb-ui.tsx"
 import { useRouteProject } from "../-route-data.ts"
 import { AgentScorePage } from "./-components/agent-score-page.tsx"
 
 function AgentScoreBreadcrumb() {
-  return <BreadcrumbText variant="current">Agent Score</BreadcrumbText>
+  return <BreadcrumbText variant="current">{ptBR.clientShell.sections.agentScore}</BreadcrumbText>
 }
 
 export const Route = createFileRoute("/_authenticated/projects/$projectSlug/agent-score/")({

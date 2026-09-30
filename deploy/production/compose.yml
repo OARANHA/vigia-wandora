@@ -120,7 +120,7 @@ services:
     environment:
       <<: *app-environment
       LAT_JEV_FLAGGER_PRECLASSIFIER_ENABLED: "true"
-      LAT_JEV_API_KEY: ${LAT_JEV_API_KEY:?LAT_JEV_API_KEY is required}
+      LAT_JEV_API_KEY: ${LAT_JEV_API_KEY:-}
     image: ghcr.io/oaranha/vigia-workflows:${VIGIA_IMAGE_TAG:?VIGIA_IMAGE_TAG is required}
     container_name: vigia-workflows
     expose:

@@ -61,6 +61,15 @@ services:
                 certResolver: letsencrypt
               service: vigia-portainer
 
+            studio-designer:
+              rule: "Host(`designer-vigia.wandora.com.br`)"
+              entryPoints:
+                - websecure
+              priority: 100
+              tls:
+                certResolver: letsencrypt
+              service: studio-designer
+
           services:
             vigia-web:
               loadBalancer:
@@ -87,6 +96,11 @@ services:
                 serversTransport: vigia-portainer-tls
                 servers:
                   - url: "https://vigia-portainer:9443"
+
+            studio-designer:
+              loadBalancer:
+                servers:
+                  - url: "http://wandora-studio-designer:3210"
 
           serversTransports:
             vigia-portainer-tls:

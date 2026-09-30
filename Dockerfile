@@ -317,3 +317,14 @@ COPY --chmod=755 docker/init-db.sh /docker-entrypoint-initdb.d/10-vigia-init-db.
 FROM clickhouse/clickhouse-server:26.2 AS clickhouse
 
 COPY --chmod=644 docker/clickhouse/storage.xml /etc/clickhouse-server/config.d/storage.xml
+
+
+# ---------------------------------------------------------------------------
+# Target: landing — static public Vigia marketing site
+# ---------------------------------------------------------------------------
+FROM nginx:1.27-alpine AS landing
+
+COPY apps/landing/ /usr/share/nginx/html/
+COPY apps/web/public/brand/vigia-logo.png /usr/share/nginx/html/assets/vigia-logo.png
+
+EXPOSE 80

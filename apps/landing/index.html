@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Vigia by Wandora — observabilidade para agentes de IA com foco em resultado de negócio.">
+  <title>Vigia by Wandora — Observabilidade para agentes de IA</title>
+  <link rel="icon" href="/assets/vigia-logo.png">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container nav">
+      <a class="brand" href="#top" aria-label="Vigia by Wandora">
+        <img src="/assets/vigia-logo.png" alt="Vigia by Wandora">
+      </a>
+      <nav class="nav-links" aria-label="Navegação principal">
+        <a href="#produto">Produto</a>
+        <a href="#casos">Casos de uso</a>
+        <a href="#integracoes">Integrações</a>
+        <a href="#precos">Preços</a>
+        <a href="#conteudo">Conteúdo</a>
+      </nav>
+      <div class="nav-actions">
+        <button class="theme-toggle" type="button" aria-label="Alternar tema" title="Alternar tema">◐</button>
+        <a class="btn ghost" href="https://app-vigia.wandora.com.br">Entrar</a>
+        <a class="btn primary compact" href="https://app-vigia.wandora.com.br">Começar agora <span>→</span></a>
+      </div>
+      <button class="menu-toggle" type="button" aria-label="Abrir menu">☰</button>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero section-glow">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">OBSERVABILIDADE PARA AGENTES DE IA</p>
+          <h1>Seu agente respondeu.<br><span>Mas ele concluiu o trabalho?</span></h1>
+          <p class="lead">O Vigia conecta a telemetria técnica dos seus agentes de IA aos resultados de negócio, mostrando falhas, custos, sessões, ferramentas e o que realmente foi entregue.</p>
+          <div class="hero-actions">
+            <a class="btn primary" href="#produto">▶&nbsp;&nbsp;Ver demonstração</a>
+            <a class="btn secondary" href="https://app-vigia.wandora.com.br">Começar agora</a>
+          </div>
+          <div class="proof-row">
+            <span>✓ Integra em minutos</span>
+            <span>▥ Funciona com seus agentes</span>
+            <span>▣ Dados seguros no Brasil</span>
+          </div>
+        </div>
+
+        <div class="dashboard-shell" aria-label="Demonstração do painel Vigia">
+          <div class="dash-sidebar">
+            <img src="/assets/vigia-logo.png" alt="" class="dash-logo">
+            <span class="active">⌂ <b>Visão geral</b></span>
+            <span>▣ Sessões</span><span>⌘ Ferramentas</span><span>◔ Custos</span>
+            <span>△ Falhas</span><span>▤ Resultados</span><span>◇ Business Events</span>
+          </div>
+          <div class="dash-main">
+            <div class="dash-top"><div><h3>Visão geral</h3><p>Seus agentes de IA, do trace ao resultado.</p></div><div class="range">▣ Últimos 7 dias⌄</div></div>
+            <div class="kpis">
+              <div><small>Sessões</small><strong>12.432</strong><em>↑ 18%</em></div>
+              <div><small>Taxa de sucesso</small><strong>78%</strong><em>↑ 12%</em></div>
+              <div><small>Custo total</small><strong>R$ 892,17</strong><em>↓ 14%</em></div>
+            </div>
+            <div class="chart-card">
+              <div class="chart-head"><b>Resultados de negócio</b><span>● Concluídos&nbsp;&nbsp;● Parciais&nbsp;&nbsp;● Falhas</span></div>
+              <svg viewBox="0 0 560 210" role="img" aria-label="Gráfico ilustrativo de resultados">
+                <path class="gridline" d="M0 45H560M0 90H560M0 135H560M0 180H560"/>
+                <path class="line orange" d="M0 148 C45 120,70 126,100 105 S160 145,205 119 S250 82,300 112 S355 91,400 111 S470 48,560 78"/>
+                <path class="line purple" d="M0 166 C50 140,70 142,110 130 S160 158,205 136 S250 118,300 139 S350 121,410 142 S480 104,560 122"/>
+                <path class="line red" d="M0 182 C40 169,80 174,120 160 S180 187,220 165 S285 154,330 174 S390 156,440 177 S505 156,560 170"/>
+              </svg>
+              <div class="result-float"><strong>324</strong><span>resultados<br>de negócio</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="produto" class="section">
+      <div class="container compare-grid">
+        <div>
+          <p class="eyebrow">UM LOG DIZ QUE HOUVE UM ERRO.</p>
+          <h2>O Vigia mostra o que esse erro <span>significou para o negócio.</span></h2>
+          <p class="section-copy">Em vez de apenas logs e traces, o Vigia conecta a execução técnica ao resultado real: quem foi afetado, qual o impacto, quanto custou e o que fazer.</p>
+        </div>
+        <div class="compare-cards">
+          <article class="card log-card">
+            <h3>SEM VIGIA</h3>
+            <pre>2026-09-28 14:21:07
+[ERROR] agenda_api timeout
+
+2026-09-28 14:21:09
+[ERROR] 3 retries failed
+
+2026-09-28 14:21:14
+[INFO] response sent</pre>
+          </article>
+          <div class="arrow">→</div>
+          <article class="card outcome-card">
+            <h3>COM VIGIA</h3>
+            <dl><dt>O que aconteceu</dt><dd>Integração de agenda falhou 3 vezes</dd><dt>Impacto</dt><dd>1 cliente afetado</dd><dt>Custo</dt><dd>R$ 0,021</dd><dt>Resultado</dt><dd class="danger">Agendamento não concluído</dd><dt>Ação sugerida</dt><dd>Verificar disponibilidade da API</dd></dl>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="conteudo" class="section section-line">
+      <div class="container">
+        <p class="eyebrow">DO TRAÇO AO RESULTADO DO NEGÓCIO</p>
+        <h2>Veja uma execução como o Vigia vê.</h2>
+        <div class="execution-grid">
+          <article class="card timeline">
+            <div><i class="blue">▣</i><time>14:21:03</time><span>Cliente pede um agendamento</span></div>
+            <div><i class="green">●</i><time>14:21:05</time><span>Agente consulta disponibilidade</span></div>
+            <div><i class="red">×</i><time>14:21:07</time><span class="danger">Ferramenta agenda_api falha</span></div>
+            <div><i class="red">×</i><time>14:21:09</time><span class="danger">Tentativa 2 falha</span></div>
+            <div><i class="red">×</i><time>14:21:11</time><span class="danger">Tentativa 3 falha</span></div>
+            <div><i class="green">✓</i><time>14:21:14</time><span>Agente responde ao cliente</span></div>
+          </article>
+          <div class="big-arrow">→</div>
+          <article class="card result-card">
+            <div class="result-alert"><span class="alert-icon">✳</span><div><strong>Atendimento não concluído</strong><small>Integração de agenda indisponível</small></div></div>
+            <div class="result-kpis"><div><small>Cliente afetado</small><strong>1</strong></div><div><small>Custo total</small><strong>R$ 0,021</strong></div><div><small>Duração</small><strong>12,8 s</strong></div></div>
+            <div class="result-kpis two"><div><small>Resultado esperado</small><strong>Agendamento realizado</strong></div><div><small>Resultado observado</small><strong class="danger">Não realizado</strong></div></div>
+            <a href="https://app-vigia.wandora.com.br" class="btn mini">Investigar sessão →</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="integracoes" class="section soft">
+      <div class="container">
+        <p class="eyebrow">COMO FUNCIONA</p>
+        <h2>Comece em poucos passos.</h2>
+        <div class="steps">
+          <div><b>01</b><section><h3>Conecte seu agente</h3><p>Use OpenTelemetry para enviar traces, spans e eventos.</p></section></div>
+          <span>→</span>
+          <div><b>02</b><section><h3>Defina o que é sucesso</h3><p>Venda, atendimento, agendamento, tarefa ou seu próprio resultado.</p></section></div>
+          <span>→</span>
+          <div><b>03</b><section><h3>Deixe o Vigia trabalhar</h3><p>Ele mostra o que aconteceu, onde falhou e se o resultado foi entregue.</p></section></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="casos" class="section">
+      <div class="container usecases">
+        <div>
+          <p class="eyebrow">CASOS DE USO</p>
+          <h2>Para cada agente,<br>uma resposta clara.</h2>
+          <p class="section-copy">O Vigia se adapta ao seu cenário de negócio.</p>
+        </div>
+        <div class="usecase-grid">
+          <article class="card"><span>◉</span><h3>Atendimento</h3><p>Se o agente está resolvendo ou apenas respondendo?</p></article>
+          <article class="card"><span>🛒</span><h3>Vendas</h3><p>Quantas conversas viraram leads, oportunidades ou vendas?</p></article>
+          <article class="card"><span>▣</span><h3>Agendamento</h3><p>Quantos atendimentos terminam em um agendamento real?</p></article>
+          <article class="card"><span>⚙</span><h3>Operações</h3><p>Onde os agentes estão falhando e quais ferramentas estão causando o problema?</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section id="precos" class="final-cta">
+      <div class="container final-grid">
+        <div><h2>Coloque seus agentes<br>sob <span>vigilância.</span></h2><p>Saiba o que está acontecendo antes do cliente precisar contar para você.</p></div>
+        <div class="hero-actions"><a class="btn primary" href="https://app-vigia.wandora.com.br">Conectar meu agente →</a><a class="btn secondary" href="#produto">Ver demonstração</a></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="vigia-support-chat" hidden aria-hidden="true"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

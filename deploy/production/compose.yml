@@ -49,6 +49,21 @@ x-app: &app
       condition: service_completed_successfully
 
 services:
+  landing:
+    image: ghcr.io/oaranha/vigia-landing:${VIGIA_IMAGE_TAG:?VIGIA_IMAGE_TAG is required}
+    container_name: vigia-landing
+    restart: unless-stopped
+    expose:
+      - "80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - vigia-edge
+
   web:
     <<: *app
     image: ghcr.io/oaranha/vigia-web:${VIGIA_IMAGE_TAG:?VIGIA_IMAGE_TAG is required}

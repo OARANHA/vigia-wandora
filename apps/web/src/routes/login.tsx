@@ -167,8 +167,30 @@ function LoginPage() {
     )
   }
 
+  const visual = (
+    <div className="relative flex min-h-screen w-full items-end overflow-hidden">
+      <img
+        src="/brand/vigia-mascots-office.webp"
+        alt="Mascotes 3D do Vigia em um escritório organizado com painéis de observabilidade"
+        className="absolute inset-0 h-full w-full object-cover"
+      />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#09070f]/95 via-[#120b17]/35 to-transparent" />
+      <div className="relative z-10 max-w-xl p-10 xl:p-14">
+        <div className="mb-4 inline-flex rounded-full border border-white/15 bg-black/25 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/75 backdrop-blur">
+          Vigia by Wandora
+        </div>
+        <h2 className="max-w-lg text-4xl font-semibold leading-tight tracking-[-0.035em] text-white xl:text-5xl">
+          Seu agente trabalha. O Vigia mostra se entregou.
+        </h2>
+        <p className="mt-4 max-w-lg text-base leading-7 text-white/75">
+          Monitore agentes de IA com clareza, contexto e foco em resultado de negócio.
+        </p>
+      </div>
+    </div>
+  )
+
   return (
-    <AuthScreen title={ptBR.auth.loginTitle} description={ptBR.auth.loginDescription}>
+    <AuthScreen title={ptBR.auth.loginTitle} description={ptBR.auth.loginDescription} visual={visual}>
       <div className="flex flex-col gap-4 rounded-xl overflow-hidden shadow-none bg-muted/50 border border-border p-6">
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input
@@ -222,14 +244,36 @@ function LoginPage() {
             {ptBR.auth.continueWithGoogle}
           </Button>
 
-          <Button size="full" variant="outline" onClick={() => void submitSocialSignIn("github")} disabled={isLoading}>
-            <GitHubIcon />
-            {ptBR.auth.continueWithGitHub}
-          </Button>
+          <details className="group rounded-lg border border-border bg-background/35 px-3 py-2">
+            <summary className="cursor-pointer select-none text-center text-xs font-medium text-muted-foreground">
+              Outras opções de acesso
+            </summary>
+            <div className="pt-3">
+              <Button
+                size="full"
+                variant="outline"
+                onClick={() => void submitSocialSignIn("github")}
+                disabled={isLoading}
+              >
+                <GitHubIcon />
+                {ptBR.auth.continueWithGitHub}
+              </Button>
+            </div>
+          </details>
         </div>
       </div>
 
-      <div className="flex flex-col items-center justify-center gap-y-4">
+      <div className="flex flex-col items-center justify-center gap-y-3">
+        <Text.H6 color="foregroundMuted" align="center">
+          Ainda não usa o Vigia?{" "}
+          <a
+            href={`${VIGIA_PRODUCT.marketingUrl}/interesse/`}
+            className="text-accent-foreground underline hover:no-underline"
+          >
+            Quero conhecer
+          </a>
+          .
+        </Text.H6>
         <Text.H6 color="foregroundMuted" align="center">
           {ptBR.auth.helpPrefix}{" "}
           <a

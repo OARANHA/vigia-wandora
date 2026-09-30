@@ -225,11 +225,12 @@ Marca:
 
 URLs:
 
-- `vigia.wandora.com.br` — entrada pública canônica do produto e, no MVP, endpoint único para web/API/ingest;
+- `vigia.wandora.com.br` — entrada pública canônica do produto, endpoint público de API/ingest e, após o cutover da landing, site institucional;
+- `app-vigia.wandora.com.br` — aplicação autenticada do Vigia; ativada em estágio de migração antes do cutover da landing;
 - `ops-vigia.wandora.com.br` — console operacional/Portainer do Vigia;
-- `app-vigia.wandora.com.br`, `docs-vigia.wandora.com.br`, `ingest-vigia.wandora.com.br`, `status-vigia.wandora.com.br` e `vigia-infrastructure.wandora.com.br` — nomes já reservados no DNS/Cloudflare para separação futura, sem rota de produto ativa enquanto não houver necessidade real.
+- `docs-vigia.wandora.com.br`, `ingest-vigia.wandora.com.br`, `status-vigia.wandora.com.br` e `vigia-infrastructure.wandora.com.br` — nomes reservados sem rota adicional enquanto não houver necessidade real.
 
-Para o primeiro produto executável, manter a simplicidade de `vigia.wandora.com.br` como endpoint público único da aplicação. Subdomínios reservados não devem criar componentes ou rotas adicionais por antecipação.
+A separação entre landing e aplicação deve ocorrer em dois estágios: primeiro tornar `app-vigia.wandora.com.br` a URL canônica do web autenticado e validar autenticação ponta a ponta mantendo o host antigo como compatibilidade; depois mover apenas o catch-all de `vigia.wandora.com.br` para a landing, preservando os routers prioritários de API, OTLP e discovery.
 
 ## 9. Estratégia de upstream Latitude
 

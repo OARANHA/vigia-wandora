@@ -28,3 +28,12 @@ Não publicar a tela de inicialização do Portainer diretamente na internet.
 ## Compatibilidade com Portainer CE
 
 Stacks Git do Portainer CE não devem depender de bind mounts relativos para arquivos do repositório. Por isso, a configuração dinâmica do Traefik é escrita em `vigia_traefik_dynamic` pelo serviço `traefik-config` antes do Traefik iniciar.
+
+## Migração landing / app
+
+A separação de hosts é executada em dois estágios para preservar autenticação e contratos públicos:
+
+1. ativar `app-vigia.wandora.com.br` para o `vigia-web`, mantendo temporariamente o catch-all de `vigia.wandora.com.br` no mesmo serviço;
+2. validar login, magic link, sessão, OAuth/SSO quando aplicável e chamadas de API; somente depois transferir o catch-all de `vigia.wandora.com.br` para `vigia-landing`.
+
+Os routers de `/v1/traces`, `/v1/*` e `/.well-known/*` em `vigia.wandora.com.br` permanecem com prioridade superior e não devem ser capturados pela landing.

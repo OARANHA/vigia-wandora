@@ -21,7 +21,7 @@ import {
   upsertSafetyFindingScore,
 } from "@domain/flaggers"
 import type { SafetyFindingKind } from "@domain/scores"
-import { OrganizationId, ProjectId, TraceId } from "@domain/shared"
+import { OrganizationId, ProjectId, SettingsReader, TraceId } from "@domain/shared"
 import { AIEmbedLive, AIGenerateLive, withAi } from "@platform/ai"
 import { JevPreclassifierDecisionProviderLive, JevShadowDecisionProviderUnconfigured } from "@platform/ai-jev"
 import { checkRedisRateLimit, RedisBillingSpendReservationLive, RedisCacheStoreLive } from "@platform/cache-redis"
@@ -40,6 +40,7 @@ import {
   FlaggerRepositoryLive,
   OutboxEventWriterLive,
   ScoreRepositoryLive,
+  SettingsReaderLive,
   withPostgres,
 } from "@platform/db-postgres"
 import { parseEnvOptional } from "@platform/env"
@@ -51,6 +52,7 @@ import { billingMeteringRepositoriesLive, withActivityAIMetering } from "./ai-me
 
 const logger = createLogger("workflows-flagger-session")
 const JEV_FEATURE_FLAG_TIMEOUT_MS = 1_000
+const JEV_PROJECT_SETTING_TIMEOUT_MS = 1_000
 
 const currentActivityAttempt = () => {
   try {
@@ -99,6 +101,29 @@ export const isJevFlaggerPreclassifierEnabledForOrganization = (
     Effect.catchCause((cause) => (Cause.hasInterruptsOnly(cause) ? Effect.failCause(cause) : Effect.succeed(false))),
   )
 
+type HasJevProjectSetting = (organizationId: string, projectId: string) => Effect.Effect<boolean, unknown>
+
+const hasJevPreclassifierProjectSetting: HasJevProjectSetting = (organizationId, projectId) =>
+  Effect.gen(function* () {
+    const settingsReader = yield* SettingsReader
+    const settings = yield* settingsReader.getProjectSettings(ProjectId(projectId))
+    return settings?.jevPreclassifierEnabled === true
+  }).pipe(withPostgres(SettingsReaderLive, getPostgresClient(), OrganizationId(organizationId)))
+
+export const isJevFlaggerPreclassifierEnabledForProject = (
+  organizationId: string,
+  projectId: string,
+  hasFeatureFlag: HasJevFeatureFlag = hasJevPreclassifierFeatureFlag,
+  hasProjectSetting: HasJevProjectSetting = hasJevPreclassifierProjectSetting,
+) =>
+  Effect.gen(function* () {
+    const organizationEnabled = yield* isJevFlaggerPreclassifierEnabledForOrganization(organizationId, hasFeatureFlag)
+    if (!organizationEnabled) return false
+    return yield* hasProjectSetting(organizationId, projectId).pipe(Effect.timeout(JEV_PROJECT_SETTING_TIMEOUT_MS))
+  }).pipe(
+    Effect.catchCause((cause) => (Cause.hasInterruptsOnly(cause) ? Effect.failCause(cause) : Effect.succeed(false))),
+  )
+
 const rateLimitBucket = (reason: FlaggerClassificationReason, hasPositiveHints: boolean) => {
   if (reason === "hinted") return { bucket: "hinted", limit: FLAGGER_HINTED_RATE_LIMIT }
   if (hasPositiveHints) return { bucket: "sampled-positive", limit: FLAGGER_SAMPLED_POSITIVE_RATE_LIMIT }
@@ -134,7 +159,7 @@ export const screenSessionFlaggers = async (
   input: ScreenSessionFlaggersActivityInput,
 ): Promise<ScreenSessionFlaggersResult> => {
   const jevPreclassifierEnabled = await Effect.runPromise(
-    isJevFlaggerPreclassifierEnabledForOrganization(input.organizationId),
+    isJevFlaggerPreclassifierEnabledForProject(input.organizationId, input.projectId),
   )
   const activityIdentity = getJevActivityIdentity()
 

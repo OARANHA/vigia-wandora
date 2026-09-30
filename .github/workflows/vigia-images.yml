@@ -55,7 +55,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [api, ingest, workers, workflows, web, migrations]
+        service: [api, ingest, workers, workflows, web, migrations, landing]
     steps:
       - name: Pull public main image without registry login
         run: docker pull ghcr.io/oaranha/vigia-${{ matrix.service }}:main
@@ -66,7 +66,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        service: [api, ingest, workers, workflows, web, migrations, postgres, clickhouse]
+        service: [api, ingest, workers, workflows, web, migrations, postgres, clickhouse, landing]
 
     steps:
       - uses: actions/checkout@v7.0.1

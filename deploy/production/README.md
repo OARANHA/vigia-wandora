@@ -10,8 +10,9 @@ Arquivos canônicos da aplicação: `deploy/production/compose.yml` e `.github/w
 - a stack é criada no Portainer próprio da VPS Vigia a partir de Git;
 - segredos entram apenas como variáveis/segredos da infraestrutura do Vigia;
 - Traefik é próprio da VPS Vigia e continua separado da stack de aplicação;
-- web, API e ingest compartilham o host público `vigia.wandora.com.br` por roteamento de path;
-- somente `web`, `api` e `ingest` entram na rede externa `vigia-edge` do próprio Vigia;
+- API e ingest permanecem no host público `vigia.wandora.com.br` por roteamento de path;
+- o web autenticado usa `app-vigia.wandora.com.br` como URL canônica; durante o estágio 1 da migração, `vigia.wandora.com.br` continua roteando o catch-all ao web como compatibilidade até a landing assumir esse host;
+- somente `landing`, `web`, `api` e `ingest` entram na rede externa `vigia-edge` do próprio Vigia;
 - object storage usa o driver `fs` em volume compartilhado no host único, evitando SeaweedFS neste primeiro runtime;
 - retenção inicial de telemetria: 30 dias; a VPS dedicada foi provisionada com 200 GB SSD e o consumo real será medido antes de ampliar a retenção.
 

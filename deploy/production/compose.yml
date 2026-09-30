@@ -21,7 +21,9 @@ x-app-environment: &app-environment
   LAT_STORAGE_FS_ROOT: /var/lib/vigia/storage
   LAT_TELEMETRY_RETENTION_DAYS: "30"
   LAT_BILLING_ENABLED: "false"
-  LAT_WEB_URL: https://vigia.wandora.com.br
+  # Stage 1 da separação de hosts: o app autenticado passa a ter URL canônica
+  # própria, enquanto o host antigo continua roteado ao web até o cutover da landing.
+  LAT_WEB_URL: https://app-vigia.wandora.com.br
   LAT_WEB_PORT: "3000"
   LAT_API_URL: https://vigia.wandora.com.br
   LAT_API_PORT: "3001"
@@ -29,8 +31,8 @@ x-app-environment: &app-environment
   LAT_INGEST_PORT: "3002"
   LAT_WORKERS_HEALTH_PORT: "9090"
   LAT_WORKFLOWS_HEALTH_PORT: "9091"
-  LAT_TRUSTED_ORIGINS: https://vigia.wandora.com.br
-  LAT_CORS_ALLOWED_ORIGINS: https://vigia.wandora.com.br
+  LAT_TRUSTED_ORIGINS: "https://app-vigia.wandora.com.br,https://vigia.wandora.com.br"
+  LAT_CORS_ALLOWED_ORIGINS: "https://app-vigia.wandora.com.br,https://vigia.wandora.com.br"
   LAT_MASTER_ENCRYPTION_KEY: ${LAT_MASTER_ENCRYPTION_KEY:?LAT_MASTER_ENCRYPTION_KEY is required}
   LAT_BETTER_AUTH_SECRET: ${LAT_BETTER_AUTH_SECRET:?LAT_BETTER_AUTH_SECRET is required}
   LAT_MAILPIT_HOST: mailpit

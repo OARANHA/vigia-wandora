@@ -3,6 +3,7 @@ const submit = document.querySelector('#interest-submit');
 const status = document.querySelector('#interest-status');
 
 const ENDPOINT = 'https://www.wandora.com.br/api/wandora/product-interest';
+const SOURCE = new URLSearchParams(window.location.search).get('source') === 'login' ? 'vigia-login' : 'vigia-landing';
 
 const setStatus = (kind, message) => {
   if (!status) return;
@@ -23,7 +24,7 @@ form?.addEventListener('submit', async (event) => {
 
   const payload = {
     product: 'vigia',
-    source: 'vigia-landing',
+    source: SOURCE,
     name: String(data.get('name') ?? '').trim(),
     email: String(data.get('email') ?? '').trim(),
     whatsapp: String(data.get('whatsapp') ?? '').trim(),

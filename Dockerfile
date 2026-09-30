@@ -322,7 +322,7 @@ COPY --chmod=644 docker/clickhouse/storage.xml /etc/clickhouse-server/config.d/s
 # ---------------------------------------------------------------------------
 # Target: landing — static public Vigia marketing site
 # ---------------------------------------------------------------------------
-FROM nginx:1.27-alpine AS landing
+FROM nginx:1.30.5-alpine AS landing
 
 COPY apps/landing/ /usr/share/nginx/html/
 COPY apps/web/public/brand/vigia-logo.png /usr/share/nginx/html/assets/vigia-logo.png

@@ -10,6 +10,7 @@ const makeProject = (over: Partial<ProjectRecord> = {}): ProjectRecord => ({
   slug: "my-project",
   settings: {
     keepMonitoring: undefined,
+    jevPreclassifierEnabled: undefined,
     notifications: undefined,
     escalation: undefined,
     onboardingType: undefined,

@@ -105,6 +105,9 @@ const playComparison = () => {
   if (!section || !pre || !outcome) return;
 
   section.classList.add('story-running');
+  outcome.querySelectorAll('dt, dd').forEach((item, index) => {
+    item.style.transitionDelay = `${index * 70}ms`;
+  });
   const fullText = pre.textContent ?? '';
 
   if (!prefersReducedMotion) {

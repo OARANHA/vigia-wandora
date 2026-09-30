@@ -818,3 +818,37 @@ a{color:inherit;text-decoration:none}.container{width:min(var(--max),calc(100% -
   }
 }
 
+/* Approved hero composition: the Wandora/Vigia team scene is the photographic
+   background; copy, navigation, dashboard and CTAs remain live HTML above it. */
+.hero-frame .hero-office-image{
+  object-position:center 48%;
+  filter:saturate(1.08) contrast(1.04) brightness(.88);
+  transform:scale(1.03) translate3d(var(--office-x),var(--office-y),0);
+}
+.hero-scene-overlay{
+  background:
+    linear-gradient(90deg,rgba(9,6,15,.98) 0%,rgba(9,6,15,.94) 22%,rgba(9,6,15,.72) 34%,rgba(9,6,15,.18) 50%,rgba(9,6,15,.04) 68%,rgba(9,6,15,.06) 100%),
+    linear-gradient(180deg,rgba(9,6,15,.12) 0%,transparent 24%,transparent 72%,rgba(9,6,15,.42) 100%);
+}
+.hero-frame .dashboard-shell.hero-dashboard{
+  background:linear-gradient(145deg,rgba(16,15,48,.96),rgba(16,10,43,.94));
+  box-shadow:0 30px 75px rgba(0,0,0,.38),0 0 58px rgba(92,48,255,.14);
+}
+@media (min-width:761px) and (max-width:1024px){
+  .hero-frame .hero-office-image{
+    object-position:center 48%;
+    filter:saturate(1.08) contrast(1.03) brightness(.88);
+  }
+  .hero-scene-overlay{
+    background:
+      linear-gradient(90deg,rgba(9,6,15,.98) 0%,rgba(9,6,15,.93) 24%,rgba(9,6,15,.7) 36%,rgba(9,6,15,.18) 52%,rgba(9,6,15,.04) 70%,rgba(9,6,15,.05) 100%),
+      linear-gradient(180deg,rgba(9,6,15,.10) 0%,transparent 24%,transparent 74%,rgba(9,6,15,.38) 100%);
+  }
+}
+@media(max-width:760px){
+  .hero-frame .hero-office-image{
+    object-position:58% center;
+    filter:saturate(1.04) contrast(1.02) brightness(.58);
+  }
+}
+

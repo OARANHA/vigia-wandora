@@ -30,6 +30,18 @@ services:
                 certResolver: letsencrypt
               service: vigia-api
 
+            vigia-app:
+              rule: "Host(`app-vigia.wandora.com.br`)"
+              entryPoints:
+                - websecure
+              priority: 100
+              tls:
+                certResolver: letsencrypt
+              service: vigia-web
+
+            # Compatibilidade temporária de migração. Este router permanece
+            # até o login em app-vigia ser validado e o catch-all principal
+            # poder ser transferido para vigia-landing com segurança.
             vigia-web:
               rule: "Host(`vigia.wandora.com.br`)"
               entryPoints:

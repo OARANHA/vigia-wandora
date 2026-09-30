@@ -10,6 +10,7 @@ on:
       - pnpm-workspace.yaml
       - package.json
       - deploy/production/**
+      - deploy/infrastructure/**
       - .github/workflows/vigia-images.yml
   push:
     branches: [main]
@@ -21,6 +22,7 @@ on:
       - pnpm-workspace.yaml
       - package.json
       - deploy/production/**
+      - deploy/infrastructure/**
       - .github/workflows/vigia-images.yml
   workflow_dispatch:
 
@@ -43,10 +45,13 @@ jobs:
       CLICKHOUSE_PASSWORD: 33333333333333333333333333333333
       LAT_MASTER_ENCRYPTION_KEY: 4444444444444444444444444444444444444444444444444444444444444444
       LAT_BETTER_AUTH_SECRET: 5555555555555555555555555555555555555555555555555555555555555555
+      TRAEFIK_ACME_EMAIL: ci@vigia.invalid
     steps:
       - uses: actions/checkout@v7.0.1
-      - name: Validate Compose
+      - name: Validate application Compose
         run: docker compose -f deploy/production/compose.yml config --quiet
+      - name: Validate infrastructure Compose
+        run: docker compose -f deploy/infrastructure/compose.yml config --quiet
 
   registry:
     name: Pull published ${{ matrix.service }}

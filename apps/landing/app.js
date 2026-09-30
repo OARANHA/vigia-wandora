@@ -1,3 +1,16 @@
+// Integration point for the future Ana/Wandora support widget.
+// Deliberately disabled: no network call, credential or Wandora runtime dependency
+// is introduced by the public landing in this slice.
+window.VIGIA_SUPPORT = Object.freeze({
+  enabled: false,
+  provider: 'wandora',
+  assistant: 'ana',
+  context: Object.freeze({
+    product: 'vigia',
+    channel: 'website'
+  })
+});
+
 const root=document.documentElement;
 const saved=localStorage.getItem('vigia-theme');
 if(saved==='light'||saved==='dark') root.dataset.theme=saved;

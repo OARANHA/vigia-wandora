@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Conheça o Vigia by Wandora e veja como monitorar agentes de IA com foco em falhas, custos e resultado de negócio.">
+  <title>Quero conhecer o Vigia — Vigia by Wandora</title>
+  <link rel="icon" href="/assets/vigia-logo.png">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body class="interest-page">
+  <main class="interest-shell">
+    <section class="interest-visual" aria-label="Equipe digital Vigia">
+      <img src="/assets/vigia-mascots-office.webp" alt="Mascotes 3D do Vigia trabalhando em um escritório organizado com painéis de observabilidade">
+      <div class="interest-visual-copy">
+        <p class="eyebrow">VIGIA BY WANDORA</p>
+        <h1>Vamos entender seu cenário e te mostrar o Vigia.</h1>
+        <p>Conecte seus agentes, veja resultados de negócio e descubra oportunidades de melhoria com uma visão simples para operação e gestão.</p>
+        <ul class="interest-benefits">
+          <li>Falhas e custos em contexto</li>
+          <li>Resultado de negócio por agente</li>
+          <li>OpenTelemetry + Business Events</li>
+          <li>Onboarding acompanhado pela Wandora</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="interest-form-side">
+      <div class="interest-form-wrap">
+        <a class="interest-back" href="/">← Voltar para o Vigia</a>
+        <a class="brand" href="/" aria-label="Vigia by Wandora">
+          <img src="/assets/vigia-logo.png" alt="Vigia by Wandora">
+        </a>
+        <p class="eyebrow">FALE COM A NOSSA EQUIPE</p>
+        <h2>Quero conhecer o Vigia</h2>
+        <p class="section-copy">Preencha os dados abaixo. A Wandora usa essas informações somente para entender seu cenário e entrar em contato sobre o Vigia.</p>
+
+        <form id="interest-form" class="interest-form" novalidate>
+          <div class="interest-field">
+            <label for="interest-name">Nome</label>
+            <input id="interest-name" name="name" autocomplete="name" required maxlength="120" placeholder="Seu nome">
+          </div>
+          <div class="interest-field">
+            <label for="interest-email">Email</label>
+            <input id="interest-email" name="email" type="email" autocomplete="email" required maxlength="254" placeholder="voce@empresa.com.br">
+          </div>
+          <div class="interest-field">
+            <label for="interest-whatsapp">WhatsApp</label>
+            <input id="interest-whatsapp" name="whatsapp" type="tel" autocomplete="tel" maxlength="40" placeholder="(11) 91234-5678">
+          </div>
+          <div class="interest-field">
+            <label for="interest-company">Empresa</label>
+            <input id="interest-company" name="company" autocomplete="organization" required maxlength="160" placeholder="Nome da empresa">
+          </div>
+          <div class="interest-field full">
+            <label for="interest-website">Site da empresa (opcional)</label>
+            <input id="interest-website" name="website" type="url" inputmode="url" maxlength="300" placeholder="https://">
+          </div>
+          <div class="interest-field">
+            <label for="interest-use-case">Qual é o principal caso?</label>
+            <select id="interest-use-case" name="useCase" required>
+              <option value="">Selecione</option>
+              <option value="atendimento">Atendimento</option>
+              <option value="vendas">Vendas</option>
+              <option value="agendamento">Agendamento</option>
+              <option value="operacoes">Operações</option>
+              <option value="outro">Outro</option>
+            </select>
+          </div>
+          <div class="interest-field">
+            <label for="interest-agents">Quantos agentes/automações você já tem?</label>
+            <select id="interest-agents" name="agentsCount">
+              <option value="">Selecione</option>
+              <option value="ainda-nao-tenho">Ainda não tenho</option>
+              <option value="1">1</option>
+              <option value="2-5">2–5</option>
+              <option value="6-20">6–20</option>
+              <option value="20+">20+</option>
+            </select>
+          </div>
+          <div class="interest-field full">
+            <label for="interest-stack">Qual stack você usa? (opcional)</label>
+            <input id="interest-stack" name="stack" maxlength="200" placeholder="Ex.: n8n + OpenAI + WhatsApp">
+          </div>
+          <div class="interest-field full">
+            <label for="interest-success">O que significa sucesso para esse agente?</label>
+            <input id="interest-success" name="successDefinition" maxlength="500" placeholder="Ex.: agendamento realizado, atendimento resolvido, lead qualificado">
+          </div>
+          <div class="interest-field full">
+            <label for="interest-message">Mensagem (opcional)</label>
+            <textarea id="interest-message" name="message" maxlength="1500" placeholder="Conte um pouco sobre seu cenário..."></textarea>
+          </div>
+          <label class="interest-consent" for="interest-consent">
+            <input id="interest-consent" name="consent" type="checkbox" required>
+            <span>Autorizo a Wandora a usar estes dados para entrar em contato sobre o Vigia, conforme a LGPD. Posso solicitar exclusão a qualquer momento.</span>
+          </label>
+          <div class="interest-submit">
+            <button id="interest-submit" class="btn primary" type="submit">Solicitar demonstração →</button>
+            <p id="interest-status" class="interest-status" role="status" aria-live="polite"></p>
+          </div>
+        </form>
+
+        <p class="interest-login">Já usa o Vigia? <a href="https://app-vigia.wandora.com.br/login">Entrar na sua conta</a>.</p>
+      </div>
+    </section>
+  </main>
+  <script src="/interesse.js"></script>
+</body>
+</html>

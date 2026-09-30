@@ -454,3 +454,17 @@ Validação concluída:
 - o resultado persistido foi confirmado no Postgres como `sourceId = vigia.business.smoke_success`, `passed = true` e com o mesmo `traceId` do trace recém-enviado.
 
 Com isso, o fluxo `trace -> Business Event -> Resultado` está provado em produção. O próximo passo de produto é usar a Wandora como primeiro emissor real antes de ampliar analytics, SDKs ou abstrações.
+
+### Experiência pública, acesso e captação comercial — 2026-09-30
+
+Decisão consolidada:
+
+- a landing pública continua em `vigia.wandora.com.br` e usa movimento apenas para explicar o produto: KPIs, gráfico, comparação sem/com Vigia, timeline, passos e casos de uso;
+- o login de clientes permanece em `app-vigia.wandora.com.br/login`, com email/magic link e Google como opções principais; GitHub fica como opção secundária;
+- a tela de login usa composição dividida: autenticação à esquerda e uma cena 3D dos mascotes Vigia em contexto de operação à direita;
+- interessados não criam conta automaticamente. O CTA público leva a `vigia.wandora.com.br/interesse/`, com formulário comercial próprio;
+- a fonte de verdade do lead é a Wandora. O Vigia envia apenas o contrato público de interesse para a Wandora, sem acesso direto a banco/CRM interno;
+- o contrato inicial de captura é `POST https://www.wandora.com.br/api/wandora/product-interest`, com consentimento explícito e origem allowlisted;
+- o formulário coleta somente dados úteis à qualificação: nome, email, WhatsApp, empresa, site opcional, caso de uso, volume de agentes, stack, definição de sucesso e mensagem;
+- a cena 3D dos mascotes é um ativo visual do produto, sem criar dependência operacional entre Vigia e Wandora.
+

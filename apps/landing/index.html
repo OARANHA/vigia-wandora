@@ -24,7 +24,7 @@
       <div class="nav-actions">
         <button class="theme-toggle" type="button" aria-label="Alternar tema" title="Alternar tema">◐</button>
         <a class="btn ghost" href="https://app-vigia.wandora.com.br">Entrar</a>
-        <a class="btn primary compact" href="https://app-vigia.wandora.com.br">Começar agora <span>→</span></a>
+        <a class="btn primary compact" href="/interesse/">Começar agora <span>→</span></a>
       </div>
       <button class="menu-toggle" type="button" aria-label="Abrir menu">☰</button>
     </div>
@@ -35,11 +35,11 @@
       <div class="container hero-grid">
         <div class="hero-copy">
           <p class="eyebrow">OBSERVABILIDADE PARA AGENTES DE IA</p>
-          <h1>Seu agente respondeu.<br><span>Mas ele concluiu o trabalho?</span></h1>
-          <p class="lead">O Vigia conecta a telemetria técnica dos seus agentes de IA aos resultados de negócio, mostrando falhas, custos, sessões, ferramentas e o que realmente foi entregue.</p>
+          <h1>Seu agente trabalha.<br><span>O Vigia mostra se entregou.</span></h1>
+          <p class="lead">Monitore agentes de IA com clareza, contexto e foco em resultado de negócio. Detecte falhas, acompanhe custos e veja o que realmente foi entregue.</p>
           <div class="hero-actions">
             <a class="btn primary" href="#produto">▶&nbsp;&nbsp;Ver demonstração</a>
-            <a class="btn secondary" href="https://app-vigia.wandora.com.br">Começar agora</a>
+            <a class="btn secondary" href="/interesse/">Começar agora</a>
           </div>
           <div class="proof-row">
             <span>✓ Integra em minutos</span>
@@ -48,36 +48,43 @@
           </div>
         </div>
 
-        <div class="dashboard-shell" aria-label="Demonstração do painel Vigia">
-          <div class="dash-sidebar">
-            <img src="/assets/vigia-logo.png" alt="" class="dash-logo">
-            <span class="active">⌂ <b>Visão geral</b></span>
-            <span>▣ Sessões</span><span>⌘ Ferramentas</span><span>◔ Custos</span>
-            <span>△ Falhas</span><span>▤ Resultados</span><span>◇ Business Events</span>
-          </div>
-          <div class="dash-main">
-            <div class="dash-top"><div><h3>Visão geral</h3><p>Seus agentes de IA, do trace ao resultado.</p></div><div class="range">▣ Últimos 7 dias⌄</div></div>
-            <div class="kpis">
-              <div><small>Sessões</small><strong>12.432</strong><em>↑ 18%</em></div>
-              <div><small>Taxa de sucesso</small><strong>78%</strong><em>↑ 12%</em></div>
-              <div><small>Custo total</small><strong>R$ 892,17</strong><em>↓ 14%</em></div>
+        <div class="hero-visual-stage" aria-label="Vigia em operação">
+          <img class="hero-office-image" src="/assets/vigia-mascots-office.webp" alt="Mascotes 3D do Vigia trabalhando em um escritório organizado com painéis de observabilidade">
+          <div class="hero-office-glow" aria-hidden="true"></div>
+          <div class="hero-dashboard-wrap">
+            <div class="dashboard-shell" aria-label="Demonstração do painel Vigia">
+              <div class="dash-sidebar">
+                <img src="/assets/vigia-logo.png" alt="" class="dash-logo">
+                <span class="active">⌂ <b>Visão geral</b></span>
+                <span>▣ Sessões</span><span>⌘ Ferramentas</span><span>◔ Custos</span>
+                <span>△ Falhas</span><span>▤ Resultados</span><span>◇ Business Events</span>
+              </div>
+              <div class="dash-main">
+                <div class="dash-top"><div><h3>Visão geral</h3><p>Seus agentes de IA, do trace ao resultado.</p></div><div class="range">▣ Últimos 7 dias⌄</div></div>
+                <div class="kpis">
+                  <div><small>Sessões</small><strong>12.432</strong><em>↑ 18%</em></div>
+                  <div><small>Taxa de sucesso</small><strong>78%</strong><em>↑ 12%</em></div>
+                  <div><small>Custo total</small><strong>R$ 892,17</strong><em>↓ 14%</em></div>
+                </div>
+                <div class="chart-card">
+                  <div class="chart-head"><b>Resultados de negócio</b><span>● Concluídos&nbsp;&nbsp;● Parciais&nbsp;&nbsp;● Falhas</span></div>
+                  <svg viewBox="0 0 560 210" role="img" aria-label="Gráfico ilustrativo de resultados">
+                    <path class="gridline" d="M0 45H560M0 90H560M0 135H560M0 180H560"/>
+                    <path class="line orange" d="M0 148 C45 120,70 126,100 105 S160 145,205 119 S250 82,300 112 S355 91,400 111 S470 48,560 78"/>
+                    <path class="line purple" d="M0 166 C50 140,70 142,110 130 S160 158,205 136 S250 118,300 139 S350 121,410 142 S480 104,560 122"/>
+                    <path class="line red" d="M0 182 C40 169,80 174,120 160 S180 187,220 165 S285 154,330 174 S390 156,440 177 S505 156,560 170"/>
+                  </svg>
+                  <div class="result-float"><strong>324</strong><span>resultados<br>de negócio</span></div>
+                </div>
+              </div>
             </div>
-            <div class="chart-card">
-              <div class="chart-head"><b>Resultados de negócio</b><span>● Concluídos&nbsp;&nbsp;● Parciais&nbsp;&nbsp;● Falhas</span></div>
-              <svg viewBox="0 0 560 210" role="img" aria-label="Gráfico ilustrativo de resultados">
-                <path class="gridline" d="M0 45H560M0 90H560M0 135H560M0 180H560"/>
-                <path class="line orange" d="M0 148 C45 120,70 126,100 105 S160 145,205 119 S250 82,300 112 S355 91,400 111 S470 48,560 78"/>
-                <path class="line purple" d="M0 166 C50 140,70 142,110 130 S160 158,205 136 S250 118,300 139 S350 121,410 142 S480 104,560 122"/>
-                <path class="line red" d="M0 182 C40 169,80 174,120 160 S180 187,220 165 S285 154,330 174 S390 156,440 177 S505 156,560 170"/>
-              </svg>
-              <div class="result-float"><strong>324</strong><span>resultados<br>de negócio</span></div>
-            </div>
           </div>
+          <div class="hero-live-pill"><span></span> Vigia online · monitorando em tempo real</div>
         </div>
       </div>
     </section>
 
-    <section id="produto" class="section">
+    <section id="produto" class="section motion-section">
       <div class="container compare-grid">
         <div>
           <p class="eyebrow">UM LOG DIZ QUE HOUVE UM ERRO.</p>
@@ -105,7 +112,7 @@
       </div>
     </section>
 
-    <section id="conteudo" class="section section-line">
+    <section id="conteudo" class="section section-line motion-section">
       <div class="container">
         <p class="eyebrow">DO TRAÇO AO RESULTADO DO NEGÓCIO</p>
         <h2>Veja uma execução como o Vigia vê.</h2>
@@ -129,7 +136,7 @@
       </div>
     </section>
 
-    <section id="integracoes" class="section soft">
+    <section id="integracoes" class="section soft motion-section">
       <div class="container">
         <p class="eyebrow">COMO FUNCIONA</p>
         <h2>Comece em poucos passos.</h2>
@@ -143,7 +150,7 @@
       </div>
     </section>
 
-    <section id="casos" class="section">
+    <section id="casos" class="section motion-section">
       <div class="container usecases">
         <div>
           <p class="eyebrow">CASOS DE USO</p>
@@ -159,10 +166,10 @@
       </div>
     </section>
 
-    <section id="comecar" class="final-cta">
+    <section id="comecar" class="final-cta motion-section">
       <div class="container final-grid">
         <div><h2>Coloque seus agentes<br>sob <span>vigilância.</span></h2><p>Saiba o que está acontecendo antes do cliente precisar contar para você.</p></div>
-        <div class="hero-actions"><a class="btn primary" href="https://app-vigia.wandora.com.br">Conectar meu agente →</a><a class="btn secondary" href="#produto">Ver demonstração</a></div>
+        <div class="hero-actions"><a class="btn primary" href="/interesse/">Quero conhecer o Vigia →</a><a class="btn secondary" href="#produto">Ver demonstração</a></div>
       </div>
     </section>
   </main>

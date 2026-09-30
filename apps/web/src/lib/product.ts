@@ -4,7 +4,7 @@ export const VIGIA_PRODUCT = {
   title: "Vigia — Observabilidade de agentes de IA",
   description:
     "Monitore a saúde dos seus agentes de IA, encontre falhas, acompanhe custos e conecte a operação a resultados de negócio.",
-  appUrl: "https://vigia.wandora.com.br",
+  appUrl: "https://app-vigia.wandora.com.br",
   logoPath: "/brand/vigia-logo.png",
   marketingUrl: "https://vigia.wandora.com.br",
   ingestUrl: "https://vigia.wandora.com.br/v1/traces",

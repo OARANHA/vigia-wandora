@@ -279,3 +279,28 @@ As caixas **Events API** e **Correlação trace_id -> resultado de negócio** es
 ### Próxima ação
 
 - [ ] Integrar a Wandora como primeiro cliente/emissor real: `Wandora -> OTLP + Business Events -> Vigia`.
+
+## Checkpoint 2026-09-30 — experiência pública e captação em código
+
+Implementado neste slice:
+
+- [x] microinterações da landing orientadas à explicação do produto, com suporte a `prefers-reduced-motion`;
+- [x] KPIs e gráfico do hero animados;
+- [x] comparação `Sem Vigia -> Com Vigia` reproduzida ao entrar na viewport;
+- [x] timeline de execução reproduzida em sequência;
+- [x] passos de onboarding e casos de uso com interação discreta;
+- [x] navegação com seção ativa e CTA final com movimento sutil;
+- [x] login dividido entre autenticação e visual 3D dos mascotes;
+- [x] email/magic link e Google mantidos como acesso principal; GitHub rebaixado para opção secundária;
+- [x] página pública `/interesse/` criada com formulário de qualificação;
+- [x] CTA público separado do login para evitar criação de conta por lead frio;
+- [x] integração desenhada para persistir o interesse na Wandora por contrato público, sem banco compartilhado.
+
+Pendente de produção:
+
+- [ ] implantar primeiro o endpoint de interesse da Wandora;
+- [ ] implantar a nova imagem web/landing do Vigia;
+- [ ] validar formulário ponta a ponta e confirmar persistência na Wandora;
+- [ ] validar login, Google e GitHub após a mudança visual;
+- [ ] validar animações em desktop/mobile e modo de movimento reduzido.
+

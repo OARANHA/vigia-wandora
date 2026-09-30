@@ -220,6 +220,7 @@ export type SamplingSetting = z.infer<typeof samplingSettingSchema>
 
 export const projectSettingsSchema = z.object({
   keepMonitoring: z.boolean().optional(),
+  jevPreclassifierEnabled: z.boolean().optional(),
   notifications: notificationsSettingSchema.optional(),
   escalation: escalationSettingSchema.optional(),
   onboardingType: z.enum(["prod-traces", "code-agents"]).optional(),

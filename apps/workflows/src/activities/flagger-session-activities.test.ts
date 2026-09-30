@@ -1,8 +1,12 @@
 import { Effect } from "effect"
 import { afterEach, describe, expect, it } from "vitest"
-import { isJevFlaggerPreclassifierEnabledForOrganization } from "./flagger-session-activities.ts"
+import {
+  isJevFlaggerPreclassifierEnabledForOrganization,
+  isJevFlaggerPreclassifierEnabledForProject,
+} from "./flagger-session-activities.ts"
 
 const organizationId = "o".repeat(24)
+const projectId = "p".repeat(24)
 const originalPreclassifierEnabled = process.env.LAT_JEV_FLAGGER_PRECLASSIFIER_ENABLED
 const originalApiKey = process.env.LAT_JEV_API_KEY
 
@@ -62,3 +66,58 @@ describe("isJevFlaggerPreclassifierEnabledForOrganization", () => {
     expect(calls.value).toBe(1)
   })
 })
+
+describe("isJevFlaggerPreclassifierEnabledForProject", () => {
+  it("requires the project toggle after the global and organization gates pass", async () => {
+    process.env.LAT_JEV_FLAGGER_PRECLASSIFIER_ENABLED = "true"
+    process.env.LAT_JEV_API_KEY = "key"
+
+    const settingCalls = { value: 0 }
+    const projectSetting = (enabled: boolean) => () =>
+      Effect.sync(() => {
+        settingCalls.value++
+        return enabled
+      })
+
+    await expect(
+      Effect.runPromise(
+        isJevFlaggerPreclassifierEnabledForProject(
+          organizationId,
+          projectId,
+          () => Effect.succeed(true),
+          projectSetting(false),
+        ),
+      ),
+    ).resolves.toBe(false)
+
+    await expect(
+      Effect.runPromise(
+        isJevFlaggerPreclassifierEnabledForProject(
+          organizationId,
+          projectId,
+          () => Effect.succeed(true),
+          projectSetting(true),
+        ),
+      ),
+    ).resolves.toBe(true)
+
+    expect(settingCalls.value).toBe(2)
+  })
+
+  it("fails closed when the project setting cannot be read", async () => {
+    process.env.LAT_JEV_FLAGGER_PRECLASSIFIER_ENABLED = "true"
+    process.env.LAT_JEV_API_KEY = "key"
+
+    await expect(
+      Effect.runPromise(
+        isJevFlaggerPreclassifierEnabledForProject(
+          organizationId,
+          projectId,
+          () => Effect.succeed(true),
+          () => Effect.fail("unavailable"),
+        ),
+      ),
+    ).resolves.toBe(false)
+  })
+})
+

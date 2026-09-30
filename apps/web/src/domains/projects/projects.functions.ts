@@ -93,6 +93,7 @@ export const toRecord = (project: Project) => ({
   slug: project.slug,
   settings: {
     keepMonitoring: project.settings?.keepMonitoring,
+    jevPreclassifierEnabled: project.settings?.jevPreclassifierEnabled,
     notifications: project.settings?.notifications,
     escalation: project.settings?.escalation,
     onboardingType: project.settings?.onboardingType,

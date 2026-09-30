@@ -4,6 +4,7 @@ import { eq } from "@tanstack/react-db"
 import { useForm } from "@tanstack/react-form"
 import { createFileRoute, useRouter } from "@tanstack/react-router"
 import { useState } from "react"
+import { useHasFeatureFlag } from "../../../../../domains/feature-flags/feature-flags.collection.ts"
 import {
   deleteProjectMutation,
   updateProjectMutation,
@@ -26,11 +27,13 @@ interface Draft {
   readonly name: string
   readonly samplingEnabled: boolean
   readonly samplingRate: number
+  readonly jevPreclassifierEnabled: boolean
 }
 
 function ProjectGeneralSettingsPage() {
   const { toast } = useToast()
   const routeProject = useRouteProject()
+  const jevFeatureAvailable = useHasFeatureFlag("jevFlaggerPreclassifier")
 
   const { data: liveProject } = useProjectsCollection(
     (projects) => projects.where(({ project }) => eq(project.id, routeProject.id)).findOne(),
@@ -42,6 +45,7 @@ function ProjectGeneralSettingsPage() {
     name: currentProject.name,
     samplingEnabled: currentProject.settings.sampling?.enabled ?? false,
     samplingRate: Math.round((currentProject.settings.sampling?.rate ?? 1) * 100),
+    jevPreclassifierEnabled: currentProject.settings.jevPreclassifierEnabled ?? false,
   }
 
   const [isApplying, setIsApplying] = useState(false)
@@ -49,6 +53,7 @@ function ProjectGeneralSettingsPage() {
 
   const nameIsDirty = dirtyFields.includes("name")
   const samplingIsDirty = dirtyFields.includes("samplingEnabled") || dirtyFields.includes("samplingRate")
+  const jevIsDirty = dirtyFields.includes("jevPreclassifierEnabled")
 
   const nameError = view.name.trim() === "" ? ["O nome é obrigatório"] : undefined
   const canApply = hasDirty && !nameError && !isApplying
@@ -59,13 +64,18 @@ function ProjectGeneralSettingsPage() {
     try {
       const patch: Partial<ProjectRecord> = {}
       if (nameIsDirty) patch.name = view.name.trim()
-      if (samplingIsDirty) {
+      if (samplingIsDirty || jevIsDirty) {
         patch.settings = {
           ...currentProject.settings,
-          sampling: {
-            enabled: view.samplingEnabled,
-            rate: view.samplingRate / 100,
-          },
+          ...(samplingIsDirty
+            ? {
+                sampling: {
+                  enabled: view.samplingEnabled,
+                  rate: view.samplingRate / 100,
+                },
+              }
+            : {}),
+          ...(jevIsDirty ? { jevPreclassifierEnabled: view.jevPreclassifierEnabled } : {}),
         }
       }
       const transaction = updateProjectMutation(currentProject.id, patch)
@@ -126,6 +136,13 @@ function ProjectGeneralSettingsPage() {
         onEnabledChange={(checked) => setField("samplingEnabled", checked)}
         onRateChange={(percent) => setField("samplingRate", percent)}
       />
+      {jevFeatureAvailable ? (
+        <JevPreclassifierSection
+          enabled={view.jevPreclassifierEnabled}
+          isDirty={jevIsDirty}
+          onEnabledChange={(checked) => setField("jevPreclassifierEnabled", checked)}
+        />
+      ) : null}
       <DangerZoneSection
         projectId={currentProject.id}
         projectName={currentProject.name}
@@ -193,6 +210,34 @@ function TraceSamplingSection({
             ) : null}
           </div>
         ) : null}
+      </div>
+    </div>
+  )
+}
+
+function JevPreclassifierSection({
+  enabled,
+  isDirty,
+  onEnabledChange,
+}: {
+  enabled: boolean
+  isDirty: boolean
+  onEnabledChange: (checked: boolean) => void
+}) {
+  return (
+    <div className="flex w-full flex-col rounded-lg bg-muted/30">
+      <div className="flex w-full flex-row items-start justify-between gap-4 p-4">
+        <div className="flex flex-col gap-1">
+          <Label htmlFor="jev-preclassifier-enabled" className="flex flex-row items-center gap-2">
+            Pré-seleção inteligente com JEV
+            {isDirty ? <DotIndicator variant="primary" aria-label="Alterações não salvas" /> : null}
+          </Label>
+          <Text.H6 color="foregroundMuted">
+            Usa o JEV para revisar sessões que a amostragem normal descartaria e encaminhar casos relevantes para os
+            avaliadores. O JEV não altera seus traces nem o comportamento do agente.
+          </Text.H6>
+        </div>
+        <Switch id="jev-preclassifier-enabled" checked={enabled} onCheckedChange={onEnabledChange} />
       </div>
     </div>
   )

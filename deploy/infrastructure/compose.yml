@@ -39,17 +39,16 @@ services:
                 certResolver: letsencrypt
               service: vigia-web
 
-            # Compatibilidade temporária de migração. Este router permanece
-            # até o login em app-vigia ser validado e o catch-all principal
-            # poder ser transferido para vigia-landing com segurança.
-            vigia-web:
+            # Stage 2: o host público serve a landing. API, OTLP e discovery
+            # continuam protegidos pelos routers de maior prioridade acima.
+            vigia-landing:
               rule: "Host(`vigia.wandora.com.br`)"
               entryPoints:
                 - websecure
               priority: 100
               tls:
                 certResolver: letsencrypt
-              service: vigia-web
+              service: vigia-landing
 
             # Ativar em produção somente com uma política de acesso administrativo
             # na borda (preferencialmente Cloudflare Access ou equivalente).
@@ -67,6 +66,11 @@ services:
               loadBalancer:
                 servers:
                   - url: "http://vigia-web:3000"
+
+            vigia-landing:
+              loadBalancer:
+                servers:
+                  - url: "http://vigia-landing:80"
 
             vigia-api:
               loadBalancer:

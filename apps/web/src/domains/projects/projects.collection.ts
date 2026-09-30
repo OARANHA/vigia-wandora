@@ -104,7 +104,7 @@ export function createProjectMutation(name: string) {
     slug: "",
     settings: {
       keepMonitoring: undefined,
-    jevPreclassifierEnabled: undefined,
+      jevPreclassifierEnabled: undefined,
       notifications: undefined,
       escalation: undefined,
       onboardingType: undefined,

@@ -16,16 +16,31 @@ const saved=localStorage.getItem('vigia-theme');
 if(saved==='light'||saved==='dark') root.dataset.theme=saved;
 else if(window.matchMedia&&window.matchMedia('(prefers-color-scheme: light)').matches) root.dataset.theme='light';
 
-document.querySelector('.theme-toggle')?.addEventListener('click',()=>{
+const themeToggle=document.querySelector('.theme-toggle');
+const syncThemeToggle=()=>{
+  themeToggle?.setAttribute('aria-pressed',String(root.dataset.theme==='light'));
+};
+syncThemeToggle();
+themeToggle?.addEventListener('click',()=>{
   root.dataset.theme=root.dataset.theme==='dark'?'light':'dark';
   localStorage.setItem('vigia-theme',root.dataset.theme);
+  syncThemeToggle();
 });
 
 const menu=document.querySelector('.menu-toggle');
 const links=document.querySelector('.nav-links');
+const closeMenu=()=>{
+  links?.classList.remove('open');
+  menu?.setAttribute('aria-expanded','false');
+};
+menu?.setAttribute('aria-expanded','false');
 menu?.addEventListener('click',()=>{
   const open=links?.classList.toggle('open');
   menu.setAttribute('aria-expanded',String(Boolean(open)));
+});
+links?.querySelectorAll('a').forEach((link)=>link.addEventListener('click',closeMenu));
+document.addEventListener('keydown',(event)=>{
+  if(event.key==='Escape') closeMenu();
 });
 
 const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
@@ -250,4 +265,71 @@ if ('IntersectionObserver' in window && navSections.length > 0) {
     { rootMargin: '-22% 0px -58% 0px', threshold: [0.1, 0.35, 0.65] },
   );
   navSections.forEach((section) => navObserver.observe(section));
+}
+
+
+const siteHeader=document.querySelector('.site-header');
+const scrollProgress=document.querySelector('.scroll-progress span');
+let scrollFrame=0;
+
+const syncScrollChrome=()=>{
+  scrollFrame=0;
+  const maxScroll=Math.max(1,document.documentElement.scrollHeight-window.innerHeight);
+  const progress=Math.min(1,Math.max(0,window.scrollY/maxScroll));
+  if(scrollProgress instanceof HTMLElement){
+    scrollProgress.style.transform=`scaleX(${progress})`;
+  }
+  siteHeader?.classList.toggle('is-scrolled',window.scrollY>10);
+};
+
+const requestScrollChrome=()=>{
+  if(scrollFrame) return;
+  scrollFrame=requestAnimationFrame(syncScrollChrome);
+};
+
+syncScrollChrome();
+window.addEventListener('scroll',requestScrollChrome,{passive:true});
+window.addEventListener('resize',requestScrollChrome,{passive:true});
+
+const revealTargets=[
+  ...document.querySelectorAll('.motion-section .eyebrow, .motion-section h2, .motion-section .section-copy'),
+  ...document.querySelectorAll('.final-cta .hero-actions')
+];
+
+revealTargets.forEach((element)=>element.classList.add('reveal-target'));
+
+if(prefersReducedMotion || !('IntersectionObserver' in window)){
+  revealTargets.forEach((element)=>element.classList.add('is-visible'));
+}else{
+  const revealObserver=new IntersectionObserver((entries)=>{
+    entries.forEach((entry)=>{
+      if(!entry.isIntersecting) return;
+      entry.target.classList.add('is-visible');
+      revealObserver.unobserve(entry.target);
+    });
+  },{threshold:.22,rootMargin:'0px 0px -8% 0px'});
+  revealTargets.forEach((element)=>revealObserver.observe(element));
+}
+
+const heroStage=document.querySelector('.hero-visual-stage');
+const finePointer=window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? false;
+
+if(heroStage instanceof HTMLElement && finePointer && !prefersReducedMotion){
+  const resetHeroTilt=()=>{
+    heroStage.style.setProperty('--tilt-x','0deg');
+    heroStage.style.setProperty('--tilt-y','0deg');
+    heroStage.style.setProperty('--office-x','0px');
+    heroStage.style.setProperty('--office-y','0px');
+  };
+
+  heroStage.addEventListener('pointermove',(event)=>{
+    const bounds=heroStage.getBoundingClientRect();
+    const x=(event.clientX-bounds.left)/bounds.width-.5;
+    const y=(event.clientY-bounds.top)/bounds.height-.5;
+    heroStage.style.setProperty('--tilt-x',`${(x*2.8).toFixed(2)}deg`);
+    heroStage.style.setProperty('--tilt-y',`${(-y*2.2).toFixed(2)}deg`);
+    heroStage.style.setProperty('--office-x',`${(-x*7).toFixed(1)}px`);
+    heroStage.style.setProperty('--office-y',`${(-y*5).toFixed(1)}px`);
+  });
+  heroStage.addEventListener('pointerleave',resetHeroTilt);
 }

@@ -83,10 +83,11 @@ const animateHeroDashboard = () => {
   rafCounter(kpis[1], 78, (value) => `${Math.round(value)}%`, 900);
   rafCounter(
     kpis[2],
-    892.17,
-    (value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+    892,
+    (value) => `R$ ${Math.round(value).toLocaleString('pt-BR')}`,
     1200,
   );
+  rafCounter(kpis[3], 3, (value) => String(Math.round(value)), 760);
 
   const lines = dashboard.querySelectorAll('.chart-card .line');
   lines.forEach((line, index) => {
@@ -102,7 +103,7 @@ const animateHeroDashboard = () => {
     });
   });
 
-  const result = dashboard.querySelector('.result-float');
+  const result = dashboard.querySelector('.result-panel');
   if (result) {
     result.classList.add('is-revealed');
     rafCounter(result.querySelector('strong'), 324, (value) => String(Math.round(value)), 1100);
@@ -311,7 +312,7 @@ if(prefersReducedMotion || !('IntersectionObserver' in window)){
   revealTargets.forEach((element)=>revealObserver.observe(element));
 }
 
-const heroStage=document.querySelector('.hero-visual-stage');
+const heroStage=document.querySelector('.hero-frame');
 const finePointer=window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? false;
 
 if(heroStage instanceof HTMLElement && finePointer && !prefersReducedMotion){

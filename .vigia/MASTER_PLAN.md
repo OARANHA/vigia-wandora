@@ -68,6 +68,19 @@ Futuramente, um fluxo de SSO pode permitir que um usuário saia do painel Wandor
 
 Essa relação cria um ciclo estratégico: a Wandora usa primeiro as novas capacidades do Vigia em produção, valida valor e problemas reais e depois oferece as capacidades maduras aos clientes externos.
 
+### Atendimento e aquisição via Wandora / Ana
+
+A landing pública do Vigia pode hospedar futuramente um widget de atendimento da **Ana**, operado pela Wandora, mas essa integração deve permanecer desacoplada do runtime do Vigia.
+
+Responsabilidades:
+
+- **Wandora / Ana:** conversa, qualificação de lead, CRM, onboarding comercial, suporte e handoff humano;
+- **Vigia:** organização, projeto, credenciais, traces, custos, falhas, resultados, Business Events e saúde operacional;
+- a ligação entre os produtos deve usar contratos públicos/IDs, nunca acesso direto aos bancos ou internals do Vigia;
+- a indisponibilidade da Ana não pode impedir o funcionamento da landing ou do produto Vigia.
+
+A landing mantém apenas um ponto de integração desativado por padrão até existir o contrato público definitivo do widget. A Wandora poderá usar uma API resumida do Vigia para acompanhar o progresso de onboarding e saúde do cliente, preservando o Vigia como fonte de verdade de observabilidade.
+
 ## 3. Experiência que queremos vender
 
 O onboarding precisa parecer produto SaaS, não projeto de consultoria.

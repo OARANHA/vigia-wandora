@@ -267,7 +267,7 @@ function LoginPage() {
         <Text.H6 color="foregroundMuted" align="center">
           Ainda não usa o Vigia?{" "}
           <a
-            href={`${VIGIA_PRODUCT.marketingUrl}/interesse/`}
+            href={`${VIGIA_PRODUCT.marketingUrl}/interesse/?source=login`}
             className="text-accent-foreground underline hover:no-underline"
           >
             Quero conhecer

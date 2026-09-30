@@ -680,3 +680,141 @@ a{color:inherit;text-decoration:none}.container{width:min(var(--max),calc(100% -
   .hero-frame .dashboard-shell.hero-dashboard{transform:none}
 }
 
+/* Keep the approved desktop hero composition on laptop-width viewports.
+   The previous 980px breakpoint stacked the hero at 953px, which broke the reference layout. */
+@media (min-width:761px) and (max-width:1024px){
+  .site-header{
+    position:absolute;
+    top:0;
+    left:0;
+    right:0;
+    background:transparent;
+    border-bottom:0;
+    backdrop-filter:none;
+  }
+  .site-header .nav{
+    width:calc(100% - 34px);
+    height:70px;
+    gap:14px;
+  }
+  .site-header .brand img{width:92px}
+  .site-header .nav-links{display:flex;gap:14px}
+  .site-header .nav-links a{font-size:11px}
+  .site-header .nav-actions{gap:7px}
+  .site-header .btn.ghost,.site-header .btn.compact{padding:9px 12px;font-size:11px}
+  .site-header .theme-toggle{min-width:36px;height:36px}
+  .site-header.is-scrolled{
+    position:fixed;
+    background:rgba(10,8,16,.92);
+    border-bottom:1px solid rgba(255,255,255,.08);
+    backdrop-filter:blur(18px);
+  }
+
+  .hero.hero-reference{padding:0 12px 42px}
+  .hero-frame{
+    height:clamp(470px,52vw,540px);
+    min-height:470px;
+    padding:0;
+    border-radius:0 0 22px 22px;
+  }
+  .hero-frame .hero-office-image{
+    inset:-1%;
+    width:102%;
+    height:102%;
+    object-position:53% center;
+    filter:saturate(1.08) contrast(1.04) brightness(.96);
+  }
+  .hero-scene-overlay{
+    background:
+      linear-gradient(90deg,rgba(9,6,15,.94) 0%,rgba(9,6,15,.88) 21%,rgba(9,6,15,.68) 34%,rgba(9,6,15,.18) 49%,rgba(9,6,15,.03) 66%,rgba(9,6,15,.04) 100%),
+      linear-gradient(180deg,rgba(9,6,15,.11) 0%,transparent 24%,transparent 76%,rgba(9,6,15,.32) 100%);
+  }
+
+  .hero-frame .hero-copy{
+    position:absolute;
+    left:42px;
+    top:100px;
+    width:39%;
+    max-width:390px;
+  }
+  .hero-frame .hero-copy .eyebrow{
+    margin-bottom:12px;
+    padding:6px 10px;
+    font-size:10px;
+  }
+  .hero-frame .hero-copy h1{
+    margin-bottom:14px;
+    font-size:clamp(38px,4.35vw,46px);
+    line-height:.98;
+  }
+  .hero-frame .lead{
+    max-width:360px;
+    font-size:12.5px;
+    line-height:1.48;
+  }
+  .hero-frame .hero-actions{margin-top:18px;gap:9px}
+  .hero-frame .hero-actions .btn{
+    min-height:41px;
+    padding:10px 15px;
+    border-radius:10px;
+    font-size:11px;
+  }
+  .hero-frame .proof-row{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+    margin-top:22px;
+    max-width:390px;
+  }
+  .proof-item{grid-template-columns:22px 1fr;gap:6px}
+  .proof-icon{width:21px;height:21px;font-size:9px}
+  .proof-item strong{font-size:8.5px;white-space:normal}
+  .proof-item small{font-size:7.5px}
+
+  .hero-frame .hero-dashboard-wrap{
+    position:absolute;
+    top:78px;
+    right:22px;
+    width:49%;
+    margin:0;
+  }
+  .hero-frame .dashboard-shell.hero-dashboard{
+    min-height:0;
+    padding:14px;
+    border-radius:18px;
+    transform:perspective(1500px) rotateY(calc(-2.4deg + var(--tilt-x))) rotateX(calc(.6deg + var(--tilt-y)));
+  }
+  .hero-dash-brand{margin-bottom:10px}
+  .hero-dash-brand .dash-logo{width:62px}
+  .hero-dash-brand span{font-size:8px}
+  .hero-frame .hero-kpis{
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:6px;
+    margin-bottom:8px;
+  }
+  .hero-frame .hero-kpis>div{padding:9px 8px;border-radius:9px}
+  .hero-frame .hero-kpis small{min-height:20px;font-size:7px}
+  .hero-frame .hero-kpis strong{font-size:16px}
+  .hero-frame .hero-kpis em{font-size:7px}
+  .hero-dash-lower{grid-template-columns:minmax(0,1.65fr) minmax(105px,.72fr);gap:7px}
+  .hero-frame .chart-card{min-height:175px;padding:10px}
+  .hero-frame .chart-head{font-size:7px}
+  .hero-frame .chart-card svg{margin-top:8px}
+  .result-panel{padding:12px 10px;border-radius:11px}
+  .result-panel small{font-size:7.5px}
+  .result-panel strong{font-size:24px}
+  .result-panel>span{font-size:7px}
+  .result-panel em{margin-top:14px;font-size:8px}
+  .mini-bars{height:31px}
+  .hero-frame .hero-live-pill{
+    position:absolute;
+    left:auto;
+    right:18px;
+    bottom:14px;
+    width:max-content;
+    max-width:46%;
+    margin:0;
+    font-size:8px;
+    padding:7px 9px;
+  }
+}
+

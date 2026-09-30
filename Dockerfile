@@ -326,5 +326,6 @@ FROM nginx:1.30.5-alpine AS landing
 
 COPY apps/landing/ /usr/share/nginx/html/
 COPY apps/web/public/brand/vigia-logo.png /usr/share/nginx/html/assets/vigia-logo.png
+COPY apps/web/public/brand/vigia-mascots-office.webp /usr/share/nginx/html/assets/vigia-mascots-office.webp
 
 EXPOSE 80

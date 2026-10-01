@@ -311,7 +311,7 @@ if(prefersReducedMotion || !('IntersectionObserver' in window)){
   revealTargets.forEach((element)=>revealObserver.observe(element));
 }
 
-const heroStage=document.querySelector('.hero-frame');
+const heroStage=document.querySelector('.hero.hero-reference');
 const finePointer=window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? false;
 
 if(heroStage instanceof HTMLElement && finePointer && !prefersReducedMotion){

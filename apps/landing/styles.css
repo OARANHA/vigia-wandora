@@ -1470,3 +1470,28 @@ a{color:inherit;text-decoration:none}.container{width:min(var(--max),calc(100% -
   }
 }
 
+/* Hero composition pass: keep copy clear of the header and restore a deliberate left gutter. */
+.hero.hero-reference .hero-copy{
+  left:clamp(96px,8vw,160px);
+  top:clamp(160px,18vh,190px);
+}
+@media (min-width:1025px) and (max-width:1280px){
+  .hero.hero-reference .hero-copy{
+    left:96px;
+    top:154px;
+  }
+}
+@media (min-width:761px) and (max-width:1024px){
+  .hero.hero-reference .hero-copy{
+    left:64px;
+    top:144px;
+  }
+}
+@media (max-width:760px){
+  .hero.hero-reference .hero-copy{
+    left:28px;
+    right:28px;
+    top:112px;
+  }
+}
+

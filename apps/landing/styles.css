@@ -1447,3 +1447,26 @@ a{color:inherit;text-decoration:none}.container{width:min(var(--max),calc(100% -
   .hero.hero-reference .hero-office-image{object-position:66% center}
 }
 
+/* Final hero copy spacing: preserve full-bleed image while giving text a proper gutter. */
+.hero.hero-reference .hero-copy{
+  left:clamp(72px,7vw,132px);
+}
+@media (min-width:1025px) and (max-width:1280px){
+  .hero.hero-reference .hero-copy{
+    left:64px;
+  }
+}
+@media (min-width:761px) and (max-width:1024px){
+  .hero.hero-reference .hero-copy{
+    left:56px;
+    top:126px;
+  }
+}
+@media (max-width:760px){
+  .hero.hero-reference .hero-copy{
+    left:24px;
+    right:24px;
+    top:88px;
+  }
+}
+

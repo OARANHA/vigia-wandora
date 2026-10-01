@@ -70,6 +70,15 @@ services:
                 certResolver: letsencrypt
               service: studio-designer
 
+            elus-app:
+              rule: "Host(`elus.wandora.com.br`)"
+              entryPoints:
+                - websecure
+              priority: 100
+              tls:
+                certResolver: letsencrypt
+              service: elus-app
+
           services:
             vigia-web:
               loadBalancer:
@@ -101,6 +110,11 @@ services:
               loadBalancer:
                 servers:
                   - url: "http://wandora-studio-designer:3210"
+
+            elus-app:
+              loadBalancer:
+                servers:
+                  - url: "http://elus-app:3000"
 
           serversTransports:
             vigia-portainer-tls:

@@ -304,3 +304,18 @@ Pendente de produção:
 - [ ] validar login, Google e GitHub após a mudança visual;
 - [ ] validar animações em desktop/mobile e modo de movimento reduzido.
 
+## Checkpoint WIP 2026-09-30 — hero com fundo integrado
+
+Estado persistido no GitHub para continuidade independente do chat:
+
+- branch: `fix/landing-hero-clean-background`;
+- o `hero-dashboard-wrap` foi removido da hero;
+- a cena limpa do time/mascotes foi persistida como binário real em `apps/landing/assets/vigia-team-office-hero-clean.webp`;
+- navegação, headline, CTAs, provas de valor e status continuam como HTML/CSS vivo sobre a imagem;
+- breakpoints específicos preservam a composição em desktop, notebook e mobile;
+- a imagem reserva espaço negativo à esquerda para a copy e concentra time/dashboard à direita;
+- o asset é versionado diretamente no Git, sem depender de `/mnt/data` ou de arquivos base64 temporários;
+- neste slice não tocar em Wandora, app autenticado ou backend.
+
+Próxima validação: abrir PR, validar build da landing e só depois publicar `vigia-landing`.
+

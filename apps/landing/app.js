@@ -240,7 +240,6 @@ const observeOnce = (selector, callback, threshold = 0.28) => {
   observer.observe(element);
 };
 
-observeOnce('.dashboard-shell', animateHeroDashboard, 0.2);
 observeOnce('#produto', playComparison);
 observeOnce('#conteudo', playTimeline);
 observeOnce('#integracoes', playSteps);

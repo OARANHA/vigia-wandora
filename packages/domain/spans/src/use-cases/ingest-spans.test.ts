@@ -333,6 +333,52 @@ describe("ingestSpansUseCase project scoping", () => {
     expect(published).toHaveLength(0)
   })
 
+  it("accepts the Flowise Phoenix OpenInference project resource attribute", async () => {
+    const { disk } = createFakeStorageDisk()
+    const { publisher, published } = createFakeQueuePublisher()
+
+    const flowisePayload = new TextEncoder().encode(
+      JSON.stringify({
+        resourceSpans: [
+          {
+            resource: {
+              attributes: [
+                { key: "service.name", value: { stringValue: "primary" } },
+                { key: "openinference.project.name", value: { stringValue: "primary" } },
+              ],
+            },
+            scopeSpans: [
+              {
+                scope: { name: "flowise-phoenix", version: "1.0.0" },
+                spans: [
+                  {
+                    traceId: "0af7651916cd43dd8448eb211c80319c",
+                    spanId: "b7ad6b7169203331",
+                    name: "chain",
+                    startTimeUnixNano: "1710590400000000000",
+                    endTimeUnixNano: "1710590401000000000",
+                    attributes: [],
+                    status: { code: 1 },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    )
+
+    const result = await Effect.runPromise(
+      runUseCase(makeInput(flowisePayload), disk, publisher, { primary: PRIMARY_PROJECT_ID }),
+    )
+
+    expect(result).toEqual({ totalSpans: 1, acceptedSpans: 1, rejectedSpans: 0 })
+    expect(published).toHaveLength(1)
+    expect((published[0]?.payload as { projectIdBySlug: Record<string, string> }).projectIdBySlug).toEqual({
+      primary: PRIMARY_PROJECT_ID,
+    })
+  })
+
   it("rejects spans whose latitude.project slug isn't in the org and keeps the rest", async () => {
     const { disk } = createFakeStorageDisk()
     const { publisher, published } = createFakeQueuePublisher()

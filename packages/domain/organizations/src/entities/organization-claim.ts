@@ -1,7 +1,7 @@
 import { generateId, type OrganizationId, organizationIdSchema } from "@domain/shared"
 import { z } from "zod"
 
-// Claim record for a temporary org. Only the SHA-256 `tokenHash` is persisted (raw token lives in the claim URL).
+// One-shot ownership claim. Only the SHA-256 `tokenHash` is persisted (raw token lives in the claim URL).
 export const organizationClaimSchema = z.object({
   id: z.string(),
   organizationId: organizationIdSchema,

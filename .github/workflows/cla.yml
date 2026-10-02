@@ -15,6 +15,7 @@ jobs:
   CLAAssistant:
     if: github.repository == 'latitude-dev/latitude-llm'
     runs-on: ubuntu-latest
+    if: github.repository == 'latitude-dev/latitude-llm'
     steps:
       - name: CLA Assistant
         if: >-

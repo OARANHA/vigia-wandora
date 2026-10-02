@@ -319,3 +319,35 @@ Estado persistido no GitHub para continuidade independente do chat:
 
 Próxima validação: abrir PR, validar build da landing e só depois publicar `vigia-landing`.
 
+## Checkpoint 2026-10-02 — admissão comercial + onboarding pós-compra
+
+Decisão:
+
+- [x] login não deve criar organização automaticamente;
+- [x] criação de empresa de cliente passa a ser provisionamento comercial controlado;
+- [x] organização comercial deve ser durável; expiração do claim não pode apagar o cliente;
+- [x] reutilizar Organization + Project + API Key + Claim existentes, sem tabela/migration paralela;
+- [x] primeiro acesso comercial deve levar ao onboarding guiado Vigia;
+- [x] conclusão do onboarding depende do primeiro trace real;
+- [x] linguagem principal deve traduzir telemetria em erro, custo, qualidade, evolução e resultado.
+
+Slice V1 em implementação:
+
+- [x] bloquear criação self-service de organização no produto Vigia;
+- [x] adicionar provisionamento de cliente no backoffice com guard de platform admin;
+- [x] provisionar organização durável owner-less + projeto + chave + claim;
+- [x] vincular claim comercial ao e-mail do comprador;
+- [x] separar copy de e-mail temporário e comercial;
+- [x] encaminhar ativação para o onboarding de telemetria já existente;
+- [ ] validar typecheck/testes/build e abrir PR;
+- [ ] validar fluxo real em ambiente apropriado antes de qualquer deploy de produção.
+
+Próximos slices explícitos:
+
+- [ ] qualificar e implementar onboarding guiado específico para n8n;
+- [ ] qualificar e implementar onboarding guiado específico para Flowise;
+- [ ] qualificar Dify e LangFlow antes de anunciá-los como integração operacional;
+- [ ] simplificar a apresentação de endpoint/chave/headers para usuários não técnicos sem esconder a configuração avançada;
+- [ ] definir experiência de reenvio de link de ativação expirado;
+- [ ] decidir contrato comercial de plano/entitlement e futura automação Elus -> Vigia;
+- [ ] colocar MCP/OAuth e integrações como próximos passos depois do primeiro trace.

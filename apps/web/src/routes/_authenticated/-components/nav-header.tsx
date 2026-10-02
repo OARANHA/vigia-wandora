@@ -6,7 +6,6 @@ import {
   ComboboxContent,
   ComboboxItem,
   ComboboxList,
-  ComboboxSeparator,
   ComboboxTrigger,
   DropdownMenu,
   Icon,
@@ -14,8 +13,8 @@ import {
 } from "@repo/ui"
 import { extractLeadingEmoji } from "@repo/utils"
 import { getRouteApi, useRouter } from "@tanstack/react-router"
-import { HatGlassesIcon, LifeBuoy, Moon, Plus, ShieldAlertIcon, Sun } from "lucide-react"
-import { useMemo, useRef, useState } from "react"
+import { HatGlassesIcon, LifeBuoy, Moon, ShieldAlertIcon, Sun } from "lucide-react"
+import { useMemo, useRef } from "react"
 import { useOrganizationsCollection } from "../../../domains/organizations/organizations.collection.ts"
 import { SidebarCollapseToggleButton, useSidebarCollapse } from "../../../layouts/AppSidebar/sidebar-collapse.tsx"
 import { authClient } from "../../../lib/auth-client.ts"
@@ -30,12 +29,9 @@ import {
   breadcrumbSwitcherEmojiClassName,
   breadcrumbSwitcherTriggerClassName,
 } from "./breadcrumb-ui.tsx"
-import { CreateOrganizationModal } from "./create-organization-modal.tsx"
 import { NotificationBell } from "./notifications/notification-bell.tsx"
 
 const route = getRouteApi("/_authenticated")
-
-const CREATE_ORG_KEY = "@create-organization"
 
 interface OrgOption {
   readonly key: string
@@ -43,14 +39,6 @@ interface OrgOption {
   readonly label: string
   readonly emoji: string | null
   readonly isActive: boolean
-}
-
-const CREATE_ORG_OPTION: OrgOption = {
-  key: CREATE_ORG_KEY,
-  id: CREATE_ORG_KEY,
-  label: ptBR.clientShell.header.createOrganization,
-  emoji: null,
-  isActive: false,
 }
 
 export function NavHeader() {
@@ -71,7 +59,6 @@ export function NavHeader() {
   const initialTheme = useRootThemePreference()
   const { theme, setTheme } = useThemePreference(initialTheme)
   const nextTheme = theme === "dark" ? "light" : "dark"
-  const [createOrgModalOpen, setCreateOrgModalOpen] = useState(false)
   const { collapsed } = useSidebarCollapse()
   const orgTriggerRef = useRef<HTMLButtonElement>(null)
 
@@ -82,7 +69,7 @@ export function NavHeader() {
         return { key: o.id, id: o.id, label: rest || o.name, emoji: emoji || null, isActive: o.id === organizationId }
       })
       .sort((a, b) => a.label.localeCompare(b.label))
-    return [...options, CREATE_ORG_OPTION]
+    return options
   }, [allOrgs, organizationId])
 
   const selectedOrgOption = useMemo(() => orgItems.find((item) => item.isActive) ?? null, [orgItems])
@@ -111,12 +98,7 @@ export function NavHeader() {
           filter={null}
           value={selectedOrgOption}
           onValueChange={(picked: OrgOption | null) => {
-            if (!picked) return
-            if (picked.key === CREATE_ORG_KEY) {
-              setCreateOrgModalOpen(true)
-              return
-            }
-            if (picked.isActive) return
+            if (!picked || picked.isActive) return
             void handleOrgSwitch(picked.id)
           }}
           items={orgItems}
@@ -135,26 +117,15 @@ export function NavHeader() {
           </ComboboxTrigger>
           <ComboboxContent anchor={orgTriggerRef} className="w-64 min-w-64">
             <ComboboxList>
-              {(item: OrgOption) =>
-                item.key === CREATE_ORG_KEY ? (
-                  <>
-                    <ComboboxSeparator />
-                    <ComboboxItem value={item}>
-                      <Icon icon={Plus} size="sm" color="foregroundMuted" />
-                      <Text.H5 className="flex-1 truncate">{item.label}</Text.H5>
-                    </ComboboxItem>
-                  </>
-                ) : (
-                  <ComboboxItem value={item}>
-                    {item.emoji ? <span className="text-sm">{item.emoji}</span> : null}
-                    <Text.H5 className="flex-1 truncate">{item.label}</Text.H5>
-                  </ComboboxItem>
-                )
-              }
+              {(item: OrgOption) => (
+                <ComboboxItem value={item}>
+                  {item.emoji ? <span className="text-sm">{item.emoji}</span> : null}
+                  <Text.H5 className="flex-1 truncate">{item.label}</Text.H5>
+                </ComboboxItem>
+              )}
             </ComboboxList>
           </ComboboxContent>
         </Combobox>
-        <CreateOrganizationModal open={createOrgModalOpen} onOpenChange={setCreateOrgModalOpen} />
         <BreadcrumbTrail />
       </div>
       <div className="flex shrink-0 items-center gap-1">

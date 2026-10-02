@@ -1,6 +1,8 @@
 import {
   Avatar,
   Badge,
+  Button,
+  Icon,
   InfiniteTable,
   type InfiniteTableColumn,
   type InfiniteTableInfiniteScroll,
@@ -9,11 +11,14 @@ import {
 import { formatCount, relativeTime } from "@repo/utils"
 import { useInfiniteQuery } from "@tanstack/react-query"
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { useCallback, useMemo } from "react"
+import { Plus } from "lucide-react"
+import { useCallback, useMemo, useState } from "react"
 import {
   type AdminOrganizationUsageItemDto,
   adminListOrganizationsByUsage,
 } from "../../../domains/admin/organizations.functions.ts"
+
+import { ProvisionCustomerOrganizationModal } from "./-components/provision-customer-organization-modal.tsx"
 
 const PAGE_SIZE = 50
 
@@ -22,6 +27,7 @@ export const Route = createFileRoute("/backoffice/organizations/")({
 })
 
 function BackofficeOrganizationsByUsagePage() {
+  const [provisionOpen, setProvisionOpen] = useState(false)
   const { data, isLoading, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: ["backoffice", "organizations-by-usage"],
     queryFn: ({ pageParam }) =>
@@ -154,10 +160,15 @@ function BackofficeOrganizationsByUsagePage() {
         <div className="flex flex-1 flex-col gap-1">
           <Text.H4 weight="semibold">Organizations by usage</Text.H4>
           <Text.H6 color="foregroundMuted">
-            Sorted by credit spend in the current billing period. Click a row to open the org detail page.
+            Sorted by credit spend in the current billing period. New customers open directly after provisioning.
           </Text.H6>
         </div>
+        <Button onClick={() => setProvisionOpen(true)}>
+          <Icon icon={Plus} size="sm" />
+          Provisionar cliente
+        </Button>
       </div>
+      <ProvisionCustomerOrganizationModal open={provisionOpen} onOpenChange={setProvisionOpen} />
       <div className="flex min-h-0 flex-1 flex-col px-6 pt-4 pb-6">
         <InfiniteTable
           data={items}

@@ -216,6 +216,7 @@ export const getBetterAuth = () => {
       trustedOrigins,
       ...(captchaSecretKey ? { captchaSecretKey } : {}),
       ...(allowedEmailDomain ? { allowedEmailDomain } : {}),
+      allowUserToCreateOrganization: false,
       ...(stripeSecretKey ? { stripeSecretKey } : {}),
       ...(stripeWebhookSecret ? { stripeWebhookSecret } : {}),
       ...(selfServePlans.length > 0 ? { subscriptionPlans: selfServePlans } : {}),

@@ -721,7 +721,7 @@ export interface EventPayloads {
     readonly partnerId: string
   }
   /**
-   * Emitted by `bootstrapOrganizationUseCase` when an email is supplied; drives the claim email.
+   * Emitted by temporary bootstrap and controlled customer provisioning; drives the claim/activation email.
    * Outbox `organizationId: "system"` like `InvitationEmailRequested` — an auth-boundary email.
    */
   ClaimEmailRequested: {
@@ -729,5 +729,7 @@ export interface EventPayloads {
     readonly claimUrl: string
     readonly organizationName: string
     readonly expiresAt: string
+    /** Temporary agent bootstrap and paid customer activation share delivery, but not lifecycle copy. */
+    readonly kind?: "temporary" | "commercial"
   }
 }

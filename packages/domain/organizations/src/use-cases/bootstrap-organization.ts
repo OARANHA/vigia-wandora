@@ -97,7 +97,13 @@ export const bootstrapOrganizationUseCase = Effect.fn("organizations.bootstrapOr
             aggregateType: "organization",
             aggregateId: input.organizationId,
             organizationId: "system",
-            payload: { email: claimEmail, claimUrl, organizationName, expiresAt: expiresAt.toISOString() },
+            payload: {
+              email: claimEmail,
+              claimUrl,
+              organizationName,
+              expiresAt: expiresAt.toISOString(),
+              kind: "temporary",
+            },
           })
           .pipe(Effect.mapError((error) => toRepositoryError(error, "write")))
       }

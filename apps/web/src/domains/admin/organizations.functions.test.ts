@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest"
 import {
   adminGetOrganizationInputSchema,
   adminListOrganizationsByUsageInputSchema,
+  adminProvisionCustomerOrganizationInputSchema,
   adminResetSystemMonitorsInputSchema,
   adminSetOrganizationShowcaseInputSchema,
 } from "./organizations.functions.ts"
@@ -22,6 +23,42 @@ describe("adminGetOrganizationInputSchema", () => {
 
   it("rejects missing organizationId", () => {
     expect(adminGetOrganizationInputSchema.safeParse({}).success).toBe(false)
+  })
+})
+
+describe("adminProvisionCustomerOrganizationInputSchema", () => {
+  it("accepts a customer organization and purchaser email", () => {
+    const result = adminProvisionCustomerOrganizationInputSchema.safeParse({
+      organizationName: "Acme Ltda",
+      ownerEmail: "owner@acme.com",
+    })
+    expect(result.success).toBe(true)
+  })
+
+  it("trims customer organization and purchaser email", () => {
+    const result = adminProvisionCustomerOrganizationInputSchema.safeParse({
+      organizationName: "  Acme Ltda  ",
+      ownerEmail: "  owner@acme.com  ",
+    })
+    expect(result.success).toBe(true)
+    if (result.success) {
+      expect(result.data).toEqual({ organizationName: "Acme Ltda", ownerEmail: "owner@acme.com" })
+    }
+  })
+
+  it("rejects blank organization names and invalid email addresses", () => {
+    expect(
+      adminProvisionCustomerOrganizationInputSchema.safeParse({
+        organizationName: "   ",
+        ownerEmail: "owner@acme.com",
+      }).success,
+    ).toBe(false)
+    expect(
+      adminProvisionCustomerOrganizationInputSchema.safeParse({
+        organizationName: "Acme",
+        ownerEmail: "not-an-email",
+      }).success,
+    ).toBe(false)
   })
 })
 

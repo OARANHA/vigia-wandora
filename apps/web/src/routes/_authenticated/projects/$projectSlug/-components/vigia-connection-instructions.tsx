@@ -1,3 +1,4 @@
+import type { VigiaBusinessStackId } from "@domain/shared"
 import { DEFAULT_API_KEY_NAME } from "@domain/api-keys"
 import { Button, CodeBlock, Text, useToast } from "@repo/ui"
 import { useState } from "react"
@@ -16,10 +17,12 @@ export function VigiaConnectionInstructions({
   projectSlug,
   source,
   apiKeyToken,
+  stack = [],
 }: {
   readonly projectSlug: string
   readonly source: VigiaAgentStackId
   readonly apiKeyToken?: string | null | undefined
+  readonly stack?: readonly VigiaBusinessStackId[]
 }) {
   const { toast } = useToast()
   const { data: apiKeysList = [] } = useApiKeysCollection()
@@ -28,7 +31,8 @@ export function VigiaConnectionInstructions({
   const preferredKey = apiKeysList.find((key) => key.name === DEFAULT_API_KEY_NAME) ?? apiKeysList[0] ?? null
   const resolvedApiKey = apiKeyToken !== undefined ? apiKeyToken : (preferredKey?.token ?? null)
   const config = getVigiaConnectionValues(projectSlug, resolvedApiKey)
-  const stack = VIGIA_AGENT_STACKS.find((entry) => entry.id === source) ?? VIGIA_AGENT_STACKS.at(-1)
+  const connectionStack = VIGIA_AGENT_STACKS.find((entry) => entry.id === source) ?? VIGIA_AGENT_STACKS.at(-1)
+  const usesEvolutionWithN8n = source === "n8n" && stack.includes("evolution-api")
 
   const handleCreateKey = async () => {
     setCreatingKey(true)
@@ -48,8 +52,14 @@ export function VigiaConnectionInstructions({
   return (
     <div className="flex w-full flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <Text.H5M>Como conectar {stack?.label ?? "seu agente"}</Text.H5M>
-        <Text.H5 color="foregroundMuted">{stack?.guidance}</Text.H5>
+        <Text.H5M>Como conectar {connectionStack?.label ?? "seu agente"}</Text.H5M>
+        <Text.H5 color="foregroundMuted">{connectionStack?.guidance}</Text.H5>
+        {usesEvolutionWithN8n ? (
+          <Text.H6 color="foregroundMuted">
+            Você marcou Evolution API + n8n. A Evolution continua como canal do WhatsApp; nesta etapa, quem envia o
+            tracing ao Vigia é o n8n. Não configure o endpoint OTLP na Evolution.
+          </Text.H6>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-3">

@@ -8,7 +8,7 @@ import type {
 import { Button, Icon, Input, Text, useToast } from "@repo/ui"
 import { useNavigate } from "@tanstack/react-router"
 import { CheckCircle2, Loader2 } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { type ReactNode, useEffect, useRef, useState } from "react"
 import { SelectorChip } from "../../../../../components/selector-chip.tsx"
 import { VigiaBrand } from "../../../../../components/vigia-brand.tsx"
 import { completeProjectOnboarding, updateProject } from "../../../../../domains/projects/projects.functions.ts"
@@ -25,7 +25,6 @@ import {
   vigiaUseCaseLabel,
 } from "./vigia-business-profile.ts"
 import {
-  DEFAULT_VIGIA_AGENT_STACK,
   suggestVigiaConnectionSource,
   type VigiaAgentStackId,
 } from "./vigia-connection.ts"
@@ -67,7 +66,7 @@ export function OnboardingFlow({
     initialBusinessProfile?.successOutcomes ?? [],
   )
   const [source, setSource] = useState<VigiaAgentStackId>(
-    initialSource ?? suggestVigiaConnectionSource(initialBusinessProfile?.buildStack ?? []) ?? DEFAULT_VIGIA_AGENT_STACK,
+    initialSource ?? suggestVigiaConnectionSource(initialBusinessProfile?.buildStack ?? []),
   )
   const [isSavingAgent, setIsSavingAgent] = useState(false)
   const [traceReceived, setTraceReceived] = useState(false)
@@ -364,7 +363,7 @@ function ChoiceGroup({
 }: {
   readonly label: string
   readonly description?: string
-  readonly children: React.ReactNode
+  readonly children: ReactNode
 }) {
   return (
     <div className="flex flex-col gap-3">

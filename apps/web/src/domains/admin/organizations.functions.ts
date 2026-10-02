@@ -15,21 +15,27 @@ import {
   upsertBillingOverrideUseCase,
 } from "@domain/admin"
 import type { OverridablePlanSlug, PlanSlug } from "@domain/billing"
-import { OrganizationId, UserId } from "@domain/shared"
+import { provisionCustomerOrganizationUseCase } from "@domain/organizations"
+import { generateId, OrganizationId, UserId } from "@domain/shared"
 import { RedisCacheStoreLive } from "@platform/cache-redis"
 import { AdminOrganizationUsageRepositoryLive, withClickHouse } from "@platform/db-clickhouse"
 import {
   AdminOrganizationRepositoryLive,
+  ApiKeyRepositoryLive,
   BillingOverrideRepositoryLive,
   BillingUsagePeriodRepositoryLive,
   invalidateEffectivePlanCache,
+  OrganizationClaimRepositoryLive,
   MonitorRepositoryLive,
   OrganizationRepositoryLive,
+  OutboxEventWriterLive,
+  ProjectRepositoryLive,
   resolveEffectivePlanCached,
   SettingsReaderLive,
   StripeSubscriptionLookupLive,
   withPostgres,
 } from "@platform/db-postgres"
+import { parseEnv } from "@platform/env"
 import { withTracing } from "@repo/observability"
 import { createServerFn } from "@tanstack/react-start"
 import { Effect, Layer } from "effect"
@@ -150,6 +156,61 @@ const toDto = (details: AdminOrganizationDetails): AdminOrganizationDetailsDto =
 export const adminGetOrganizationInputSchema = z.object({
   organizationId: z.string().min(1).max(256),
 })
+
+export const adminProvisionCustomerOrganizationInputSchema = z.object({
+  organizationName: z.string().trim().min(1).max(256),
+  ownerEmail: z.string().trim().email().max(320),
+})
+
+export interface AdminProvisionCustomerOrganizationDto {
+  readonly organizationId: string
+  readonly organizationSlug: string
+  readonly projectId: string
+  readonly projectSlug: string
+  readonly ownerEmail: string
+  readonly activationExpiresAt: string
+}
+
+export const adminProvisionCustomerOrganization = createServerFn({ method: "POST" })
+  .middleware([adminMiddleware])
+  .inputValidator(adminProvisionCustomerOrganizationInputSchema)
+  .handler(async ({ data, context }): Promise<AdminProvisionCustomerOrganizationDto> => {
+    const client = getAdminPostgresClient()
+    const organizationId = generateId<"OrganizationId">()
+    const webUrl = Effect.runSync(parseEnv("LAT_WEB_URL", "string", "http://localhost:3000"))
+
+    const result = await Effect.runPromise(
+      provisionCustomerOrganizationUseCase({
+        organizationId,
+        actorUserId: context.adminUserId,
+        organizationName: data.organizationName,
+        ownerEmail: data.ownerEmail,
+        webUrl,
+      }).pipe(
+        withPostgres(
+          Layer.mergeAll(
+            ApiKeyRepositoryLive,
+            OrganizationClaimRepositoryLive,
+            OrganizationRepositoryLive,
+            OutboxEventWriterLive,
+            ProjectRepositoryLive,
+          ),
+          client,
+          organizationId,
+        ),
+        withTracing,
+      ),
+    )
+
+    return {
+      organizationId: result.organization.id,
+      organizationSlug: result.organization.slug,
+      projectId: result.project.id,
+      projectSlug: result.project.slug,
+      ownerEmail: result.ownerEmail,
+      activationExpiresAt: result.activationExpiresAt.toISOString(),
+    }
+  })
 
 const adminUpdateOrganizationBillingOverrideInputSchema = z.object({
   organizationId: z.string().min(1).max(256),

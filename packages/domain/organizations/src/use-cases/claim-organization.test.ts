@@ -92,9 +92,9 @@ const setup = (seed: {
     memberships.set(member.id, member)
   }
 
-  const run = (token: string) =>
+  const run = (token: string, userEmail = "owner@example.com") =>
     Effect.runPromiseExit(
-      claimOrganizationUseCase({ token, userId: USER_ID }).pipe(
+      claimOrganizationUseCase({ token, userId: USER_ID, userEmail }).pipe(
         Effect.provideService(SqlClient, sqlClient),
         Effect.provideService(OrganizationClaimRepository, claimRepo),
         Effect.provideService(OrganizationRepository, organizationRepo),
@@ -176,12 +176,35 @@ describe("claimOrganizationUseCase", () => {
     expect(causeText(await run(RAW_TOKEN))).toContain("ClaimExpiredError")
   })
 
-  it("rejects when the org is already normalized (expires_at null)", async () => {
-    const { run } = setup({
+  it("allows a valid claim for a durable owner-less organization", async () => {
+    const { run, memberships, organizations } = setup({
       claim: { expiresAt: inOneWeek() },
       org: { expiresAt: null },
     })
-    expect(causeText(await run(RAW_TOKEN))).toContain("OrganizationNotClaimableError")
+    const exit = await run(RAW_TOKEN)
+    expect(Exit.isSuccess(exit)).toBe(true)
+    expect([...memberships.values()]).toHaveLength(1)
+    expect(organizations.get(ORG_ID)?.expiresAt).toBeNull()
+  })
+
+  it("rejects a claim bound to a different purchaser email", async () => {
+    const { run, claims } = setup({
+      claim: { expiresAt: inOneWeek() },
+      org: { expiresAt: null },
+    })
+    if (claims[0]) claims[0].email = "buyer@example.com"
+
+    expect(causeText(await run(RAW_TOKEN, "other@example.com"))).toContain("OrganizationNotClaimableError")
+  })
+
+  it("accepts a claim when the purchaser email matches case-insensitively", async () => {
+    const { run, claims } = setup({
+      claim: { expiresAt: inOneWeek() },
+      org: { expiresAt: null },
+    })
+    if (claims[0]) claims[0].email = "Buyer@Example.com"
+
+    expect(Exit.isSuccess(await run(RAW_TOKEN, " buyer@example.com "))).toBe(true)
   })
 
   it("rejects when the org already has a member (anti-theft)", async () => {

@@ -21,7 +21,7 @@ export interface GenerateOrganizationClaimResult {
 
 export type GenerateOrganizationClaimError = RepositoryError | CryptoError
 
-// Mints a claim token + saves the claim (hash only); returns the token + claim URL.
+// Mints an ownership claim token + saves the claim (hash only); returns the token + claim URL.
 // Runs within the caller's transaction/`SqlClient`; opens none of its own.
 export const generateOrganizationClaimUseCase = Effect.fn("organizations.generateOrganizationClaim")(function* (
   input: GenerateOrganizationClaimInput,

@@ -35,9 +35,9 @@ export const getClaimPreview = createServerFn({ method: "GET" })
 
         const orgRepo = yield* OrganizationRepository
         const org = yield* orgRepo.findById(OrganizationId(claim.organizationId))
-        if (org.expiresAt === null || org.expiresAt.getTime() <= Date.now()) return null
+        if (org.expiresAt !== null && org.expiresAt.getTime() <= Date.now()) return null
 
-        return { organizationName: org.name, expiresAt: org.expiresAt.toISOString() }
+        return { organizationName: org.name, expiresAt: claim.expiresAt.toISOString() }
       }).pipe(
         withPostgres(Layer.mergeAll(OrganizationClaimRepositoryLive, OrganizationRepositoryLive), adminClient),
         Effect.catch(() => Effect.succeed(null)),
@@ -51,10 +51,12 @@ export const claimOrganization = createServerFn({ method: "POST" })
   .inputValidator(z.object({ token: z.string() }))
   .handler(async ({ data }): Promise<{ id: string; slug: string }> => {
     const userId = await requireUserSession()
+    const session = await getBetterAuth().api.getSession({ headers: await getRequestHeaders() })
+    if (!session?.user.email) throw new Error("Authenticated user email is required to claim an organization")
     const adminClient = getAdminPostgresClient()
 
     const result = await Effect.runPromise(
-      claimOrganizationUseCase({ token: data.token, userId }).pipe(
+      claimOrganizationUseCase({ token: data.token, userId, userEmail: session.user.email }).pipe(
         withPostgres(
           Layer.mergeAll(
             OrganizationClaimRepositoryLive,

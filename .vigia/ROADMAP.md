@@ -351,3 +351,42 @@ Próximos slices explícitos:
 - [ ] definir experiência de reenvio de link de ativação expirado;
 - [ ] decidir contrato comercial de plano/entitlement e futura automação Elus -> Vigia;
 - [ ] colocar MCP/OAuth e integrações como próximos passos depois do primeiro trace.
+
+
+## Checkpoint 2026-10-02 — admissão comercial promovida ao runtime
+
+Estado real validado após o merge do PR #65:
+
+- [x] `main` confirmada em `46dd4334ca2bde3c81f04a4417f2b91f3dc1bd58`;
+- [x] workflow pós-merge `Vigia container images` #144 concluído com sucesso;
+- [x] Validate production Compose verde;
+- [x] builds/pushes de web, api, ingest, workers, workflows, migrations, postgres, clickhouse e landing concluídos;
+- [x] runtime anterior identificado antes da promoção: stack em `d7701a1e1a480561110e3456668adac8afaa9050` e serviços principais ainda em `b58a61e2c52110a57ff53499f9c4dba24244cb5b`;
+- [x] promoção executada exclusivamente pelo Portainer local da VPS Vigia, sem `docker compose up` manual;
+- [x] stack `vigia` ativa com `CurrentDeploymentInfo.ConfigHash = 46dd4334ca2bde3c81f04a4417f2b91f3dc1bd58`;
+- [x] web, api, ingest, workers e workflows confirmados na revisão `46dd4334ca2bde3c81f04a4417f2b91f3dc1bd58` e saudáveis;
+- [x] migrations concluídas com exit 0; Postgres, ClickHouse, Redis, landing e Mailpit permaneceram saudáveis;
+- [x] `https://app-vigia.wandora.com.br/login` respondeu HTTP 200 após o deploy.
+
+Evidências de segurança/código revalidadas na `main`:
+
+- [x] `allowUserToCreateOrganization: false` no Better Auth do Vigia;
+- [x] `/welcome` não cria organização e orienta compra/ativação;
+- [x] seletor normal de empresa não oferece criação self-service;
+- [x] provisionamento comercial usa `adminMiddleware`;
+- [x] organização comercial nasce owner-less e com `expiresAt = null`;
+- [x] claim comercial é vinculado ao e-mail do comprador;
+- [x] retorno do provisionamento para o backoffice não contém API key nem claim URL/token bruto;
+- [x] worker de cleanup ignora organizações com `expiresAt = null`, portanto expiração do claim não remove a organização comercial.
+
+Validação de produto ainda necessária antes de considerar este slice fechado:
+
+- [ ] executar o fluxo real com identidade descartável no Mailpit local: provisionar cliente -> receber e-mail -> ativar -> autenticar com o mesmo e-mail -> onboarding;
+- [ ] provar em runtime que e-mail diferente não consegue assumir a organização;
+- [ ] provar por HTTP autenticado que o endpoint Better Auth de criação de organização rejeita usuário comum;
+- [ ] conectar um agente de teste, enviar a primeira execução e confirmar que o onboarding só conclui após o primeiro trace real;
+- [ ] confirmar no runtime que API key/raw claim token não aparecem nas respostas do browser/backoffice.
+
+Bloqueio operacional observado durante os smokes: uma sessão do execution broker usada para o pre-pull de imagens permaneceu marcada como ativa mesmo após a promoção. Tentativas normais de encerramento não liberaram a sessão; o restart do broker foi corretamente negado por exigir autenticação administrativa. Não houve impacto nos containers do Vigia. Não reiniciar o broker nem usar bypass apenas para recuperar contexto; retomar os smokes quando o canal operacional estiver livre.
+
+Anomalia de CI separada: o merge de #65 reintroduziu uma chave `if:` duplicada em `.github/workflows/cla.yml`, tornando o workflow CLA inválido no push da `main`. A correção mínima está isolada no PR #67 e não altera produto/runtime.

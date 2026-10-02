@@ -158,9 +158,9 @@ function BackofficeOrganizationsByUsagePage() {
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex items-center gap-4 border-b border-border px-6 py-4">
         <div className="flex flex-1 flex-col gap-1">
-          <Text.H4 weight="semibold">Empresas</Text.H4>
+          <Text.H4 weight="semibold">Organizations by usage</Text.H4>
           <Text.H6 color="foregroundMuted">
-            Clientes provisionados no Vigia, com uso e atividade no período atual.
+            Sorted by credit spend in the current billing period. New customers open directly after provisioning.
           </Text.H6>
         </div>
         <Button onClick={() => setProvisionOpen(true)}>

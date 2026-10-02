@@ -562,6 +562,25 @@ Observação operacional: o Git redeploy do Portainer recriou o stack completo, 
 
 Próximo slice permanece:
 
-- [ ] validar a jornada ponta a ponta com uma instância n8n real enviando um trace ao Vigia;
+- [x] validar a jornada ponta a ponta com uma instância n8n real enviando um trace ao Vigia;
 - [ ] só após essa prova, usar a Wandora como primeiro cliente real desse fluxo e avançar para Flowise.
 
+
+
+## Checkpoint 2026-10-02 — n8n nativo -> OTLP -> Vigia validado
+
+Prova ponta a ponta concluída com uma instância real e isolada do n8n 2.19.0 usando o OpenTelemetry nativo:
+
+- [x] baseline sem OTel validado primeiro: workflow importado, publicado, ativado e webhook de produção respondendo HTTP 200;
+- [x] smoke final repetiu a mesma jornada com `N8N_OTEL_ENABLED=true`;
+- [x] autenticação do projeto Vigia validada antes do teste sem expor API key ou slug em claro;
+- [x] webhook de produção respondeu HTTP 200 com OTel habilitado;
+- [x] 3 spans do serviço `n8n-vigia-webhook-smoke-20261002` persistidos no ClickHouse;
+- [x] spans observados incluem `workflow.execute` e `node.execute`;
+- [x] um trace único foi correlacionado e recuperado pela API pública do Vigia com HTTP 200;
+- [x] contêiner temporário do smoke foi removido ao final;
+- [x] stack de produção permaneceu `Active`, com web/API/ingest/workers/workflows e dependências saudáveis e migrations em exit 0.
+
+Aprendizado operacional importante: o comando CLI `n8n execute` não é uma prova válida do tracing nativo nessa versão, porque o módulo OTel do n8n é inicializado para instâncias `main`, `worker` e `webhook`. A validação correta usou uma instância `main` e disparo por webhook de produção.
+
+Este checkpoint fecha a pendência **“validar a jornada ponta a ponta com uma instância n8n real enviando um trace ao Vigia”**. Ele não significa que a Wandora já esteja integrada como cliente real: o próximo slice é conectar a Wandora pelo mesmo contrato `OTLP + Business Events`, usando o n8n real da Wandora quando aplicável, sem acoplar o Vigia à Wandora.

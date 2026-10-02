@@ -82,10 +82,18 @@
             <label for="interest-stack">Qual stack você usa? (opcional)</label>
             <input id="interest-stack" name="stack" maxlength="200" placeholder="Ex.: n8n + OpenAI + WhatsApp">
           </div>
-          <div class="interest-field full">
-            <label for="interest-success">O que significa sucesso para esse agente?</label>
-            <input id="interest-success" name="successDefinition" maxlength="500" placeholder="Ex.: agendamento realizado, atendimento resolvido, lead qualificado">
-          </div>
+          <fieldset class="interest-field interest-success full">
+            <legend>O que significa sucesso para esse agente?</legend>
+            <div class="interest-success-options">
+              <label class="interest-check"><input type="checkbox" name="successOutcome" value="Atendimento resolvido"><span>Atendimento resolvido</span></label>
+              <label class="interest-check"><input type="checkbox" name="successOutcome" value="Agendamento realizado"><span>Agendamento realizado</span></label>
+              <label class="interest-check"><input type="checkbox" name="successOutcome" value="Lead qualificado"><span>Lead qualificado</span></label>
+              <label class="interest-check"><input type="checkbox" name="successOutcome" value="Venda ou conversão"><span>Venda / conversão</span></label>
+              <label class="interest-check"><input type="checkbox" name="successOutcome" value="Processo concluído"><span>Processo concluído</span></label>
+              <label class="interest-check"><input type="checkbox" name="successOutcome" value="Redução de tempo ou custo"><span>Redução de tempo / custo</span></label>
+            </div>
+            <input id="interest-success-other" name="successOther" maxlength="300" placeholder="Outro resultado importante (opcional)">
+          </fieldset>
           <div class="interest-field full">
             <label for="interest-message">Mensagem (opcional)</label>
             <textarea id="interest-message" name="message" maxlength="1500" placeholder="Conte um pouco sobre seu cenário..."></textarea>

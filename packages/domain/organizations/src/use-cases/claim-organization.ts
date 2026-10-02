@@ -24,6 +24,7 @@ import { OrganizationRepository } from "../ports/organization-repository.ts"
 export interface ClaimOrganizationInput {
   readonly token: string
   readonly userId: UserId
+  readonly userEmail: string
 }
 
 export interface ClaimOrganizationResult {
@@ -65,6 +66,10 @@ export const claimOrganizationUseCase = Effect.fn("organizations.claimOrganizati
       if (claim.claimedAt !== null) return yield* new ClaimAlreadyUsedError()
       if (claim.expiresAt.getTime() <= Date.now()) return yield* new ClaimExpiredError()
 
+      if (claim.email !== null && claim.email.trim().toLowerCase() !== input.userEmail.trim().toLowerCase()) {
+        return yield* new OrganizationNotClaimableError()
+      }
+
       const organizationId = claim.organizationId as OrganizationId
       yield* Effect.annotateCurrentSpan("organization.id", organizationId)
 
@@ -72,8 +77,9 @@ export const claimOrganizationUseCase = Effect.fn("organizations.claimOrganizati
         .findById(organizationId)
         .pipe(Effect.catchTag("NotFoundError", () => Effect.fail(new OrganizationNotClaimableError())))
 
-      // Only a still-pending temp org (expires_at set + future) is claimable.
-      if (organization.expiresAt === null || organization.expiresAt.getTime() <= Date.now()) {
+      // A non-null organization expiry belongs to the temporary-account lifecycle.
+      // Durable paid/customer organizations have no org expiry; the claim row still expires independently.
+      if (organization.expiresAt !== null && organization.expiresAt.getTime() <= Date.now()) {
         return yield* new OrganizationNotClaimableError()
       }
 

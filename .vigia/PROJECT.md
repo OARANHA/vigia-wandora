@@ -448,3 +448,13 @@ Validação de produção:
 - custom score `vigia.business.smoke_success` persistido com o mesmo `traceId` e `passed = true`.
 
 O contrato `POST /v1/projects/:projectSlug/events` e a correlação `traceId -> resultado de negócio` estão, portanto, validados em produção. O próximo passo é integrar a Wandora como primeiro emissor real do Vigia.
+
+## Admissão comercial do cliente — 2026-10-02
+
+A criação de organizações do Vigia deixa de ser um efeito de signup self-service e passa a ser controlada pelo fluxo comercial. Login e identidade continuam separados de entitlement: um usuário pode autenticar para aceitar convite ou ativar uma compra sem ganhar automaticamente uma nova organização.
+
+O primeiro slice reutiliza o modelo já existente de organização, projeto, API key e claim. A organização comercial nasce owner-less e durável; somente o claim expira. O comprador autenticado precisa usar o mesmo e-mail vinculado ao claim para assumir ownership.
+
+O pós-compra entra no onboarding Vigia em tela ampla e guiada, sem exigir escolha entre modos técnico/iniciante. O cliente identifica o agente e a plataforma em que foi criado, recebe instruções adequadas e permanece no fluxo até o Vigia receber uma execução real.
+
+n8n e Flowise são alvos prioritários da experiência de conexão. Eles ainda precisam de qualificação técnica específica antes de serem apresentados como integração suportada. Dify e LangFlow são candidatos posteriores sob a mesma regra.

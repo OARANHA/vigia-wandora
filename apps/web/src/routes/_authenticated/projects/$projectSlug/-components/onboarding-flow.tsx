@@ -15,7 +15,7 @@ import { completeProjectOnboarding, updateProject } from "../../../../../domains
 import { countTracesByProject } from "../../../../../domains/traces/traces.functions.ts"
 import { getQueryClient } from "../../../../../lib/data/query-client.tsx"
 import { toUserMessage } from "../../../../../lib/errors.ts"
-import { resolveVigiaConnectionSource, VIGIA_AGENT_STACKS } from "./vigia-connection.ts"
+import { resolveVigiaConnectionSource, type VigiaAgentStackId } from "./vigia-connection.ts"
 import { VigiaConnectionInstructions } from "./vigia-connection-instructions.tsx"
 
 export const ONBOARDING_STEPS = ["agent", "channels", "stack", "success", "connect"] as const
@@ -195,7 +195,7 @@ export function OnboardingFlow({
       channels,
       stack,
       successOutcomes,
-      ...(trimmedSuccessOther ? { successOther: trimmedSuccessOther } : {}),
+      ...(successOutcomes.includes("other") && trimmedSuccessOther ? { successOther: trimmedSuccessOther } : {}),
     }
 
     setIsSavingProfile(true)
@@ -575,7 +575,7 @@ function ConnectionStep({
   onBack,
 }: {
   readonly projectSlug: string
-  readonly source: (typeof VIGIA_AGENT_STACKS)[number]["id"]
+  readonly source: VigiaAgentStackId
   readonly traceReceived: boolean
   readonly onBack: () => void
 }) {

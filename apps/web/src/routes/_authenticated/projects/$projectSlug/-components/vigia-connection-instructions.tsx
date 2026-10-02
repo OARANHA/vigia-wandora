@@ -109,15 +109,16 @@ function N8nConnectionInstructions({ projectSlug, apiKey }: { readonly projectSl
       </div>
 
       <div className="flex flex-col gap-2">
-        <Text.H5M>3. Envie o teste</Text.H5M>
+        <Text.H5M>3. Execute um workflow real</Text.H5M>
         <Text.H5 color="foregroundMuted">
-          Salve, ative o OpenTelemetry no n8n e clique em Send test trace. O Vigia detecta esse teste e conclui a
-          conexão automaticamente.
+          Salve e ative o OpenTelemetry no n8n. Depois execute o workflow que você quer acompanhar. O Vigia conclui a
+          conexão quando receber essa primeira execução real.
         </Text.H5>
       </div>
 
       <Text.H6 color="foregroundMuted">
-        Depois do teste, mantenha o tracing ativado para o Vigia acompanhar as execuções reais do workflow.
+        O botão Send test trace do n8n pode ajudar a diagnosticar a conexão, mas o onboarding do Vigia deve ser validado
+        pela execução do workflow que será monitorado.
       </Text.H6>
     </div>
   )

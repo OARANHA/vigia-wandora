@@ -218,6 +218,69 @@ export const samplingSettingSchema = z.object({
 })
 export type SamplingSetting = z.infer<typeof samplingSettingSchema>
 
+export const VIGIA_USE_CASE_IDS = [
+  "customer-service",
+  "sales",
+  "scheduling",
+  "billing",
+  "support",
+  "post-sales",
+  "commerce",
+  "internal-operations",
+  "documents",
+  "other",
+] as const
+export const vigiaUseCaseSchema = z.enum(VIGIA_USE_CASE_IDS)
+export type VigiaUseCaseId = z.infer<typeof vigiaUseCaseSchema>
+
+export const VIGIA_CHANNEL_IDS = [
+  "whatsapp",
+  "web-chat",
+  "instagram-messenger",
+  "voice",
+  "email",
+  "internal",
+  "other",
+] as const
+export const vigiaChannelSchema = z.enum(VIGIA_CHANNEL_IDS)
+export type VigiaChannelId = z.infer<typeof vigiaChannelSchema>
+
+export const VIGIA_BUSINESS_STACK_IDS = [
+  "n8n",
+  "evolution-api",
+  "flowise",
+  "typebot",
+  "dify",
+  "botpress",
+  "make-zapier",
+  "code-sdk",
+  "other",
+] as const
+export const vigiaBusinessStackSchema = z.enum(VIGIA_BUSINESS_STACK_IDS)
+export type VigiaBusinessStackId = z.infer<typeof vigiaBusinessStackSchema>
+
+export const VIGIA_SUCCESS_OUTCOME_IDS = [
+  "resolved-service",
+  "qualified-lead",
+  "conversion",
+  "scheduled",
+  "payment",
+  "process-completed",
+  "time-cost-reduction",
+  "other",
+] as const
+export const vigiaSuccessOutcomeSchema = z.enum(VIGIA_SUCCESS_OUTCOME_IDS)
+export type VigiaSuccessOutcomeId = z.infer<typeof vigiaSuccessOutcomeSchema>
+
+export const vigiaBusinessProfileSchema = z.object({
+  useCase: vigiaUseCaseSchema,
+  channels: z.array(vigiaChannelSchema).min(1).max(VIGIA_CHANNEL_IDS.length),
+  stack: z.array(vigiaBusinessStackSchema).min(1).max(VIGIA_BUSINESS_STACK_IDS.length),
+  successOutcomes: z.array(vigiaSuccessOutcomeSchema).min(1).max(VIGIA_SUCCESS_OUTCOME_IDS.length),
+  successOther: z.string().trim().max(300).optional(),
+})
+export type VigiaBusinessProfile = z.infer<typeof vigiaBusinessProfileSchema>
+
 export const projectSettingsSchema = z.object({
   keepMonitoring: z.boolean().optional(),
   jevPreclassifierEnabled: z.boolean().optional(),
@@ -225,6 +288,7 @@ export const projectSettingsSchema = z.object({
   escalation: escalationSettingSchema.optional(),
   onboardingType: z.enum(["prod-traces", "code-agents"]).optional(),
   onboardingCompleted: z.boolean().optional(),
+  businessProfile: vigiaBusinessProfileSchema.optional(),
   isSample: z.boolean().optional(),
   /**
    * Marks a project as belonging to the shared read-only Showcase (built by the

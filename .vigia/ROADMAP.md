@@ -522,3 +522,26 @@ Vigia
 ```
 
 Regra para próximos slices: antes de criar um adapter, verificar capability nativa da ferramenta e do Latitude. Criar código próprio somente para reduzir fricção real do onboarding, captar eventos que OTLP não entrega ou traduzir telemetria em valor de negócio.
+
+## Checkpoint 2026-10-02 — onboarding market-first + n8n
+
+Implementado no PR #77:
+
+- [x] onboarding passa a começar por **função do agente**, depois **canais**, **stack composta**, **definição de sucesso** e só então **conexão**;
+- [x] perfil comercial/técnico mínimo persistido em `project.settings.businessProfile`, sem migration ou tabela paralela;
+- [x] canais, stack e resultados aceitam múltiplas seleções;
+- [x] primeiro caminho específico é **n8n** usando o OpenTelemetry nativo da própria ferramenta;
+- [x] para **Evolution API + n8n**, a UI explica que a Evolution continua como canal do WhatsApp e o tracing entra pelo n8n, sem pedir OTLP na Evolution;
+- [x] OTLP genérico permanece como fallback para stacks ainda não qualificadas;
+- [x] conclusão do onboarding continua condicionada a um trace real persistido;
+- [x] testes de schema, persistência e configuração n8n adicionados;
+- [x] workflow dedicado `Vigia tests` adicionado para executar testes relevantes no PR;
+- [x] método canônico de retomada registrado em `AGENTS.md`: usar a fonte/handoff mais recente do Projeto ChatGPT **VIGIA WANDORA** como contexto, sempre revalidando GitHub/runtime antes de agir.
+
+Próximos slices:
+
+- [ ] validar o onboarding market-first em runtime com um agente real n8n;
+- [ ] usar a Wandora como primeiro cliente real desse fluxo;
+- [ ] qualificar Flowise e só então decidir se precisa adapter próprio;
+- [ ] conectar `businessProfile.successOutcomes` à apresentação/analytics de Business Events sem duplicar a fonte de verdade.
+

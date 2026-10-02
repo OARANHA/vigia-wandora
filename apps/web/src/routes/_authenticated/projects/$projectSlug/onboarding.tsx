@@ -29,7 +29,7 @@ function ProjectOnboardingPage() {
         projectName={suggestedProjectName}
         persistedProjectName={project.name}
         initialStep={search.step}
-        initialSource={search.source}
+        initialBusinessProfile={project.settings.businessProfile}
         onOpenProjectTraces={async (targetProjectId) => {
           if (targetProjectId !== project.id) return
           await navigate({ to: "/projects/$projectSlug", params: { projectSlug } })

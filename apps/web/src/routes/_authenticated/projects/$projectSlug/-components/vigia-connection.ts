@@ -1,6 +1,7 @@
 import { VIGIA_PRODUCT } from "../../../../../lib/product.ts"
 
 export const VIGIA_AGENT_STACK_IDS = [
+  "n8n",
   "openai-agents",
   "langgraph",
   "mastra",
@@ -19,6 +20,12 @@ export const VIGIA_AGENT_STACKS: ReadonlyArray<{
   readonly label: string
   readonly guidance: string
 }> = [
+  {
+    id: "n8n",
+    label: "n8n",
+    guidance:
+      "Use o OpenTelemetry nativo do n8n. O Vigia fornece o endpoint base, os headers e o caminho de traces corretos.",
+  },
   {
     id: "openai-agents",
     label: "OpenAI Agents",
@@ -84,6 +91,25 @@ export function getVigiaOtelEnvBlock(projectSlug: string, apiKey: string | null)
     "",
     `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=${config.endpoint}`,
     `OTEL_EXPORTER_OTLP_HEADERS=Authorization=Bearer ${config.apiKey},X-Vigia-Project=${config.project}`,
+  ].join("\n")
+}
+
+export function resolveVigiaConnectionSource(stack: readonly string[]): VigiaAgentStackId {
+  return stack.includes("n8n") ? "n8n" : DEFAULT_VIGIA_AGENT_STACK
+}
+
+export function getVigiaN8nEnvBlock(projectSlug: string, apiKey: string | null): string {
+  const config = getVigiaConnectionValues(projectSlug, apiKey)
+  const endpointBase = new URL(config.endpoint).origin
+
+  return [
+    "N8N_OTEL_ENABLED=true",
+    "N8N_OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf",
+    `N8N_OTEL_EXPORTER_OTLP_ENDPOINT=${endpointBase}`,
+    "N8N_OTEL_EXPORTER_OTLP_TRACING_PATH=/v1/traces",
+    `N8N_OTEL_EXPORTER_OTLP_HEADERS="Authorization=Bearer ${config.apiKey},X-Vigia-Project=${config.project}"`,
+    `N8N_OTEL_EXPORTER_SERVICE_NAME=n8n-${config.project}`,
+    "N8N_OTEL_TRACES_INCLUDE_NODE_SPANS=true",
   ].join("\n")
 }
 

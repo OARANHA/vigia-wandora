@@ -1,0 +1,25 @@
+name: Vigia tests
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - apps/**
+      - packages/**
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - package.json
+      - .github/workflows/test.yml
+      - .github/workflows/vigia-tests.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vigia-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    uses: ./.github/workflows/test.yml

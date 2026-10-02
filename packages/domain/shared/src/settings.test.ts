@@ -249,6 +249,54 @@ describe("resolveRedactionPolicy", () => {
   })
 })
 
+describe("Vigia business profile settings", () => {
+  it("accepts a composed market-first profile", () => {
+    const parsed = projectSettingsSchema.parse({
+      businessProfile: {
+        useCase: "scheduling",
+        channels: ["whatsapp"],
+        stack: ["evolution-api", "n8n", "code-sdk"],
+        successOutcomes: ["scheduled", "qualified-lead"],
+        successOther: "Retorno confirmado",
+      },
+    })
+
+    expect(parsed.businessProfile).toEqual({
+      useCase: "scheduling",
+      channels: ["whatsapp"],
+      stack: ["evolution-api", "n8n", "code-sdk"],
+      successOutcomes: ["scheduled", "qualified-lead"],
+      successOther: "Retorno confirmado",
+    })
+  })
+
+  it("requires channel, stack and success selections", () => {
+    expect(() =>
+      projectSettingsSchema.parse({
+        businessProfile: {
+          useCase: "customer-service",
+          channels: [],
+          stack: [],
+          successOutcomes: [],
+        },
+      }),
+    ).toThrow()
+  })
+
+  it("rejects unknown business profile identifiers", () => {
+    expect(() =>
+      projectSettingsSchema.parse({
+        businessProfile: {
+          useCase: "unknown",
+          channels: ["whatsapp"],
+          stack: ["n8n"],
+          successOutcomes: ["resolved-service"],
+        },
+      }),
+    ).toThrow()
+  })
+})
+
 describe("redaction settings schemas", () => {
   it("accepts a full project redaction setting", () => {
     const parsed = projectSettingsSchema.parse({

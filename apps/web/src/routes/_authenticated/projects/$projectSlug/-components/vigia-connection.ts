@@ -2,6 +2,7 @@ import { VIGIA_PRODUCT } from "../../../../../lib/product.ts"
 
 export const VIGIA_AGENT_STACK_IDS = [
   "n8n",
+  "flowise",
   "openai-agents",
   "langgraph",
   "mastra",
@@ -25,6 +26,12 @@ export const VIGIA_AGENT_STACKS: ReadonlyArray<{
     label: "n8n",
     guidance:
       "Use o OpenTelemetry nativo do n8n. O Vigia fornece o endpoint base, os headers e o caminho de traces corretos.",
+  },
+  {
+    id: "flowise",
+    label: "Flowise",
+    guidance:
+      "Use a integração Analytics > Phoenix do Flowise. O Vigia fornece endpoint, chave e projeto compatíveis com o exporter nativo.",
   },
   {
     id: "openai-agents",
@@ -95,7 +102,18 @@ export function getVigiaOtelEnvBlock(projectSlug: string, apiKey: string | null)
 }
 
 export function resolveVigiaConnectionSource(stack: readonly string[]): VigiaAgentStackId {
-  return stack.includes("n8n") ? "n8n" : DEFAULT_VIGIA_AGENT_STACK
+  if (stack.includes("n8n")) return "n8n"
+  if (stack.includes("flowise")) return "flowise"
+  return DEFAULT_VIGIA_AGENT_STACK
+}
+
+export function getVigiaFlowisePhoenixValues(projectSlug: string, apiKey: string | null) {
+  const config = getVigiaConnectionValues(projectSlug, apiKey)
+  return {
+    endpoint: new URL(config.endpoint).origin,
+    apiKey: config.apiKey,
+    project: config.project,
+  } as const
 }
 
 export function getVigiaN8nEnvBlock(projectSlug: string, apiKey: string | null): string {

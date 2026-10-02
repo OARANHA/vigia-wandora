@@ -1,3 +1,10 @@
+import type {
+  VigiaAgentBuildStack,
+  VigiaAgentChannel,
+  VigiaAgentSuccessOutcome,
+  VigiaAgentUseCase,
+  VigiaBusinessProfile,
+} from "@domain/shared"
 import { Button, Icon, Input, Text, useToast } from "@repo/ui"
 import { useNavigate } from "@tanstack/react-router"
 import { CheckCircle2, Loader2 } from "lucide-react"
@@ -8,25 +15,43 @@ import { completeProjectOnboarding, updateProject } from "../../../../../domains
 import { countTracesByProject } from "../../../../../domains/traces/traces.functions.ts"
 import { getQueryClient } from "../../../../../lib/data/query-client.tsx"
 import { toUserMessage } from "../../../../../lib/errors.ts"
-import { DEFAULT_VIGIA_AGENT_STACK, VIGIA_AGENT_STACKS, type VigiaAgentStackId } from "./vigia-connection.ts"
+import {
+  VIGIA_BUILD_STACK_OPTIONS,
+  VIGIA_CHANNEL_OPTIONS,
+  VIGIA_SUCCESS_OPTIONS,
+  VIGIA_USE_CASE_OPTIONS,
+  vigiaChannelLabels,
+  vigiaSuccessLabels,
+  vigiaUseCaseLabel,
+} from "./vigia-business-profile.ts"
+import {
+  DEFAULT_VIGIA_AGENT_STACK,
+  suggestVigiaConnectionSource,
+  type VigiaAgentStackId,
+} from "./vigia-connection.ts"
 import { VigiaConnectionInstructions } from "./vigia-connection-instructions.tsx"
 
 export const ONBOARDING_STEPS = ["agent", "connect"] as const
 export type OnboardingStep = (typeof ONBOARDING_STEPS)[number]
+
+const toggleValue = <T extends string>(values: readonly T[], value: T): T[] =>
+  values.includes(value) ? values.filter((entry) => entry !== value) : [...values, value]
 
 export function OnboardingFlow({
   projectId,
   projectSlug,
   projectName: initialProjectName,
   persistedProjectName,
+  initialBusinessProfile,
   initialStep,
-  initialSource = DEFAULT_VIGIA_AGENT_STACK,
+  initialSource,
   onOpenProjectTraces,
 }: {
   readonly projectId: string
   readonly projectSlug: string
   readonly projectName: string
   readonly persistedProjectName: string
+  readonly initialBusinessProfile?: VigiaBusinessProfile | undefined
   readonly initialStep?: OnboardingStep
   readonly initialSource?: VigiaAgentStackId
   readonly onOpenProjectTraces: (projectId: string) => Promise<void>
@@ -35,7 +60,15 @@ export function OnboardingFlow({
   const navigate = useNavigate()
   const [step, setStep] = useState<OnboardingStep>(initialStep ?? "agent")
   const [projectName, setProjectName] = useState(initialProjectName)
-  const [source, setSource] = useState<VigiaAgentStackId>(initialSource)
+  const [useCase, setUseCase] = useState<VigiaAgentUseCase | null>(initialBusinessProfile?.useCase ?? null)
+  const [channels, setChannels] = useState<VigiaAgentChannel[]>(initialBusinessProfile?.channels ?? [])
+  const [buildStack, setBuildStack] = useState<VigiaAgentBuildStack[]>(initialBusinessProfile?.buildStack ?? [])
+  const [successOutcomes, setSuccessOutcomes] = useState<VigiaAgentSuccessOutcome[]>(
+    initialBusinessProfile?.successOutcomes ?? [],
+  )
+  const [source, setSource] = useState<VigiaAgentStackId>(
+    initialSource ?? suggestVigiaConnectionSource(initialBusinessProfile?.buildStack ?? []) ?? DEFAULT_VIGIA_AGENT_STACK,
+  )
   const [isSavingAgent, setIsSavingAgent] = useState(false)
   const [traceReceived, setTraceReceived] = useState(false)
 
@@ -46,8 +79,14 @@ export function OnboardingFlow({
   onOpenProjectTracesRef.current = onOpenProjectTraces
   toastRef.current = toast
 
+  const businessProfile: VigiaBusinessProfile | null =
+    useCase && channels.length > 0 && buildStack.length > 0 && successOutcomes.length > 0
+      ? { useCase, channels, buildStack, successOutcomes }
+      : null
+
   const goToStep = (next: OnboardingStep, selectedSource = source) => {
     setStep(next)
+    setSource(selectedSource)
     void navigate({
       to: "/projects/$projectSlug/onboarding",
       params: { projectSlug },
@@ -56,8 +95,16 @@ export function OnboardingFlow({
     })
   }
 
-  const handleSourceChange = (nextSource: VigiaAgentStackId) => {
-    setSource(nextSource)
+  const handleBuildStackToggle = (value: VigiaAgentBuildStack) => {
+    setBuildStack((current) => {
+      if (value === "nao-sei") {
+        return current.includes(value) ? [] : [value]
+      }
+      return toggleValue(
+        current.filter((entry) => entry !== "nao-sei"),
+        value,
+      )
+    })
   }
 
   const handleSaveAgent = async () => {
@@ -66,14 +113,37 @@ export function OnboardingFlow({
       toast({ variant: "destructive", description: "Informe um nome para o agente." })
       return
     }
+    if (!useCase) {
+      toast({ variant: "destructive", description: "Escolha o que esse agente faz." })
+      return
+    }
+    if (channels.length === 0) {
+      toast({ variant: "destructive", description: "Escolha onde esse agente funciona." })
+      return
+    }
+    if (buildStack.length === 0) {
+      toast({ variant: "destructive", description: "Marque como o agente foi montado ou escolha “Não sei”." })
+      return
+    }
+    if (successOutcomes.length === 0) {
+      toast({ variant: "destructive", description: "Escolha pelo menos um resultado importante para esse agente." })
+      return
+    }
+
+    const profile: VigiaBusinessProfile = { useCase, channels, buildStack, successOutcomes }
+    const nextSource = suggestVigiaConnectionSource(buildStack)
 
     setIsSavingAgent(true)
     try {
-      if (trimmedName !== persistedProjectName) {
-        await updateProject({ data: { id: projectId, name: trimmedName } })
-        await getQueryClient().invalidateQueries({ queryKey: ["projects"] })
-      }
-      goToStep("connect")
+      await updateProject({
+        data: {
+          id: projectId,
+          ...(trimmedName !== persistedProjectName ? { name: trimmedName } : {}),
+          settings: { vigiaBusinessProfile: profile },
+        },
+      })
+      await getQueryClient().invalidateQueries({ queryKey: ["projects"] })
+      goToStep("connect", nextSource)
     } catch (error) {
       toast({
         variant: "destructive",
@@ -154,16 +224,23 @@ export function OnboardingFlow({
           {step === "agent" ? (
             <AgentStep
               projectName={projectName}
-              source={source}
+              useCase={useCase}
+              channels={channels}
+              buildStack={buildStack}
+              successOutcomes={successOutcomes}
               isSaving={isSavingAgent}
               onProjectNameChange={setProjectName}
-              onSourceChange={handleSourceChange}
+              onUseCaseChange={setUseCase}
+              onChannelToggle={(value) => setChannels((current) => toggleValue(current, value))}
+              onBuildStackToggle={handleBuildStackToggle}
+              onSuccessToggle={(value) => setSuccessOutcomes((current) => toggleValue(current, value))}
               onContinue={() => void handleSaveAgent()}
             />
           ) : (
             <ConnectionStep
               projectSlug={projectSlug}
               source={source}
+              businessProfile={businessProfile ?? initialBusinessProfile}
               traceReceived={traceReceived}
               onBack={() => goToStep("agent")}
             />
@@ -171,32 +248,48 @@ export function OnboardingFlow({
         </div>
       </div>
 
-      <OnboardingSummary step={step} source={source} traceReceived={traceReceived} />
+      <OnboardingSummary
+        step={step}
+        businessProfile={businessProfile ?? initialBusinessProfile}
+        traceReceived={traceReceived}
+      />
     </div>
   )
 }
 
 function AgentStep({
   projectName,
-  source,
+  useCase,
+  channels,
+  buildStack,
+  successOutcomes,
   isSaving,
   onProjectNameChange,
-  onSourceChange,
+  onUseCaseChange,
+  onChannelToggle,
+  onBuildStackToggle,
+  onSuccessToggle,
   onContinue,
 }: {
   readonly projectName: string
-  readonly source: VigiaAgentStackId
+  readonly useCase: VigiaAgentUseCase | null
+  readonly channels: readonly VigiaAgentChannel[]
+  readonly buildStack: readonly VigiaAgentBuildStack[]
+  readonly successOutcomes: readonly VigiaAgentSuccessOutcome[]
   readonly isSaving: boolean
   readonly onProjectNameChange: (value: string) => void
-  readonly onSourceChange: (source: VigiaAgentStackId) => void
+  readonly onUseCaseChange: (value: VigiaAgentUseCase) => void
+  readonly onChannelToggle: (value: VigiaAgentChannel) => void
+  readonly onBuildStackToggle: (value: VigiaAgentBuildStack) => void
+  readonly onSuccessToggle: (value: VigiaAgentSuccessOutcome) => void
   readonly onContinue: () => void
 }) {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-2">
-        <Text.H2 weight="medium">Conecte seu primeiro agente</Text.H2>
+        <Text.H2 weight="medium">Conte ao Vigia sobre seu agente</Text.H2>
         <Text.H4 color="foregroundMuted">
-          Dê um nome ao agente e conte como ele foi desenvolvido. O Vigia prepara a conexão por OpenTelemetry.
+          Isso define o que vamos acompanhar e prepara a conexão sem exigir conhecimento de observabilidade.
         </Text.H4>
       </div>
 
@@ -210,26 +303,76 @@ function AgentStep({
           placeholder="Agente de atendimento"
         />
 
-        <div className="flex flex-col gap-3">
-          <Text.H5M>Como seu agente foi desenvolvido?</Text.H5M>
-          <div className="flex flex-row flex-wrap gap-2">
-            {VIGIA_AGENT_STACKS.map((stack) => (
-              <SelectorChip
-                key={stack.id}
-                selected={source === stack.id}
-                onSelect={() => onSourceChange(stack.id)}
-                label={stack.label}
-              />
-            ))}
-          </div>
-        </div>
+        <ChoiceGroup label="O que esse agente faz?">
+          {VIGIA_USE_CASE_OPTIONS.map((option) => (
+            <SelectorChip
+              key={option.id}
+              selected={useCase === option.id}
+              onSelect={() => onUseCaseChange(option.id)}
+              label={option.label}
+            />
+          ))}
+        </ChoiceGroup>
+
+        <ChoiceGroup label="Onde ele funciona?" description="Escolha um ou mais canais.">
+          {VIGIA_CHANNEL_OPTIONS.map((option) => (
+            <SelectorChip
+              key={option.id}
+              selected={channels.includes(option.id)}
+              onSelect={() => onChannelToggle(option.id)}
+              label={option.label}
+            />
+          ))}
+        </ChoiceGroup>
+
+        <ChoiceGroup label="Como ele foi montado?" description="Marque as peças que fazem parte da solução.">
+          {VIGIA_BUILD_STACK_OPTIONS.map((option) => (
+            <SelectorChip
+              key={option.id}
+              selected={buildStack.includes(option.id)}
+              onSelect={() => onBuildStackToggle(option.id)}
+              label={option.label}
+            />
+          ))}
+        </ChoiceGroup>
+
+        <ChoiceGroup label="O que significa sucesso para esse agente?" description="Escolha os resultados que importam.">
+          {VIGIA_SUCCESS_OPTIONS.map((option) => (
+            <SelectorChip
+              key={option.id}
+              selected={successOutcomes.includes(option.id)}
+              onSelect={() => onSuccessToggle(option.id)}
+              label={option.label}
+            />
+          ))}
+        </ChoiceGroup>
       </div>
 
       <div className="flex items-center justify-end">
         <Button disabled={isSaving} onClick={onContinue}>
-          {isSaving ? "Salvando…" : "Ver instruções de conexão"}
+          {isSaving ? "Salvando…" : "Salvar e preparar conexão"}
         </Button>
       </div>
+    </div>
+  )
+}
+
+function ChoiceGroup({
+  label,
+  description,
+  children,
+}: {
+  readonly label: string
+  readonly description?: string
+  readonly children: React.ReactNode
+}) {
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1">
+        <Text.H5M>{label}</Text.H5M>
+        {description ? <Text.H6 color="foregroundMuted">{description}</Text.H6> : null}
+      </div>
+      <div className="flex flex-row flex-wrap gap-2">{children}</div>
     </div>
   )
 }
@@ -237,11 +380,13 @@ function AgentStep({
 function ConnectionStep({
   projectSlug,
   source,
+  businessProfile,
   traceReceived,
   onBack,
 }: {
   readonly projectSlug: string
   readonly source: VigiaAgentStackId
+  readonly businessProfile?: VigiaBusinessProfile | undefined
   readonly traceReceived: boolean
   readonly onBack: () => void
 }) {
@@ -255,20 +400,20 @@ function ConnectionStep({
             <Icon icon={Loader2} size="sm" color="foregroundMuted" className="animate-spin" />
           )}
           <Text.H5 color={traceReceived ? "success" : "foregroundMuted"}>
-            {traceReceived ? "Conectado! Primeiro trace recebido." : "Aguardando a primeira execução…"}
+            {traceReceived ? "Conectado! Primeira execução recebida." : "Aguardando a primeira execução…"}
           </Text.H5>
         </div>
         <div className="flex flex-col gap-2">
           <Text.H2 weight="medium">{traceReceived ? "Seu agente está conectado" : "Conecte o agente ao Vigia"}</Text.H2>
           <Text.H4 color="foregroundMuted">
             {traceReceived
-              ? "A conexão foi validada. Abrindo os traces do agente…"
-              : "Copie a configuração abaixo, execute o agente e deixe esta tela aberta. O Vigia detecta a conexão automaticamente."}
+              ? "A conexão foi validada. Abrindo o Vigia…"
+              : "Siga os passos abaixo na ferramenta que já executa seu agente. O Vigia confirma a conexão automaticamente."}
           </Text.H4>
         </div>
       </div>
 
-      <VigiaConnectionInstructions projectSlug={projectSlug} source={source} />
+      <VigiaConnectionInstructions projectSlug={projectSlug} source={source} businessProfile={businessProfile} />
 
       {!traceReceived ? (
         <div className="flex items-center">
@@ -283,42 +428,57 @@ function ConnectionStep({
 
 function OnboardingSummary({
   step,
-  source,
+  businessProfile,
   traceReceived,
 }: {
   readonly step: OnboardingStep
-  readonly source: VigiaAgentStackId
+  readonly businessProfile?: VigiaBusinessProfile | undefined
   readonly traceReceived: boolean
 }) {
-  const stack = VIGIA_AGENT_STACKS.find((entry) => entry.id === source)
+  const useCase = vigiaUseCaseLabel(businessProfile?.useCase)
+  const channels = vigiaChannelLabels(businessProfile?.channels ?? [])
+  const success = vigiaSuccessLabels(businessProfile?.successOutcomes ?? [])
+
+  const contextDescription =
+    useCase && channels.length > 0 ? `${useCase} em ${channels.join(", ")}` : "Função, canal e tecnologia do agente"
+  const successDescription =
+    success.length > 0 ? success.join(", ") : "Defina os resultados que o Vigia deve acompanhar"
 
   return (
     <div className="hidden h-full min-h-0 w-1/2 shrink-0 flex-col justify-center overflow-hidden bg-secondary px-16 lg:flex">
       <div className="flex w-full max-w-[480px] flex-col gap-8 self-center">
         <div className="flex flex-col gap-2">
-          <Text.H3 weight="medium">Do agente ao primeiro trace</Text.H3>
+          <Text.H3 weight="medium">Do agente ao resultado</Text.H3>
           <Text.H5 color="foregroundMuted">
-            O cliente configura OpenTelemetry uma vez. O restante da observabilidade acontece dentro do Vigia.
+            O Vigia transforma a execução em saúde, falhas, custo e resultado. O detalhe técnico continua disponível
+            quando alguém precisar investigar.
           </Text.H5>
         </div>
 
         <ProgressItem
           number="1"
-          title="Identificar o agente"
-          description={stack ? `Tecnologia selecionada: ${stack.label}` : "Nome e tecnologia do agente"}
+          title="Entender a operação"
+          description={contextDescription}
           complete={step === "connect" || traceReceived}
         />
         <ProgressItem
           number="2"
-          title="Conectar por OTLP"
+          title="Conectar a execução"
           description={
             traceReceived
-              ? "Primeiro trace recebido pelo Vigia."
+              ? "Primeira execução recebida pelo Vigia."
               : step === "connect"
                 ? "Aguardando uma execução do agente."
-                : "Endpoint, chave e projeto serão mostrados no próximo passo."
+                : "O Vigia prepara a conexão de acordo com a sua tecnologia."
           }
           active={step === "connect" && !traceReceived}
+          complete={traceReceived}
+        />
+        <ProgressItem
+          number="3"
+          title="Acompanhar resultado"
+          description={successDescription}
+          active={traceReceived}
           complete={traceReceived}
         />
       </div>

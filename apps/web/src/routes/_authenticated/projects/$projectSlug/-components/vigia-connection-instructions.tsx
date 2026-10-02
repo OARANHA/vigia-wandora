@@ -5,6 +5,7 @@ import { insertApiKeyMutation, useApiKeysCollection } from "../../../../../domai
 import { toUserMessage } from "../../../../../lib/errors.ts"
 import {
   getVigiaConnectionValues,
+  getVigiaN8nEnvBlock,
   getVigiaOtelCurlVerifySnippet,
   getVigiaOtelEnvBlock,
   VIGIA_AGENT_STACKS,
@@ -80,29 +81,52 @@ export function VigiaConnectionInstructions({
         </div>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <Text.H5M>2. Configure o exportador OpenTelemetry</Text.H5M>
-        <Text.H5 color="foregroundMuted">
-          Use OTLP HTTP para enviar traces. O cabeçalho X-Vigia-Project identifica este agente no Vigia.
-        </Text.H5>
-        <CodeBlock value={getVigiaOtelEnvBlock(projectSlug, resolvedApiKey)} copyable />
-      </div>
+      {source === "n8n" ? (
+        <>
+          <div className="flex flex-col gap-2">
+            <Text.H5M>2. Ative o OpenTelemetry do n8n</Text.H5M>
+            <Text.H5 color="foregroundMuted">
+              O n8n recebe a URL base do Vigia e acrescenta /v1/traces. Não use o endpoint completo no campo base.
+            </Text.H5>
+            <CodeBlock value={getVigiaN8nEnvBlock(projectSlug, resolvedApiKey)} copyable />
+          </div>
 
-      <div className="flex flex-col gap-2">
-        <Text.H5M>3. Execute uma conversa de teste</Text.H5M>
-        <Text.H5 color="foregroundMuted">
-          Reinicie o agente se necessário e faça uma execução real. O Vigia detectará automaticamente o primeiro trace.
-        </Text.H5>
-      </div>
+          <div className="flex flex-col gap-2">
+            <Text.H5M>3. Envie um trace de teste</Text.H5M>
+            <Text.H5 color="foregroundMuted">
+              Reinicie o n8n se estiver usando variáveis de ambiente e use a opção de teste do OpenTelemetry. Depois,
+              execute um workflow real para o Vigia confirmar a conexão.
+            </Text.H5>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="flex flex-col gap-2">
+            <Text.H5M>2. Configure o exportador OpenTelemetry</Text.H5M>
+            <Text.H5 color="foregroundMuted">
+              Use OTLP HTTP para enviar traces. O cabeçalho X-Vigia-Project identifica este agente no Vigia.
+            </Text.H5>
+            <CodeBlock value={getVigiaOtelEnvBlock(projectSlug, resolvedApiKey)} copyable />
+          </div>
 
-      <div className="flex flex-col gap-2">
-        <Text.H6 color="foregroundMuted">Teste rápido opcional</Text.H6>
-        <Text.H6 color="foregroundMuted">
-          Este comando envia um trace mínimo para validar endpoint, chave e projeto antes de instrumentar o fluxo
-          completo.
-        </Text.H6>
-        <CodeBlock value={getVigiaOtelCurlVerifySnippet(projectSlug, resolvedApiKey)} copyable />
-      </div>
+          <div className="flex flex-col gap-2">
+            <Text.H5M>3. Execute uma conversa de teste</Text.H5M>
+            <Text.H5 color="foregroundMuted">
+              Reinicie o agente se necessário e faça uma execução real. O Vigia detectará automaticamente o primeiro
+              trace.
+            </Text.H5>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Text.H6 color="foregroundMuted">Teste rápido opcional</Text.H6>
+            <Text.H6 color="foregroundMuted">
+              Este comando envia um trace mínimo para validar endpoint, chave e projeto antes de instrumentar o fluxo
+              completo.
+            </Text.H6>
+            <CodeBlock value={getVigiaOtelCurlVerifySnippet(projectSlug, resolvedApiKey)} copyable />
+          </div>
+        </>
+      )}
     </div>
   )
 }

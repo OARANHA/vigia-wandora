@@ -226,6 +226,35 @@ describe("updateProjectUseCase", () => {
       })
     })
 
+    it("persists the Vigia business profile without dropping sibling settings", async () => {
+      const id = ProjectId("1".repeat(24))
+      const { layer, rows } = makeLayer([seeded(id)])
+
+      const result = await Effect.runPromise(
+        updateProjectUseCase({
+          id,
+          settingsPatch: {
+            businessProfile: {
+              useCase: "scheduling",
+              channels: ["whatsapp"],
+              stack: ["evolution-api", "n8n", "code-sdk"],
+              successOutcomes: ["scheduled"],
+            },
+          },
+        }).pipe(Effect.provide(layer)),
+      )
+
+      expect(result.settings?.businessProfile).toEqual({
+        useCase: "scheduling",
+        channels: ["whatsapp"],
+        stack: ["evolution-api", "n8n", "code-sdk"],
+        successOutcomes: ["scheduled"],
+      })
+      expect(rows.get(id)?.settings?.redaction).toEqual({ mode: "enforce", entities: ["email"] })
+      expect(rows.get(id)?.settings?.sampling).toEqual({ enabled: true, rate: 0.5 })
+      expect(rows.get(id)?.settings?.isShowcase).toBe(true)
+    })
+
     it("leaves settings untouched when neither field is given", async () => {
       const id = ProjectId("1".repeat(24))
       const { layer, rows } = makeLayer([seeded(id)])

@@ -43,6 +43,7 @@ const _registry = {
       readonly claimUrl: string
       readonly organizationName: string
       readonly expiresAt: string
+      readonly kind?: "temporary" | "commercial"
     }
   }>(),
 

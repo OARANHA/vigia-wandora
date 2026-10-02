@@ -1740,3 +1740,18 @@ a{color:inherit;text-decoration:none}.container{width:min(var(--max),calc(100% -
     grid-template-columns:1fr;
   }
 }
+
+
+/* Checkbox controls must not inherit the text-input box model from .interest-field input. */
+.interest-success .interest-check input{
+  width:15px;
+  height:15px;
+  min-width:15px;
+  padding:0;
+  border:0;
+  border-radius:3px;
+  background:transparent;
+  box-shadow:none;
+  margin:0 7px 0 0;
+  accent-color:var(--orange);
+}

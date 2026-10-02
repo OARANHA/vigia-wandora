@@ -37,7 +37,10 @@ export function ProvisionCustomerOrganizationModal({
           toast({
             description: `Cliente provisionado. O e-mail de ativação foi enviado para ${result.ownerEmail}.`,
           })
-          await router.invalidate()
+          await router.navigate({
+            to: "/backoffice/organizations/$organizationId",
+            params: { organizationId: result.organizationId },
+          })
         },
         onError: (error) => {
           toast({

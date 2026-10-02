@@ -390,3 +390,25 @@ Validação de produto ainda necessária antes de considerar este slice fechado:
 Bloqueio operacional observado durante os smokes: uma sessão do execution broker usada para o pre-pull de imagens permaneceu marcada como ativa mesmo após a promoção. Tentativas normais de encerramento não liberaram a sessão; o restart do broker foi corretamente negado por exigir autenticação administrativa. Não houve impacto nos containers do Vigia. Não reiniciar o broker nem usar bypass apenas para recuperar contexto; retomar os smokes quando o canal operacional estiver livre.
 
 Anomalia de CI separada: o merge de #65 reintroduziu uma chave `if:` duplicada em `.github/workflows/cla.yml`, tornando o workflow CLA inválido no push da `main`. A correção mínima está isolada no PR #67 e não altera produto/runtime.
+
+
+## Checkpoint 2026-10-02 — smoke de admissão retomado
+
+Validação real após a promoção do PR #65:
+
+- [x] login por magic link com identidade sintética chegou ao Mailpit local, foi consumido com sucesso e criou sessão autenticada comum;
+- [x] chamada direta autenticada ao Better Auth `POST /api/auth/organization/create` foi rejeitada com HTTP 403 e código `YOU_ARE_NOT_ALLOWED_TO_CREATE_A_NEW_ORGANIZATION`;
+- [x] nenhum e-mail externo foi usado no smoke; a entrega permaneceu no Mailpit local;
+- [x] a UI de onboarding já só chama conclusão depois de `countTracesByProject >= 1`;
+- [x] identificado gap de invariável: `completeProjectOnboarding` aceitava chamada direta sem confirmar trace no servidor;
+- [x] correção mínima preparada para exigir pelo menos um trace no ClickHouse antes de persistir `onboardingCompleted = true`.
+
+Ainda pendente antes de fechar a admissão comercial:
+
+- [ ] executar o E2E de provisionamento comercial por uma sessão platform-admin de teste explicitamente autorizada;
+- [ ] confirmar em runtime o claim com mesmo e-mail e a rejeição com e-mail diferente;
+- [ ] confirmar no E2E comercial que API key e raw claim token não aparecem nas respostas do backoffice/browser;
+- [ ] enviar o primeiro trace do cliente provisionado e comprovar a transição completa onboarding -> projeto;
+- [ ] após merge da correção de invariável, promover somente a nova imagem aplicável e repetir o smoke.
+
+Regra operacional: não derivar, extrair ou promover sessão administrativa existente para automatizar o teste. O provisionamento comercial deve ser exercitado com identidade platform-admin de teste apropriada.

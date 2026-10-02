@@ -729,5 +729,7 @@ export interface EventPayloads {
     readonly claimUrl: string
     readonly organizationName: string
     readonly expiresAt: string
+    /** Temporary agent bootstrap and paid customer activation share delivery, but not lifecycle copy. */
+    readonly kind?: "temporary" | "commercial"
   }
 }

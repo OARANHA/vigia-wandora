@@ -14,6 +14,20 @@ Fluxo preferido:
 
 **REAL NOW → EVIDENCE → GAPS → DECISION → EXECUTION → VALIDATION → DOCUMENTATION**
 
+### Método canônico de retomada
+
+Quando o trabalho for retomado em um novo chat, após interrupção ou depois de uma troca de contexto:
+
+1. leia primeiro os documentos canônicos em `.vigia/` listados acima;
+2. se a conversa estiver dentro de um Projeto ChatGPT, procure a **fonte/handoff mais recente adicionada ao Projeto** que seja relacionada ao Vigia e use-a para recuperar decisões, hipóteses, estado alegado e próximo objetivo;
+3. trate essa fonte do Projeto somente como **contexto de continuidade**, nunca como autoridade operacional;
+4. revalide no GitHub a `main` atual, branches relevantes, PRs, reviews/threads e workflows antes de editar ou repetir uma ação;
+5. consulte o runtime real somente quando o próximo passo depender de produção, infraestrutura, deploy, dados ou saúde de serviços;
+6. se houver conflito entre chat/fonte do Projeto e GitHub/runtime, prevalece GitHub/runtime;
+7. depois de concluir um slice, atualize a documentação canônica existente em `.vigia/` para que a decisão não dependa do arquivo de handoff nem de um único chat.
+
+A fonte mais recente do Projeto funciona como **atalho para recuperar intenção e contexto**; GitHub e runtime continuam sendo a fonte de verdade do estado real.
+
 ## Arquitetura
 
 **Latitude é motor. Vigia é produto.**

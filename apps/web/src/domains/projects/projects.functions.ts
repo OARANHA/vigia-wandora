@@ -20,9 +20,10 @@ import {
   previewRedactionUseCase,
   type RedactionPreviewResult,
   type RuleValidation,
+  TraceRepository,
   validateRedactionRule,
 } from "@domain/spans"
-import { SpanRepositoryLive } from "@platform/db-clickhouse"
+import { SpanRepositoryLive, TraceRepositoryLive } from "@platform/db-clickhouse"
 import {
   MembershipRepositoryLive,
   OutboxEventWriterLive,
@@ -326,10 +327,27 @@ export const completeProjectOnboarding = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<ProjectRecord> => {
     const { organizationId } = await requireSession()
     const client = getPostgresClient()
+    const projectId = ProjectId(data.projectId)
+
+    const traceCount = await Effect.runPromise(
+      Effect.gen(function* () {
+        const repo = yield* TraceRepository
+        return yield* repo.countByProjectId({ organizationId, projectId })
+      }).pipe(
+        withScopedClickHouse(TraceRepositoryLive, getClickhouseClient(), organizationId),
+        withTracing,
+      ),
+    )
+
+    if (traceCount < 1) {
+      throw new BadRequestError({
+        message: "At least one trace is required before completing project onboarding",
+      })
+    }
 
     const project = await Effect.runPromise(
       updateProjectUseCase({
-        id: ProjectId(data.projectId),
+        id: projectId,
         settingsPatch: { onboardingCompleted: true },
       }).pipe(withPostgres(ProjectRepositoryLive, client, organizationId), withTracing),
     )

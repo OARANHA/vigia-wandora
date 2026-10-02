@@ -25,6 +25,7 @@ export const createOrganizationClaimEmailWorker = ({ consumer }: OrganizationCla
             claimUrl: payload.claimUrl,
             organizationName: payload.organizationName,
             expiresAt: payload.expiresAt,
+            kind: payload.kind ?? "temporary",
           }),
         )
 

@@ -81,6 +81,30 @@ Responsabilidades:
 
 A landing mantém apenas um ponto de integração desativado por padrão até existir o contrato público definitivo do widget. A Wandora poderá usar uma API resumida do Vigia para acompanhar o progresso de onboarding e saúde do cliente, preservando o Vigia como fonte de verdade de observabilidade.
 
+## 2.1. Lente de produto: dono, cliente e desenvolvedor
+
+Toda decisão relevante do Vigia deve ser avaliada simultaneamente por três perspectivas:
+
+- **Dono do Vigia:** isso resolve um problema que pequenas e médias empresas compram, é simples de explicar, rápido de ativar e cria oportunidade real de receita?
+- **Cliente do Vigia:** eu consigo conectar meu agente e entender saúde, falhas, custo e resultado sem precisar conhecer Latitude, traces, spans ou OpenTelemetry?
+- **Desenvolvedor do Vigia:** dá para entregar reutilizando Latitude, OTLP, Business Events e adapters finos, sem criar uma plataforma paralela ou overengineering?
+
+Quando houver conflito, a implementação técnica deve servir à experiência e ao valor comercial, sem comprometer segurança, isolamento multi-tenant ou a independência do Vigia.
+
+### Mercado primeiro, tecnologia depois
+
+O onboarding e o posicionamento devem começar pelo que a empresa comprou e pelo canal em que o agente opera, e somente depois perguntar pela tecnologia usada por baixo.
+
+Ordem mental padrão:
+
+1. **O que o agente faz?** atendimento, vendas/qualificação, agendamento, cobrança, suporte, pós-venda, pedidos, e-commerce, operações internas, documentos etc.;
+2. **Onde ele opera?** WhatsApp, site/chat, Instagram/Messenger, voz/telefone, e-mail ou uso interno;
+3. **Como foi montado?** n8n, Flowise, Evolution API, Typebot, Dify, Botpress, Make/Zapier, SDK/código próprio ou outro;
+4. **Como conectar ao Vigia?** escolher OTLP direto, adapter, webhook/eventos ou combinação mínima necessária;
+5. **O que significa sucesso?** atendimento resolvido, lead qualificado, venda, agendamento, pagamento, tarefa concluída ou evento próprio.
+
+Stacks podem ser combinadas. Um agente real pode ser, por exemplo, **WhatsApp + Evolution API + n8n + LLM + CRM**. O Vigia deve observar o fluxo como produto de negócio, não obrigar o cliente a escolher uma única tecnologia que represente toda a solução.
+
 ## 3. Experiência que queremos vender
 
 O onboarding precisa parecer produto SaaS, não projeto de consultoria.

@@ -440,3 +440,85 @@ Ainda falta para fechar o slice comercial:
 - [ ] primeiro trace do cliente provisionado seguido da conclusão real do onboarding.
 
 Não reutilizar, extrair ou elevar sessão administrativa existente apenas para executar o smoke.
+
+
+## Recalibração 2026-10-02 — onboarding orientado ao que a PME compra
+
+Decisão de produto:
+
+- [x] o Vigia não deve organizar onboarding primeiro por framework técnico;
+- [x] a experiência deve começar pelo caso de uso e canal do agente;
+- [x] stacks reais podem ser compostas por várias peças;
+- [x] OTLP continua como porta técnica principal, mas deve ficar escondido atrás de instruções específicas quando possível;
+- [x] Business Events devem traduzir a execução em resultado de negócio.
+
+Perguntas canônicas do onboarding comercial:
+
+1. **O que esse agente faz?**
+   - atendimento;
+   - vendas/qualificação;
+   - agendamento;
+   - cobrança;
+   - suporte;
+   - pós-venda;
+   - pedidos/e-commerce;
+   - operações internas;
+   - documentos;
+   - outro.
+2. **Onde ele funciona?**
+   - WhatsApp;
+   - site/chat;
+   - Instagram/Messenger;
+   - voz/telefone;
+   - e-mail;
+   - interno.
+3. **Como ele foi montado?**
+   - n8n;
+   - Flowise;
+   - Evolution API;
+   - Typebot;
+   - Dify;
+   - Botpress;
+   - Make/Zapier;
+   - código próprio/SDK;
+   - outro.
+4. **O que significa sucesso?**
+   - atendimento resolvido;
+   - lead qualificado;
+   - venda/conversão;
+   - agendamento;
+   - pagamento;
+   - tarefa concluída;
+   - redução de tempo/custo;
+   - evento próprio.
+
+Prioridade de integração para PMEs:
+
+- [ ] **n8n + Evolution API + WhatsApp** como primeiro caminho comercial composto;
+- [ ] **Flowise** como segunda peça prioritária, validando exatamente o nível de tracing disponível antes de prometer experiência equivalente;
+- [ ] Typebot, Dify e Botpress depois dos primeiros casos reais;
+- [ ] manter OpenTelemetry/código próprio como caminho universal/avançado.
+
+Exemplo de arquitetura que o Vigia deve entender sem exigir que o cliente conheça telemetria:
+
+```text
+Cliente no WhatsApp
+        |
+        v
+Evolution API
+        |
+        v
+n8n / Flowise
+        |
+        +--> LLM
+        +--> CRM / agenda / ERP
+        |
+        v
+Vigia
+  - telemetria técnica
+  - eventos de canal
+  - Business Events
+  - saúde, custo, falhas e resultado
+```
+
+Regra para próximos slices: antes de criar um adapter, verificar capability nativa da ferramenta e do Latitude. Criar código próprio somente para reduzir fricção real do onboarding, captar eventos que OTLP não entrega ou traduzir telemetria em valor de negócio.

@@ -99,6 +99,7 @@ export const toRecord = (project: Project) => ({
     escalation: project.settings?.escalation,
     onboardingType: project.settings?.onboardingType,
     onboardingCompleted: project.settings?.onboardingCompleted,
+    vigiaBusinessProfile: project.settings?.vigiaBusinessProfile,
     isSample: project.settings?.isSample,
     sampling: project.settings?.sampling,
     redaction: project.settings?.redaction,

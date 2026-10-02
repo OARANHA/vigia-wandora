@@ -6,6 +6,7 @@ import { insertApiKeyMutation, useApiKeysCollection } from "../../../../../domai
 import { toUserMessage } from "../../../../../lib/errors.ts"
 import {
   getVigiaConnectionValues,
+  getVigiaFlowisePhoenixValues,
   getVigiaN8nEnvBlock,
   getVigiaOtelCurlVerifySnippet,
   getVigiaOtelEnvBlock,
@@ -31,8 +32,11 @@ export function VigiaConnectionInstructions({
   const preferredKey = apiKeysList.find((key) => key.name === DEFAULT_API_KEY_NAME) ?? apiKeysList[0] ?? null
   const resolvedApiKey = apiKeyToken !== undefined ? apiKeyToken : (preferredKey?.token ?? null)
   const config = getVigiaConnectionValues(projectSlug, resolvedApiKey)
+  const flowiseConfig = getVigiaFlowisePhoenixValues(projectSlug, resolvedApiKey)
   const connectionStack = VIGIA_AGENT_STACKS.find((entry) => entry.id === source) ?? VIGIA_AGENT_STACKS.at(-1)
   const usesEvolutionWithN8n = source === "n8n" && stack.includes("evolution-api")
+  const usesEvolutionWithFlowise = source === "flowise" && stack.includes("evolution-api")
+  const displayedEndpoint = source === "flowise" ? flowiseConfig.endpoint : config.endpoint
 
   const handleCreateKey = async () => {
     setCreatingKey(true)
@@ -59,14 +63,19 @@ export function VigiaConnectionInstructions({
             Você marcou Evolution API + n8n. A Evolution continua como canal do WhatsApp; nesta etapa, quem envia o
             tracing ao Vigia é o n8n. Não configure o endpoint OTLP na Evolution.
           </Text.H6>
+        ) : usesEvolutionWithFlowise ? (
+          <Text.H6 color="foregroundMuted">
+            Você marcou Evolution API + Flowise. A Evolution continua como canal do WhatsApp; nesta etapa, quem envia
+            o tracing ao Vigia é o Flowise pela integração Phoenix.
+          </Text.H6>
         ) : null}
       </div>
 
       <div className="flex flex-col gap-3">
         <Text.H5M>1. Copie os dados do Vigia</Text.H5M>
         <div className="flex flex-col gap-2">
-          <Text.H6 color="foregroundMuted">Endpoint OTLP</Text.H6>
-          <CodeBlock value={config.endpoint} copyable />
+          <Text.H6 color="foregroundMuted">{source === "flowise" ? "Endpoint base (Phoenix)" : "Endpoint OTLP"}</Text.H6>
+          <CodeBlock value={displayedEndpoint} copyable />
         </div>
         <div className="flex flex-col gap-2">
           <Text.H6 color="foregroundMuted">Projeto</Text.H6>
@@ -106,6 +115,36 @@ export function VigiaConnectionInstructions({
             <Text.H5 color="foregroundMuted">
               Reinicie o n8n se estiver usando variáveis de ambiente e use a opção de teste do OpenTelemetry. Depois,
               execute um workflow real para o Vigia confirmar a conexão.
+            </Text.H5>
+          </div>
+        </>
+      ) : source === "flowise" ? (
+        <>
+          <div className="flex flex-col gap-2">
+            <Text.H5M>2. Ative Analytics &gt; Phoenix no Flowise</Text.H5M>
+            <Text.H5 color="foregroundMuted">
+              Crie uma credencial Phoenix API e preencha Endpoint, API Key e Project Name com os dados acima. Use o
+              endpoint base, sem /v1/traces: o próprio Flowise acrescenta esse caminho.
+            </Text.H5>
+            <div className="flex flex-col gap-2">
+              <Text.H6 color="foregroundMuted">Endpoint</Text.H6>
+              <CodeBlock value={flowiseConfig.endpoint} copyable />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Text.H6 color="foregroundMuted">API Key</Text.H6>
+              <CodeBlock value={flowiseConfig.apiKey} copyable />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Text.H6 color="foregroundMuted">Project Name</Text.H6>
+              <CodeBlock value={flowiseConfig.project} copyable />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Text.H5M>3. Execute uma conversa real no Flowise</Text.H5M>
+            <Text.H5 color="foregroundMuted">
+              Salve a configuração Analytics, execute o agente e aguarde o primeiro trace. O Vigia reconhece o projeto
+              pelo Project Name enviado pelo exporter Phoenix.
             </Text.H5>
           </div>
         </>

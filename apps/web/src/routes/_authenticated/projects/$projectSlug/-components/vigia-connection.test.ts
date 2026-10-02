@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   getVigiaConnectionValues,
+  getVigiaFlowisePhoenixValues,
   getVigiaN8nEnvBlock,
   getVigiaOtelCurlVerifySnippet,
   getVigiaOtelEnvBlock,
@@ -43,8 +44,18 @@ describe("Vigia OTLP connection config", () => {
     expect(env).not.toContain("N8N_OTEL_EXPORTER_OTLP_ENDPOINT=https://vigia.wandora.com.br/v1/traces")
   })
 
-  it("selects n8n instructions only when n8n is part of the composed stack", () => {
+  it("builds Flowise Phoenix values with the endpoint base, key and project", () => {
+    expect(getVigiaFlowisePhoenixValues(" atendimento ", "secret")).toEqual({
+      endpoint: "https://vigia.wandora.com.br",
+      apiKey: "secret",
+      project: "atendimento",
+    })
+  })
+
+  it("selects the most specific connection instructions for the composed stack", () => {
     expect(resolveVigiaConnectionSource(["evolution-api", "n8n", "code-sdk"])).toBe("n8n")
-    expect(resolveVigiaConnectionSource(["flowise", "code-sdk"])).toBe("opentelemetry")
+    expect(resolveVigiaConnectionSource(["evolution-api", "flowise", "code-sdk"])).toBe("flowise")
+    expect(resolveVigiaConnectionSource(["flowise", "n8n"])).toBe("n8n")
+    expect(resolveVigiaConnectionSource(["code-sdk"])).toBe("opentelemetry")
   })
 })

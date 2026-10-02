@@ -49,8 +49,8 @@ export interface ProcessIngestedSpansInput {
   readonly inlinePayload: string | null
   readonly fileKey: string | null
   /**
-   * Resolved by the request handler from the `X-Latitude-Project` header. Used for spans that
-   * carry no `latitude.project` attribute on the span or its OTEL resource.
+   * Resolved by the request handler from the Vigia/Latitude project header. Used for spans that
+   * carry no supported project attribute on the span or its OTEL resource.
    */
   readonly defaultProjectId: string | null
   /**

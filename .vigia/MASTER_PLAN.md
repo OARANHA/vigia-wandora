@@ -113,11 +113,13 @@ Fluxo desejado:
 
 1. criar empresa/organização;
 2. criar agente/projeto;
-3. escolher como o agente foi desenvolvido;
-4. copiar configuração de conexão;
-5. executar uma conversa de teste;
-6. Vigia detecta a primeira execução;
-7. definir o que significa sucesso para aquele agente.
+3. definir **o que o agente faz**;
+4. marcar **onde ele opera**;
+5. informar a **stack composta** usada na solução;
+6. definir **o que significa sucesso** para aquele agente;
+7. receber somente a instrução de conexão relevante à stack;
+8. executar uma conversa/workflow real;
+9. Vigia detecta o primeiro trace e conclui o onboarding.
 
 A pergunta de negócio fundamental é:
 
@@ -301,7 +303,7 @@ Checkpoint do merge:
 - `pnpm check`, `pnpm typecheck` e build do web passaram no HEAD integrado;
 - marca textual, metadados, login, perfil inicial e seleção de empresa já usam Vigia/PT-BR.
 
-O onboarding de projeto/agente e a conexão OTLP já possuem uma camada própria Vigia/PT-BR. O cliente escolhe como o agente foi desenvolvido, recebe endpoint/chave/projeto do Vigia, configura OpenTelemetry e a interface detecta o primeiro trace.
+O onboarding de projeto/agente e a conexão OTLP possuem uma camada própria Vigia/PT-BR. A experiência é market-first: o cliente começa por função, canais, stack composta e definição de sucesso; depois recebe somente a instrução de conexão aplicável. O primeiro caminho específico usa o OpenTelemetry nativo do n8n, enquanto OTLP genérico permanece como fallback. A interface só conclui o onboarding após detectar um trace real.
 
 O contrato público do MVP usa `https://vigia.wandora.com.br/v1/traces` e o cabeçalho `X-Vigia-Project`. O ingest mantém `X-Latitude-Project` apenas como alias de compatibilidade interna.
 

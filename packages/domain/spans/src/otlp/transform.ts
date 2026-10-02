@@ -114,12 +114,20 @@ interface TransformResult {
   readonly unpricedSpanGroups: readonly UnpricedSpanGroup[]
 }
 
-/** Reads `latitude.project` from span attrs first, falling back to resource attrs. */
+/**
+ * Reads the canonical Latitude/Vigia project attribute first, then the OpenInference
+ * project attribute emitted by Flowise's Phoenix analytics exporter.
+ */
 export function resolveSpanProjectSlug(
   spanAttrs: readonly OtlpKeyValue[],
   resourceAttrs: readonly OtlpKeyValue[],
 ): string | undefined {
-  return stringAttr(spanAttrs, "latitude.project") ?? stringAttr(resourceAttrs, "latitude.project")
+  return (
+    stringAttr(spanAttrs, "latitude.project") ??
+    stringAttr(resourceAttrs, "latitude.project") ??
+    stringAttr(spanAttrs, "openinference.project.name") ??
+    stringAttr(resourceAttrs, "openinference.project.name")
+  )
 }
 
 function resolveSpanProjectId(

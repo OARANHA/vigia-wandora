@@ -545,3 +545,23 @@ Próximos slices:
 - [ ] qualificar Flowise e só então decidir se precisa adapter próprio;
 - [ ] conectar `businessProfile.successOutcomes` à apresentação/analytics de Business Events sem duplicar a fonte de verdade.
 
+## Checkpoint 2026-10-02 — onboarding market-first promovido a produção
+
+Validação operacional após o merge do PR #77:
+
+- [x] `main` confirmado em `4d18b18f58e438d13c6472c29c9d675d107bb9dd`;
+- [x] workflow pós-merge **Vigia container images** #158 concluído com sucesso para esse SHA;
+- [x] antes da promoção, o runtime estava com `vigia-web` em `987aec4c67daf47ae65916e70e18f011f92edd53` e stack ativo;
+- [x] imagem `ghcr.io/oaranha/vigia-web:main` puxada e validada com revision `4d18b18f58e438d13c6472c29c9d675d107bb9dd`;
+- [x] stack Portainer `vigia` atualizado para `ConfigHash=4d18b18f58e438d13c6472c29c9d675d107bb9dd`;
+- [x] `vigia-web`, API, ingest, workers e workflows retornaram a estado saudável após o redeploy; migrations encerrou com código 0;
+- [x] `https://vigia.wandora.com.br/` respondeu HTTP 200 e `https://app-vigia.wandora.com.br/` respondeu com redirecionamento esperado;
+- [x] bundle do `vigia-web` em produção contém as marcas do novo fluxo: função do agente, definição de sucesso, `businessProfile`, configuração OTEL do n8n e orientação de Evolution API.
+
+Observação operacional: o Git redeploy do Portainer recriou o stack completo, embora somente a imagem web tivesse mudado. Em promoções futuras, preferir mecanismo que troque apenas o serviço/imagem necessária quando não houver mudança de Compose.
+
+Próximo slice permanece:
+
+- [ ] validar a jornada ponta a ponta com uma instância n8n real enviando um trace ao Vigia;
+- [ ] só após essa prova, usar a Wandora como primeiro cliente real desse fluxo e avançar para Flowise.
+

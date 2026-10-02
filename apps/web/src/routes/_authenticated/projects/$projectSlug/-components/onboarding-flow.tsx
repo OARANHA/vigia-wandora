@@ -12,6 +12,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react"
 import { SelectorChip } from "../../../../../components/selector-chip.tsx"
 import { VigiaBrand } from "../../../../../components/vigia-brand.tsx"
 import { completeProjectOnboarding, updateProject } from "../../../../../domains/projects/projects.functions.ts"
+import { VIGIA_ONBOARDING_TRACE_FILTERS } from "../../../../../domains/projects/onboarding.ts"
 import { countTracesByProject } from "../../../../../domains/traces/traces.functions.ts"
 import { getQueryClient } from "../../../../../lib/data/query-client.tsx"
 import { toUserMessage } from "../../../../../lib/errors.ts"
@@ -168,30 +169,34 @@ export function OnboardingFlow({
     }
 
     const finishConnection = async () => {
-      setTraceReceived(true)
       try {
         await completeProjectOnboarding({ data: { projectId: projectIdRef.current } })
         await getQueryClient().invalidateQueries({ queryKey: ["projects"] })
+        if (cancelled) return
+
+        setTraceReceived(true)
+        redirectTimeout = window.setTimeout(() => {
+          if (!cancelled) {
+            void onOpenProjectTracesRef.current(projectIdRef.current)
+          }
+        }, 1800)
       } catch (error) {
         toastRef.current({
           variant: "destructive",
           description: toUserMessage(error),
         })
+        schedulePoll()
       }
-
-      if (cancelled) return
-      redirectTimeout = window.setTimeout(() => {
-        if (!cancelled) {
-          void onOpenProjectTracesRef.current(projectIdRef.current)
-        }
-      }, 1800)
     }
 
     const poll = async () => {
       if (cancelled) return
 
       const count = await countTracesByProject({
-        data: { projectId: projectIdRef.current },
+        data: {
+          projectId: projectIdRef.current,
+          filters: VIGIA_ONBOARDING_TRACE_FILTERS,
+        },
       }).catch(() => 0)
 
       if (cancelled) return

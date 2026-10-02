@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   CLAAssistant:
+    if: github.repository == 'latitude-dev/latitude-llm'
     runs-on: ubuntu-latest
     steps:
       - name: CLA Assistant

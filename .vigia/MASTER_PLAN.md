@@ -468,3 +468,66 @@ Decisão consolidada:
 - o formulário coleta somente dados úteis à qualificação: nome, email, WhatsApp, empresa, site opcional, caso de uso, volume de agentes, stack, definição de sucesso e mensagem;
 - a cena 3D dos mascotes é um ativo visual do produto, sem criar dependência operacional entre Vigia e Wandora.
 
+## Decisão 2026-10-02 — admissão comercial e onboarding pós-compra
+
+O Vigia passa a tratar a criação de empresas de clientes como um ato de **provisionamento comercial controlado**, não como consequência automática de qualquer login.
+
+Princípios desta decisão:
+
+- autenticar um e-mail no Vigia não concede, por si só, o direito de criar uma organização;
+- login continua disponível para usuários existentes, convites, SSO e links de ativação;
+- novas organizações de clientes são provisionadas pela operação autorizada da Wandora/Vigia;
+- o backoffice é a superfície humana inicial para esse provisionamento; a futura integração com Elus deve chamar um contrato protegido equivalente, sem acessar bancos ou internals do Vigia;
+- o provisionamento reutiliza as entidades e capabilities existentes de organização, projeto, chave de API e claim. Não existe justificativa para uma nova tabela, state machine ou subsistema de customer provisioning;
+- uma organização comercial é durável desde a criação. A expiração do link de ativação não pode apagar a empresa comprada;
+- o claim continua temporário, one-shot e vinculado ao e-mail do comprador. O usuário autenticado só assume ownership quando o e-mail da sessão corresponde ao e-mail vinculado ao claim;
+- o bootstrap público de conta temporária permanece uma capability separada e mantém sua própria expiração/cleanup.
+
+### Experiência pós-compra
+
+O e-mail de confirmação leva primeiro para uma tela ampla de ativação do Vigia. O comprador não é obrigado a entender OpenTelemetry, OTLP, API keys, traces ou spans para começar.
+
+Fluxo de produto:
+
+```text
+compra confirmada
+  -> empresa/projeto/chave já provisionados
+  -> e-mail "Ativar meu Vigia"
+  -> ativar ownership com o e-mail da compra
+  -> onboarding guiado em tela ampla
+  -> identificar o primeiro agente
+  -> identificar onde ele foi criado
+  -> instruções específicas
+  -> executar/testar o agente
+  -> Vigia aguarda telemetria real
+  -> primeiro trace recebido
+  -> onboarding concluído
+```
+
+A primeira experiência oferece **um único caminho guiado**. Opções técnicas avançadas continuam disponíveis depois que o cliente estiver conectado, mas não competem com a tarefa inicial.
+
+A pergunta de entrada deve ser humana: **"Onde seu agente foi criado?"**. Os alvos de experiência incluem n8n, Flowise, Dify, LangFlow e stacks técnicas já suportadas pelo motor. Cada provider só pode ser promovido a opção operacional depois de sua forma real de instrumentação ser qualificada; a interface não deve prometer uma integração que ainda não foi provada.
+
+O sucesso do onboarding não é "configuração salva". É **telemetria real recebida**.
+
+### Linguagem do produto
+
+O Vigia continua usando traces, spans, scores, signals e OpenTelemetry internamente, mas a experiência principal traduz isso para perguntas de negócio:
+
+- o agente está funcionando?
+- onde está errando?
+- quanto está custando?
+- quais ferramentas ou integrações estão falhando?
+- a taxa de sucesso está melhorando ou piorando?
+- quando precisa de intervenção humana?
+- está entregando o resultado esperado?
+
+Termos técnicos permanecem acessíveis nas superfícies de investigação e configuração avançada.
+
+### MCP e integrações
+
+MCP, OAuth, Cursor, Claude Code, Codex, GitHub, Slack e demais integrações são capabilities posteriores ao primeiro sucesso de conexão. Não fazem parte da decisão inicial que o comprador precisa tomar no primeiro acesso.
+
+### Billing
+
+Este fluxo não define preços, nomes de planos comerciais nem mapeamento venda -> entitlement. A infraestrutura de billing existente continua reutilizável, mas a autoridade comercial do Vigia deve ser decidida separadamente antes de automatizar plano/limites a partir da venda.

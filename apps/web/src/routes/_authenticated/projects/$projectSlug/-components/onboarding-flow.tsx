@@ -322,6 +322,7 @@ export function OnboardingFlow({
             <ConnectionStep
               projectSlug={projectSlug}
               source={connectionSource}
+              stack={stack}
               traceReceived={traceReceived}
               onBack={() => goToStep("success")}
             />
@@ -571,11 +572,13 @@ function StepActions({
 function ConnectionStep({
   projectSlug,
   source,
+  stack,
   traceReceived,
   onBack,
 }: {
   readonly projectSlug: string
   readonly source: VigiaAgentStackId
+  readonly stack: readonly VigiaBusinessStackId[]
   readonly traceReceived: boolean
   readonly onBack: () => void
 }) {
@@ -602,7 +605,7 @@ function ConnectionStep({
         </div>
       </div>
 
-      <VigiaConnectionInstructions projectSlug={projectSlug} source={source} />
+      <VigiaConnectionInstructions projectSlug={projectSlug} source={source} stack={stack} />
 
       {!traceReceived ? (
         <div className="flex items-center">

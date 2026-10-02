@@ -721,7 +721,7 @@ export interface EventPayloads {
     readonly partnerId: string
   }
   /**
-   * Emitted by `bootstrapOrganizationUseCase` when an email is supplied; drives the claim email.
+   * Emitted by temporary bootstrap and controlled customer provisioning; drives the claim/activation email.
    * Outbox `organizationId: "system"` like `InvitationEmailRequested` — an auth-boundary email.
    */
   ClaimEmailRequested: {

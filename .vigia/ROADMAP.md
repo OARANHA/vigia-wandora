@@ -383,7 +383,7 @@ Validação de produto ainda necessária antes de considerar este slice fechado:
 
 - [ ] executar o fluxo real com identidade descartável no Mailpit local: provisionar cliente -> receber e-mail -> ativar -> autenticar com o mesmo e-mail -> onboarding;
 - [ ] provar em runtime que e-mail diferente não consegue assumir a organização;
-- [ ] provar por HTTP autenticado que o endpoint Better Auth de criação de organização rejeita usuário comum;
+- [x] provar por HTTP autenticado que o endpoint Better Auth de criação de organização rejeita usuário comum;
 - [ ] conectar um agente de teste, enviar a primeira execução e confirmar que o onboarding só conclui após o primeiro trace real;
 - [ ] confirmar no runtime que API key/raw claim token não aparecem nas respostas do browser/backoffice.
 
@@ -409,6 +409,34 @@ Ainda pendente antes de fechar a admissão comercial:
 - [ ] confirmar em runtime o claim com mesmo e-mail e a rejeição com e-mail diferente;
 - [ ] confirmar no E2E comercial que API key e raw claim token não aparecem nas respostas do backoffice/browser;
 - [ ] enviar o primeiro trace do cliente provisionado e comprovar a transição completa onboarding -> projeto;
-- [ ] após merge da correção de invariável, promover somente a nova imagem aplicável e repetir o smoke.
+- [x] após merge da correção de invariável, promover somente a nova imagem aplicável; smoke E2E completo continua pendente de identidade platform-admin de teste.
 
 Regra operacional: não derivar, extrair ou promover sessão administrativa existente para automatizar o teste. O provisionamento comercial deve ser exercitado com identidade platform-admin de teste apropriada.
+
+
+## Checkpoint 2026-10-02 — invariável de primeiro trace promovida
+
+Estado real após o PR #70:
+
+- [x] PR #70 `fix: require trace before completing onboarding` mergeado;
+- [x] `main` em `987aec4c67daf47ae65916e70e18f011f92edd53`;
+- [x] workflow pós-merge `Vigia container images` #146 concluído com sucesso;
+- [x] `Build web` e `Validate production Compose` verdes;
+- [x] imagem `ghcr.io/oaranha/vigia-web:main` publicada com revisão `987aec4c67daf47ae65916e70e18f011f92edd53`;
+- [x] promoção feita pelo Portainer local, sem `docker compose up` manual;
+- [x] stack `vigia` ativa com `ConfigHash = 987aec4c67daf47ae65916e70e18f011f92edd53`;
+- [x] `vigia-web` confirmado na nova revisão e healthy;
+- [x] api, ingest, workers e workflows permaneceram nas imagens `46dd4334...` e voltaram healthy após a reaplicação da stack;
+- [x] migrations saiu com código 0; Postgres e ClickHouse permaneceram healthy;
+- [x] `/login` respondeu HTTP 200 após a promoção.
+
+A invariável de produto agora também existe no servidor: `completeProjectOnboarding` exige pelo menos um trace persistido antes de gravar `onboardingCompleted = true`.
+
+Ainda falta para fechar o slice comercial:
+
+- [ ] E2E de `Provisionar cliente` com uma identidade platform-admin de teste explicitamente autorizada;
+- [ ] claim bem-sucedido com o mesmo e-mail e rejeição com e-mail diferente;
+- [ ] confirmação runtime de que API key/raw claim token não aparecem no browser/backoffice;
+- [ ] primeiro trace do cliente provisionado seguido da conclusão real do onboarding.
+
+Não reutilizar, extrair ou elevar sessão administrativa existente apenas para executar o smoke.

@@ -79,6 +79,11 @@ export interface BetterAuthConfig {
    */
   readonly allowedEmailDomain?: string
   /**
+   * Product admission gate for tenant creation. Defaults to Better Auth's normal
+   * self-service behavior; products such as Vigia can require staff provisioning.
+   */
+  readonly allowUserToCreateOrganization?: boolean
+  /**
    * SSO enforcement predicate: true when the email's domain has a verified
    * SSO provider with `enforced = true`. Consulted on session creation for
    * the magic-link and social sign-in paths (SSO callbacks are exempt) —
@@ -304,6 +309,7 @@ export const createBetterAuth = (config: BetterAuthConfig) => {
     },
     plugins: [
       organizationPlugin({
+        allowUserToCreateOrganization: config.allowUserToCreateOrganization ?? true,
         sendInvitationEmail: async (data, request) => {
           await config.sendInvitationEmail(
             {

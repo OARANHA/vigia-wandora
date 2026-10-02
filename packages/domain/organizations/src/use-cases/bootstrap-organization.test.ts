@@ -121,6 +121,7 @@ describe("bootstrapOrganizationUseCase", () => {
       email: "founder@acme.com",
       organizationName: "Acme",
       expiresAt: result.claimExpiresAt.toISOString(),
+      kind: "temporary",
     })
 
     expect(result.organization).toMatchObject({ id: ORG_ID, slug: "acme" })

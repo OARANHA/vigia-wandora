@@ -6,13 +6,31 @@ import { getAdminPostgresClient, getRedisClient } from "../clients.ts"
 import type { IngestEnv } from "../types.ts"
 import { createTouchBuffer } from "./touch-buffer.ts"
 
-export const authMiddleware: MiddlewareHandler<IngestEnv> = async (c, next) => {
-  const authHeader = c.req.header("Authorization")
-  if (!authHeader?.startsWith("Bearer ")) {
-    return c.json({ error: "Authorization header with Bearer token is required" }, 401)
+export function resolveIngestApiKey({
+  authorization,
+  apiKey,
+}: {
+  readonly authorization?: string | undefined
+  readonly apiKey?: string | undefined
+}): string | undefined {
+  if (authorization !== undefined) {
+    if (!authorization.startsWith("Bearer ")) return undefined
+    const bearer = authorization.slice(7).trim()
+    return bearer || undefined
   }
 
-  const token = authHeader.slice(7)
+  const phoenixKey = apiKey?.trim()
+  return phoenixKey || undefined
+}
+
+export const authMiddleware: MiddlewareHandler<IngestEnv> = async (c, next) => {
+  const token = resolveIngestApiKey({
+    authorization: c.req.header("Authorization"),
+    apiKey: c.req.header("api_key"),
+  })
+  if (!token) {
+    return c.json({ error: "Authorization header with Bearer token or api_key header is required" }, 401)
+  }
   const adminClient = getAdminPostgresClient()
   const touchBuffer = createTouchBuffer(adminClient)
 

@@ -75,9 +75,10 @@ function extractResourceString(resource: OtlpResource | undefined): Record<strin
 /**
  * Per-span project scoping. Each span resolves a `projectId` independently:
  *
- *   1. span attribute `latitude.project`            (set by `.capture({ projectSlug })`)
- *   2. OTEL resource attribute `latitude.project`   (bare-OTEL pattern)
- *   3. `defaultProjectId` from `X-Latitude-Project` header                       *
+ *   1. span attribute `latitude.project`                      (set by `.capture({ projectSlug })`)
+ *   2. OTEL resource attribute `latitude.project`             (bare-OTEL pattern)
+ *   3. `openinference.project.name` span/resource attribute   (Flowise/Phoenix compatibility)
+ *   4. `defaultProjectId` from the Vigia/Latitude project header
  *
  * Slugs resolve to project IDs via `projectIdBySlug`. A span is rejected if its slug
  * doesn't resolve and `defaultProjectId` is also absent (or if the slug isn't in the map).
@@ -87,9 +88,9 @@ export interface TransformContext {
   readonly apiKeyId: string
   readonly ingestedAt: Date
   /**
-   * `projectId` to use when neither a span nor resource `latitude.project` attribute is present.
-   * Resolved from the `X-Latitude-Project` header by the ingest middleware; `null` when no
-   * header was sent (in which case unscoped spans are rejected).
+   * `projectId` to use when no supported span/resource project attribute is present.
+   * Resolved from the `X-Vigia-Project` header (or the Latitude compatibility alias)
+   * by the ingest middleware; `null` when no header was sent.
    */
   readonly defaultProjectId: string | null
   /**
@@ -114,12 +115,20 @@ interface TransformResult {
   readonly unpricedSpanGroups: readonly UnpricedSpanGroup[]
 }
 
-/** Reads `latitude.project` from span attrs first, falling back to resource attrs. */
+/**
+ * Reads the canonical Latitude/Vigia project attribute first, then the OpenInference
+ * project attribute emitted by Flowise's Phoenix analytics exporter.
+ */
 export function resolveSpanProjectSlug(
   spanAttrs: readonly OtlpKeyValue[],
   resourceAttrs: readonly OtlpKeyValue[],
 ): string | undefined {
-  return stringAttr(spanAttrs, "latitude.project") ?? stringAttr(resourceAttrs, "latitude.project")
+  return (
+    stringAttr(spanAttrs, "latitude.project") ??
+    stringAttr(resourceAttrs, "latitude.project") ??
+    stringAttr(spanAttrs, "openinference.project.name") ??
+    stringAttr(resourceAttrs, "openinference.project.name")
+  )
 }
 
 function resolveSpanProjectId(

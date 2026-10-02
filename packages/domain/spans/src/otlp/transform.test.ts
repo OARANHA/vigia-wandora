@@ -103,3 +103,47 @@ describe("transformOtlpToSpans — int64 precision", () => {
     expect(span?.attrInt["gen_ai.usage.input_tokens"]).toBe(215813)
   })
 })
+
+
+describe("transformOtlpToSpans — Flowise Phoenix project", () => {
+  it("resolves openinference.project.name without a default project", () => {
+    const request: OtlpExportTraceServiceRequest = {
+      resourceSpans: [
+        {
+          resource: {
+            attributes: [
+              { key: "service.name", value: { stringValue: "primary" } },
+              { key: "openinference.project.name", value: { stringValue: "primary" } },
+            ],
+          },
+          scopeSpans: [
+            {
+              scope: { name: "flowise-phoenix", version: "1" },
+              spans: [
+                {
+                  traceId: "1".repeat(32),
+                  spanId: "2".repeat(16),
+                  name: "chain",
+                  startTimeUnixNano: "1",
+                  endTimeUnixNano: "2",
+                  attributes: [],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }
+
+    const { spans, rejectedSpans } = transformOtlpToSpans(request, {
+      ...context,
+      defaultProjectId: null,
+      projectIdBySlug: new Map([["primary", "proj_primary"]]),
+    })
+
+    expect(rejectedSpans).toBe(0)
+    expect(spans).toHaveLength(1)
+    expect(spans[0]?.projectId).toBe("proj_primary")
+    expect(spans[0]?.resourceString["openinference.project.name"]).toBe("primary")
+  })
+})

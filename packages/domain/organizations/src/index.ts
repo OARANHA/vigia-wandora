@@ -87,6 +87,14 @@ export {
 } from "./use-cases/complete-onboarding.ts"
 export { dismissShowcaseUseCase } from "./use-cases/dismiss-showcase.ts"
 export {
+  CUSTOMER_ACTIVATION_TTL_MS,
+  DEFAULT_CUSTOMER_PROJECT_NAME,
+  type ProvisionCustomerOrganizationError,
+  type ProvisionCustomerOrganizationInput,
+  type ProvisionCustomerOrganizationResult,
+  provisionCustomerOrganizationUseCase,
+} from "./use-cases/provision-customer-organization.ts"
+export {
   type GenerateOrganizationClaimError,
   type GenerateOrganizationClaimInput,
   type GenerateOrganizationClaimResult,

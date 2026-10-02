@@ -494,8 +494,8 @@ Perguntas canônicas do onboarding comercial:
 
 Prioridade de integração para PMEs:
 
-- [ ] **n8n + Evolution API + WhatsApp** como primeiro caminho comercial composto;
-- [ ] **Flowise** como segunda peça prioritária, validando exatamente o nível de tracing disponível antes de prometer experiência equivalente;
+- [x] **n8n + Evolution API + WhatsApp** como primeiro caminho comercial composto, com tracing nativo n8n -> OTLP -> Vigia já validado;
+- [ ] **Flowise** como trilha comercial paralela imediata por já existir demanda em dois clientes reais; validar exatamente o nível de tracing disponível antes de prometer experiência equivalente;
 - [ ] Typebot, Dify e Botpress depois dos primeiros casos reais;
 - [ ] manter OpenTelemetry/código próprio como caminho universal/avançado.
 
@@ -541,8 +541,8 @@ Implementado no PR #77:
 Próximos slices:
 
 - [ ] validar o onboarding market-first em runtime com um agente real n8n;
-- [ ] usar a Wandora como primeiro cliente real desse fluxo;
-- [ ] qualificar Flowise e só então decidir se precisa adapter próprio;
+- [ ] usar a Wandora como cliente interno/dogfood desse fluxo;
+- [ ] qualificar Flowise em paralelo com dois clientes reais já existentes e só então decidir se precisa adapter próprio;
 - [ ] conectar `businessProfile.successOutcomes` à apresentação/analytics de Business Events sem duplicar a fonte de verdade.
 
 ## Checkpoint 2026-10-02 — onboarding market-first promovido a produção
@@ -563,7 +563,7 @@ Observação operacional: o Git redeploy do Portainer recriou o stack completo, 
 Próximo slice permanece:
 
 - [x] validar a jornada ponta a ponta com uma instância n8n real enviando um trace ao Vigia;
-- [ ] só após essa prova, usar a Wandora como primeiro cliente real desse fluxo e avançar para Flowise.
+- [ ] avançar em paralelo com Wandora como dogfood e Flowise como trilha comercial com dois clientes reais.
 
 
 
@@ -584,3 +584,17 @@ Prova ponta a ponta concluída com uma instância real e isolada do n8n 2.19.0 u
 Aprendizado operacional importante: o comando CLI `n8n execute` não é uma prova válida do tracing nativo nessa versão, porque o módulo OTel do n8n é inicializado para instâncias `main`, `worker` e `webhook`. A validação correta usou uma instância `main` e disparo por webhook de produção.
 
 Este checkpoint fecha a pendência **“validar a jornada ponta a ponta com uma instância n8n real enviando um trace ao Vigia”**. Ele não significa que a Wandora já esteja integrada como cliente real: o próximo slice é conectar a Wandora pelo mesmo contrato `OTLP + Business Events`, usando o n8n real da Wandora quando aplicável, sem acoplar o Vigia à Wandora.
+
+
+## Repriorização 2026-10-02 — Flowise com demanda real
+
+Evidência comercial nova: já existem **dois clientes com agentes em Flowise**. Isso muda a ordem de aprendizado do produto:
+
+- [x] n8n permanece como integração técnica já provada ponta a ponta;
+- [ ] Flowise passa a ser trilha comercial imediata em paralelo com o dogfood da Wandora;
+- [ ] antes de construir adapter, inspecionar em modo read-only a versão/runtime de pelo menos um desses clientes e reproduzir um fluxo real;
+- [ ] separar telemetria de infraestrutura de tracing de agente: a documentação do Flowise expõe OpenTelemetry para métricas de alto nível, enquanto observabilidade nó a nó usa a camada Analytic;
+- [ ] decidir o menor caminho para o Vigia receber tracing útil sem exigir fork por cliente;
+- [ ] manter Business Events como contrato próprio do Vigia para resultado de negócio, independentemente da origem do trace.
+
+Risco de produto: o projeto oficial Flowise foi encerrado em 2026 e o repositório upstream está arquivado. Portanto, a integração do Vigia deve preferir fronteiras externas, configuração e adapters finos, evitando dependência de mudanças profundas no core do Flowise. Os clientes existentes continuam sendo casos válidos e valiosos, mas a estratégia precisa considerar manutenção e segurança do runtime legado.

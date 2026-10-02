@@ -1,6 +1,8 @@
+import type { VigiaAgentBuildStack } from "@domain/shared"
 import { VIGIA_PRODUCT } from "../../../../../lib/product.ts"
 
 export const VIGIA_AGENT_STACK_IDS = [
+  "n8n",
   "openai-agents",
   "langgraph",
   "mastra",
@@ -19,6 +21,11 @@ export const VIGIA_AGENT_STACKS: ReadonlyArray<{
   readonly label: string
   readonly guidance: string
 }> = [
+  {
+    id: "n8n",
+    label: "n8n",
+    guidance: "Conecte o OpenTelemetry do n8n ao Vigia e envie um trace de teste para validar a configuração.",
+  },
   {
     id: "openai-agents",
     label: "OpenAI Agents",
@@ -72,6 +79,24 @@ export function getVigiaConnectionValues(projectSlug: string, apiKey: string | n
     endpoint: VIGIA_PRODUCT.ingestUrl,
     apiKey: resolvedApiKey(apiKey),
     project: normalizedProjectSlug(projectSlug),
+  } as const
+}
+
+export function suggestVigiaConnectionSource(buildStack: readonly VigiaAgentBuildStack[]): VigiaAgentStackId {
+  if (buildStack.includes("n8n")) return "n8n"
+  return DEFAULT_VIGIA_AGENT_STACK
+}
+
+export function getVigiaN8nConnectionValues(projectSlug: string, apiKey: string | null) {
+  const config = getVigiaConnectionValues(projectSlug, apiKey)
+  const ingestUrl = new URL(config.endpoint)
+
+  return {
+    protocol: "HTTP/Protobuf",
+    collectorEndpoint: ingestUrl.origin,
+    tracesPath: ingestUrl.pathname || "/v1/traces",
+    authorizationHeaderValue: `Bearer ${config.apiKey}`,
+    projectHeaderValue: config.project,
   } as const
 }
 

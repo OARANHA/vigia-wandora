@@ -20,6 +20,7 @@ import {
   resolveSettingsCascade,
   SettingsReader,
   serializeRedactionPolicy,
+  vigiaBusinessProfileSchema,
 } from "./settings.ts"
 import { SqlClient } from "./sql-client.ts"
 
@@ -38,6 +39,48 @@ function fakeSettingsReader(input: {
     getProjectSettings: (projectId: ProjectId) => Effect.succeed(input.projects?.[projectId] ?? null),
   })
 }
+
+describe("vigiaBusinessProfileSchema", () => {
+  it("accepts a composed SME stack and business outcomes", () => {
+    expect(
+      vigiaBusinessProfileSchema.parse({
+        useCase: "agendamento",
+        channels: ["whatsapp"],
+        buildStack: ["evolution-api", "n8n"],
+        successOutcomes: ["agendamento-realizado", "atendimento-resolvido"],
+      }),
+    ).toEqual({
+      useCase: "agendamento",
+      channels: ["whatsapp"],
+      buildStack: ["evolution-api", "n8n"],
+      successOutcomes: ["agendamento-realizado", "atendimento-resolvido"],
+    })
+  })
+
+  it("requires channel, stack and success context", () => {
+    expect(
+      vigiaBusinessProfileSchema.safeParse({
+        useCase: "atendimento",
+        channels: [],
+        buildStack: [],
+        successOutcomes: [],
+      }).success,
+    ).toBe(false)
+  })
+
+  it("is accepted inside project settings", () => {
+    expect(
+      projectSettingsSchema.safeParse({
+        vigiaBusinessProfile: {
+          useCase: "vendas",
+          channels: ["whatsapp", "site-chat"],
+          buildStack: ["n8n"],
+          successOutcomes: ["lead-qualificado", "venda-conversao"],
+        },
+      }).success,
+    ).toBe(true)
+  })
+})
 
 describe("resolveSettingsCascade", () => {
   it("returns system defaults when both layers are null", () => {

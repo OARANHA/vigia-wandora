@@ -37,6 +37,7 @@ import { getCookies, setCookie } from "@tanstack/react-start/server"
 import { Effect, Layer } from "effect"
 import { z } from "zod"
 import { rejectInvalidRedactionRules, rejectionMessage } from "../../lib/redaction-rules.ts"
+import { VIGIA_ONBOARDING_TRACE_FILTERS } from "./onboarding.ts"
 import { requireSession } from "../../server/auth.ts"
 import { getClickhouseClient, getOutboxWriter, getPostgresClient } from "../../server/clients.ts"
 import { resolveOrgScope } from "../../server/resolve-org-scope.ts"
@@ -99,6 +100,7 @@ export const toRecord = (project: Project) => ({
     escalation: project.settings?.escalation,
     onboardingType: project.settings?.onboardingType,
     onboardingCompleted: project.settings?.onboardingCompleted,
+    vigiaBusinessProfile: project.settings?.vigiaBusinessProfile,
     isSample: project.settings?.isSample,
     sampling: project.settings?.sampling,
     redaction: project.settings?.redaction,
@@ -332,7 +334,11 @@ export const completeProjectOnboarding = createServerFn({ method: "POST" })
     const traceCount = await Effect.runPromise(
       Effect.gen(function* () {
         const repo = yield* TraceRepository
-        return yield* repo.countByProjectId({ organizationId, projectId })
+        return yield* repo.countByProjectId({
+          organizationId,
+          projectId,
+          filters: VIGIA_ONBOARDING_TRACE_FILTERS,
+        })
       }).pipe(
         withScopedClickHouse(TraceRepositoryLive, getClickhouseClient(), organizationId),
         withTracing,

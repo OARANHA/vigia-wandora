@@ -218,6 +218,69 @@ export const samplingSettingSchema = z.object({
 })
 export type SamplingSetting = z.infer<typeof samplingSettingSchema>
 
+export const VIGIA_AGENT_USE_CASES = [
+  "atendimento",
+  "vendas",
+  "agendamento",
+  "cobranca",
+  "suporte",
+  "pos-venda",
+  "pedidos-ecommerce",
+  "operacoes-internas",
+  "documentos",
+  "outro",
+] as const
+
+export const VIGIA_AGENT_CHANNELS = [
+  "whatsapp",
+  "site-chat",
+  "instagram-messenger",
+  "voz-telefone",
+  "email",
+  "interno",
+  "outro",
+] as const
+
+export const VIGIA_AGENT_BUILD_STACKS = [
+  "n8n",
+  "evolution-api",
+  "flowise",
+  "typebot",
+  "dify",
+  "botpress",
+  "make-zapier",
+  "codigo-proprio",
+  "nao-sei",
+  "outro",
+] as const
+
+export const VIGIA_AGENT_SUCCESS_OUTCOMES = [
+  "atendimento-resolvido",
+  "lead-qualificado",
+  "venda-conversao",
+  "agendamento-realizado",
+  "pagamento-realizado",
+  "tarefa-concluida",
+  "reducao-tempo-custo",
+  "outro",
+] as const
+
+export const vigiaBusinessProfileSchema = z.object({
+  useCase: z.enum(VIGIA_AGENT_USE_CASES),
+  channels: z.array(z.enum(VIGIA_AGENT_CHANNELS)).min(1).max(VIGIA_AGENT_CHANNELS.length),
+  buildStack: z.array(z.enum(VIGIA_AGENT_BUILD_STACKS)).min(1).max(VIGIA_AGENT_BUILD_STACKS.length),
+  successOutcomes: z
+    .array(z.enum(VIGIA_AGENT_SUCCESS_OUTCOMES))
+    .min(1)
+    .max(VIGIA_AGENT_SUCCESS_OUTCOMES.length),
+})
+
+export type VigiaBusinessProfile = z.infer<typeof vigiaBusinessProfileSchema>
+export type VigiaAgentUseCase = (typeof VIGIA_AGENT_USE_CASES)[number]
+export type VigiaAgentChannel = (typeof VIGIA_AGENT_CHANNELS)[number]
+export type VigiaAgentBuildStack = (typeof VIGIA_AGENT_BUILD_STACKS)[number]
+export type VigiaAgentSuccessOutcome = (typeof VIGIA_AGENT_SUCCESS_OUTCOMES)[number]
+
 export const projectSettingsSchema = z.object({
   keepMonitoring: z.boolean().optional(),
   jevPreclassifierEnabled: z.boolean().optional(),
@@ -225,6 +288,7 @@ export const projectSettingsSchema = z.object({
   escalation: escalationSettingSchema.optional(),
   onboardingType: z.enum(["prod-traces", "code-agents"]).optional(),
   onboardingCompleted: z.boolean().optional(),
+  vigiaBusinessProfile: vigiaBusinessProfileSchema.optional(),
   isSample: z.boolean().optional(),
   /**
    * Marks a project as belonging to the shared read-only Showcase (built by the

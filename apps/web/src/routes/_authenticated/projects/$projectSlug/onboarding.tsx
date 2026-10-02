@@ -28,6 +28,7 @@ function ProjectOnboardingPage() {
         projectSlug={project.slug}
         projectName={suggestedProjectName}
         persistedProjectName={project.name}
+        initialBusinessProfile={project.settings.vigiaBusinessProfile}
         initialStep={search.step}
         initialSource={search.source}
         onOpenProjectTraces={async (targetProjectId) => {

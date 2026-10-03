@@ -1495,3 +1495,263 @@ a{color:inherit;text-decoration:none}.container{width:min(var(--max),calc(100% -
   }
 }
 
+
+
+/* Interest page final composition: one-screen desktop, natural scroll on smaller viewports. */
+.interest-success{
+  margin:0;
+  padding:0;
+  border:0;
+}
+.interest-success legend{
+  margin:0 0 7px;
+  padding:0;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:750;
+}
+.interest-success-options{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+}
+.interest-check{
+  position:relative;
+  display:flex;
+  align-items:center;
+  min-width:0;
+  min-height:38px;
+  padding:8px 10px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--surface);
+  color:var(--muted);
+  font-size:12px;
+  font-weight:650;
+  line-height:1.2;
+  cursor:pointer;
+  transition:border-color .18s ease,background .18s ease,color .18s ease;
+}
+.interest-check:hover{
+  border-color:color-mix(in srgb,var(--orange) 55%,var(--line));
+  color:var(--text);
+}
+.interest-check:has(input:checked){
+  border-color:var(--orange);
+  background:color-mix(in srgb,var(--orange) 10%,var(--surface));
+  color:var(--text);
+}
+.interest-check input{
+  width:15px;
+  height:15px;
+  margin:0 7px 0 0;
+  accent-color:var(--orange);
+  flex:0 0 auto;
+}
+.interest-success>input{
+  margin-top:8px;
+}
+
+@media(min-width:901px){
+  .interest-page{
+    height:100dvh;
+    min-height:0;
+    overflow:hidden;
+  }
+  .interest-shell{
+    height:100dvh;
+    min-height:0;
+    grid-template-columns:minmax(0,1fr) minmax(560px,1fr);
+  }
+  .interest-visual{
+    height:100dvh;
+    min-height:0;
+  }
+  .interest-visual img{
+    object-position:center;
+  }
+  .interest-visual-copy{
+    left:clamp(28px,4vw,64px);
+    right:clamp(28px,4vw,64px);
+    bottom:clamp(26px,4vh,54px);
+  }
+  .interest-visual-copy h1{
+    max-width:600px;
+    font-size:clamp(34px,3.2vw,52px);
+    margin-bottom:12px;
+  }
+  .interest-visual-copy p{
+    margin:0;
+    font-size:15px;
+  }
+  .interest-benefits{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px 16px;
+    margin-top:14px;
+    font-size:12px;
+  }
+  .interest-form-side{
+    height:100dvh;
+    min-height:0;
+    overflow:hidden;
+    padding:18px clamp(24px,3vw,48px);
+  }
+  .interest-form-wrap{
+    width:min(100%,660px);
+  }
+  .interest-back{
+    margin-bottom:7px;
+    font-size:12px;
+  }
+  .interest-form-wrap .brand img{
+    width:108px;
+    margin-bottom:10px;
+  }
+  .interest-form-wrap>.eyebrow{
+    margin-bottom:7px;
+    font-size:10px;
+  }
+  .interest-form-wrap h2{
+    margin-bottom:6px;
+    font-size:clamp(30px,2.8vw,42px);
+  }
+  .interest-form-wrap>.section-copy{
+    margin:0 0 12px;
+    font-size:13px;
+    line-height:1.4;
+  }
+  .interest-form{
+    gap:8px 10px;
+  }
+  .interest-field{
+    gap:4px;
+  }
+  .interest-field label,
+  .interest-success legend{
+    font-size:11px;
+  }
+  .interest-field input,
+  .interest-field select,
+  .interest-field textarea{
+    padding:9px 10px;
+    border-radius:10px;
+    font-size:13px;
+  }
+  .interest-field textarea{
+    min-height:58px;
+    max-height:74px;
+  }
+  .interest-check{
+    min-height:34px;
+    padding:6px 8px;
+    font-size:11px;
+  }
+  .interest-consent{
+    gap:8px;
+    font-size:10.5px;
+    line-height:1.3;
+  }
+  .interest-submit .btn{
+    min-height:40px;
+    padding:10px 16px;
+    border-radius:11px;
+    font-size:13px;
+  }
+  .interest-status{
+    min-height:16px;
+    margin-top:4px;
+    font-size:11px;
+  }
+  .interest-login{
+    margin-top:5px;
+    font-size:11px;
+  }
+}
+
+@media(min-width:901px) and (max-height:820px){
+  .interest-form-side{
+    padding-top:10px;
+    padding-bottom:10px;
+  }
+  .interest-back{
+    display:none;
+  }
+  .interest-form-wrap .brand img{
+    width:92px;
+    margin-bottom:6px;
+  }
+  .interest-form-wrap>.eyebrow{
+    display:none;
+  }
+  .interest-form-wrap h2{
+    font-size:30px;
+    margin-bottom:4px;
+  }
+  .interest-form-wrap>.section-copy{
+    margin-bottom:8px;
+    font-size:12px;
+  }
+  .interest-form{
+    gap:6px 9px;
+  }
+  .interest-field input,
+  .interest-field select,
+  .interest-field textarea{
+    padding:7px 9px;
+    font-size:12px;
+  }
+  .interest-field textarea{
+    min-height:46px;
+    max-height:52px;
+  }
+  .interest-success-options{
+    gap:5px;
+  }
+  .interest-check{
+    min-height:29px;
+    padding:4px 7px;
+    font-size:10px;
+  }
+  .interest-success>input{
+    margin-top:5px;
+  }
+  .interest-login{
+    display:none;
+  }
+}
+
+@media(max-width:900px){
+  .interest-page{
+    min-height:100vh;
+    overflow-x:hidden;
+    overflow-y:auto;
+  }
+  .interest-shell{
+    min-height:100vh;
+    height:auto;
+  }
+  .interest-success-options{
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+}
+
+@media(max-width:620px){
+  .interest-success-options{
+    grid-template-columns:1fr;
+  }
+}
+
+
+/* Checkbox controls must not inherit the text-input box model from .interest-field input. */
+.interest-success .interest-check input{
+  width:15px;
+  height:15px;
+  min-width:15px;
+  padding:0;
+  border:0;
+  border-radius:3px;
+  background:transparent;
+  box-shadow:none;
+  margin:0 7px 0 0;
+  accent-color:var(--orange);
+}

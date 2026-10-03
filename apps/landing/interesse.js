@@ -22,6 +22,13 @@ form?.addEventListener('submit', async (event) => {
   submit.textContent = 'Enviando…';
   setStatus('loading', 'Registrando seu interesse com segurança…');
 
+  const successOutcomes = data
+    .getAll('successOutcome')
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+  const successOther = String(data.get('successOther') ?? '').trim();
+  const successDefinition = [...successOutcomes, ...(successOther ? [successOther] : [])].join(', ');
+
   const payload = {
     product: 'vigia',
     source: SOURCE,
@@ -33,7 +40,7 @@ form?.addEventListener('submit', async (event) => {
     useCase: String(data.get('useCase') ?? ''),
     agentsCount: String(data.get('agentsCount') ?? '') || undefined,
     stack: String(data.get('stack') ?? '').trim(),
-    successDefinition: String(data.get('successDefinition') ?? '').trim(),
+    successDefinition,
     message: String(data.get('message') ?? '').trim(),
     consent: data.get('consent') === 'on',
   };

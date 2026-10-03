@@ -10,11 +10,13 @@ export function ElusConnection({
   state,
   codeChallenge,
   connected,
+  traceReceived,
 }: {
   readonly projectSlug: string
   readonly state?: string
   readonly codeChallenge?: string
   readonly connected: boolean
+  readonly traceReceived: boolean
 }) {
   const { toast } = useToast()
   const [authorizing, setAuthorizing] = useState(false)
@@ -22,9 +24,11 @@ export function ElusConnection({
   if (connected) {
     return (
       <div className="flex flex-col gap-2 rounded-xl border border-border p-5">
-        <Text.H4M>Elus conectado</Text.H4M>
+        <Text.H4M>{traceReceived ? "Elus conectado e enviando dados" : "Elus conectado"}</Text.H4M>
         <Text.H5 color="foregroundMuted">
-          Agora use seu agente normalmente. Assim que houver a primeira execução, começaremos a mostrar os dados aqui.
+          {traceReceived
+            ? "A primeira execução chegou ao Vigia. A conexão está ativa."
+            : "Agora use seu agente normalmente. Aguardando a primeira execução do Elus…"}
         </Text.H5>
       </div>
     )

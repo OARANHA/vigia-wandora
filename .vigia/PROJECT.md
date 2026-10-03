@@ -458,3 +458,22 @@ O primeiro slice reutiliza o modelo já existente de organização, projeto, API
 O pós-compra entra no onboarding Vigia em tela ampla e guiada, sem exigir escolha entre modos técnico/iniciante. O cliente identifica o agente e a plataforma em que foi criado, recebe instruções adequadas e permanece no fluxo até o Vigia receber uma execução real.
 
 n8n e Flowise são alvos prioritários da experiência de conexão. Eles ainda precisam de qualificação técnica específica antes de serem apresentados como integração suportada. Dify e LangFlow são candidatos posteriores sob a mesma regra.
+
+
+## Integração nativa Elus -> Vigia — 2026-10-03
+
+Este slice muda a prioridade imediata do produto: **Elus é integração nativa; n8n e Flowise continuam integrações externas/técnicas.**
+
+O fluxo V1 usa autorização curta cifrada + PKCE para entregar a credencial somente ao backend Elus. A organização e o projeto são os mesmos objetos do Vigia; não foi criado banco compartilhado, tabela paralela de parceria ou segredo global entre clientes.
+
+O Elus persiste a API key cifrada por organização e o worker envia uma execução OTLP real de forma best-effort. O primeiro trace continua sendo a prova canônica de que a conexão está ativa.
+
+Business Events permanecem disponíveis pelo contrato público do Vigia e podem reutilizar o mesmo `traceId`; eventos específicos de sucesso só devem ser emitidos quando o Elus tiver evidência concreta do desfecho.
+
+Estado atual:
+- PR Vigia #84: aberto, mergeable, testes e imagens verdes;
+- PR Elus #12: aberto, mergeable;
+- `crm-wandora` não possui workflow GitHub Actions na `main`;
+- nenhum deploy de produção deste slice foi executado ainda.
+
+Critério para fechar o V1: promover os dois lados e confirmar em runtime `Elus -> OTLP -> Vigia -> primeiro trace`, sem chave/endpoint expostos ao usuário.

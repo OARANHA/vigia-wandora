@@ -628,6 +628,7 @@ function ConnectionStep({
           state={elusState}
           codeChallenge={elusCodeChallenge}
           connected={elusConnected}
+          traceReceived={traceReceived}
         />
       ) : (
         <VigiaConnectionInstructions projectSlug={projectSlug} source={source} stack={stack} />

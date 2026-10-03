@@ -8,6 +8,7 @@ import { createTierRateLimiter } from "../middleware/rate-limiter.ts"
 import { validationErrorMiddleware } from "../middleware/validation.ts"
 import type { ApiOptions, AppEnv, ProtectedEnv } from "../types.ts"
 import { registerBootstrapRoute } from "./bootstrap.ts"
+import { registerElusIntegrationRoutes } from "./elus-integration.ts"
 import { registerHealthRoute } from "./health.ts"
 import { registerPartnerRoutes } from "./partners.ts"
 import { registerGithubRoute } from "./webhooks-github.ts"
@@ -37,6 +38,7 @@ export const registerRoutes = (app: OpenAPIHono<AppEnv>, options: ApiOptions) =>
   })
 
   registerBootstrapRoute({ app: v1, adminDatabase: options.adminDatabase })
+  registerElusIntegrationRoutes({ app: v1 })
   registerGithubRoute({ app: v1 })
   registerPartnerRoutes({ app: v1, adminDatabase: options.adminDatabase })
 

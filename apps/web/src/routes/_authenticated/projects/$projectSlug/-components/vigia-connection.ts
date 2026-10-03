@@ -103,9 +103,18 @@ export function getVigiaOtelEnvBlock(projectSlug: string, apiKey: string | null)
 }
 
 export function resolveVigiaConnectionSource(stack: readonly string[]): VigiaAgentStackId {
+  if (stack.includes("elus")) return "elus"
   if (stack.includes("n8n")) return "n8n"
   if (stack.includes("flowise")) return "flowise"
   return DEFAULT_VIGIA_AGENT_STACK
+}
+
+export function getVigiaConnectionTraceFilters(source: VigiaAgentStackId) {
+  if (source !== "elus") return undefined
+
+  return {
+    serviceNames: [{ op: "in" as const, value: ["elus"] }],
+  }
 }
 
 export function getVigiaFlowisePhoenixValues(projectSlug: string, apiKey: string | null) {

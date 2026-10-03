@@ -3,7 +3,7 @@ import { ProjectRepository } from "@domain/projects"
 import { ApiKeyRepositoryLive, OutboxEventWriterLive, ProjectRepositoryLive, withPostgres } from "@platform/db-postgres"
 import { parseEnv } from "@platform/env"
 import { withTracing } from "@repo/observability"
-import { issueNativeIntegrationAuthorization } from "@repo/utils"
+import { issueNativeIntegrationAuthorization, randomToken } from "@repo/utils"
 import { createServerFn } from "@tanstack/react-start"
 import { Effect, Layer } from "effect"
 import { z } from "zod"
@@ -53,6 +53,7 @@ export const authorizeElusIntegration = createServerFn({ method: "POST" })
           {
             version: 1,
             integration: "elus",
+            nonce: randomToken(32),
             organizationId,
             projectId: project.id as string,
             projectSlug: project.slug,

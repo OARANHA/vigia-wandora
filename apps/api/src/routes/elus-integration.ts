@@ -35,6 +35,24 @@ export const registerElusIntegrationRoutes = ({ app }: { app: OpenAPIHono<AppEnv
       return c.json({ error: "invalid_verifier" }, 400)
     }
 
+    let claimed: string | null
+    try {
+      claimed = await c
+        .get("redis")
+        .set(
+          `org:system:native-integration:elus:code:${authorization.nonce}`,
+          "1",
+          "EX",
+          Math.max(1, Math.ceil((authorization.expiresAt - Date.now()) / 1000)),
+          "NX",
+        )
+    } catch {
+      return c.json({ error: "exchange_temporarily_unavailable" }, 503)
+    }
+    if (claimed !== "OK") {
+      return c.json({ error: "code_already_used" }, 409)
+    }
+
     return c.json({
       projectId: authorization.projectId,
       projectSlug: authorization.projectSlug,

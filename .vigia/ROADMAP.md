@@ -598,3 +598,32 @@ Evidência comercial nova: já existem **dois clientes com agentes em Flowise**.
 - [ ] manter Business Events como contrato próprio do Vigia para resultado de negócio, independentemente da origem do trace.
 
 Risco de produto: o projeto oficial Flowise foi encerrado em 2026 e o repositório upstream está arquivado. Portanto, a integração do Vigia deve preferir fronteiras externas, configuração e adapters finos, evitando dependência de mudanças profundas no core do Flowise. Os clientes existentes continuam sendo casos válidos e valiosos, mas a estratégia precisa considerar manutenção e segurança do runtime legado.
+
+
+## Repriorização 2026-10-03 — Elus primeiro como integração nativa
+
+Prioridade atual:
+
+- [x] desenhar o menor contrato seguro e independente `Vigia <-> Elus`;
+- [x] adicionar Elus como opção nativa no onboarding do Vigia;
+- [x] iniciar conexão Elus com tenant/admin/sessão verificados;
+- [x] usar PKCE + código curto cifrado para entrega server-to-server;
+- [x] persistir a credencial do Vigia cifrada por organização no Elus;
+- [x] instrumentar jobs reais do agente Elus para OTLP sem quebrar atendimento em caso de falha de observabilidade;
+- [x] preservar Business Events como evolução sobre o mesmo `traceId`;
+- [x] validar PR Vigia com `Vigia tests` e `Vigia container images` verdes;
+- [ ] integrar PR Vigia #84 e PR Elus #12;
+- [ ] promover Vigia e Elus de forma controlada;
+- [ ] executar uma conexão real de organização de teste e confirmar o primeiro trace no Vigia;
+- [ ] validar na jornada real que o usuário não vê/copia API key, endpoint, headers ou project slug;
+- [ ] escolher o primeiro Business Event Elus com evidência real de sucesso e provar `trace -> resultado`.
+
+Fora do V1, mas desenhado para reutilizar o mesmo contrato:
+
+- [ ] compra Elus;
+- [ ] plano/entitlement;
+- [ ] provisionamento automático de organização/projeto Vigia quando necessário;
+- [ ] vinculação automática ao comprador/tenant;
+- [ ] reconexão/rotação de credencial e lifecycle comercial.
+
+n8n e Flowise continuam relevantes e suportados pelos caminhos já existentes, mas não devem desviar o slice atual de tornar `Elus -> autorizar/conectar -> pronto` uma experiência vendável.

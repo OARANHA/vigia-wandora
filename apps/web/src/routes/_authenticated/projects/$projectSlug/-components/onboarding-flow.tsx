@@ -15,6 +15,7 @@ import { completeProjectOnboarding, updateProject } from "../../../../../domains
 import { countTracesByProject } from "../../../../../domains/traces/traces.functions.ts"
 import { getQueryClient } from "../../../../../lib/data/query-client.tsx"
 import { toUserMessage } from "../../../../../lib/errors.ts"
+import { ElusConnection } from "./elus-connection.tsx"
 import { resolveVigiaConnectionSource, type VigiaAgentStackId } from "./vigia-connection.ts"
 import { VigiaConnectionInstructions } from "./vigia-connection-instructions.tsx"
 
@@ -45,6 +46,7 @@ const CHANNEL_OPTIONS: ReadonlyArray<{ readonly id: VigiaChannelId; readonly lab
 ]
 
 const STACK_OPTIONS: ReadonlyArray<{ readonly id: VigiaBusinessStackId; readonly label: string }> = [
+  { id: "elus", label: "Elus" },
   { id: "n8n", label: "n8n" },
   { id: "evolution-api", label: "Evolution API" },
   { id: "flowise", label: "Flowise" },
@@ -85,6 +87,9 @@ export function OnboardingFlow({
   persistedProjectName,
   initialStep,
   initialBusinessProfile,
+  elusState,
+  elusCodeChallenge,
+  elusConnected = false,
   onOpenProjectTraces,
 }: {
   readonly projectId: string
@@ -93,6 +98,9 @@ export function OnboardingFlow({
   readonly persistedProjectName: string
   readonly initialStep?: OnboardingStep
   readonly initialBusinessProfile?: VigiaBusinessProfile | undefined
+  readonly elusState?: string | undefined
+  readonly elusCodeChallenge?: string | undefined
+  readonly elusConnected?: boolean | undefined
   readonly onOpenProjectTraces: (projectId: string) => Promise<void>
 }) {
   const { toast } = useToast()
@@ -324,6 +332,9 @@ export function OnboardingFlow({
               source={connectionSource}
               stack={stack}
               traceReceived={traceReceived}
+              elusState={elusState}
+              elusCodeChallenge={elusCodeChallenge}
+              elusConnected={elusConnected}
               onBack={() => goToStep("success")}
             />
           )}
@@ -574,12 +585,18 @@ function ConnectionStep({
   source,
   stack,
   traceReceived,
+  elusState,
+  elusCodeChallenge,
+  elusConnected,
   onBack,
 }: {
   readonly projectSlug: string
   readonly source: VigiaAgentStackId
   readonly stack: readonly VigiaBusinessStackId[]
   readonly traceReceived: boolean
+  readonly elusState?: string | undefined
+  readonly elusCodeChallenge?: string | undefined
+  readonly elusConnected: boolean
   readonly onBack: () => void
 }) {
   return (
@@ -605,7 +622,16 @@ function ConnectionStep({
         </div>
       </div>
 
-      <VigiaConnectionInstructions projectSlug={projectSlug} source={source} stack={stack} />
+      {source === "elus" ? (
+        <ElusConnection
+          projectSlug={projectSlug}
+          state={elusState}
+          codeChallenge={elusCodeChallenge}
+          connected={elusConnected}
+        />
+      ) : (
+        <VigiaConnectionInstructions projectSlug={projectSlug} source={source} stack={stack} />
+      )}
 
       {!traceReceived ? (
         <div className="flex items-center">

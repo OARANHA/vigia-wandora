@@ -54,6 +54,7 @@ export const registerElusIntegrationRoutes = ({ app }: { app: OpenAPIHono<AppEnv
     }
 
     return c.json({
+      organizationId: authorization.organizationId,
       projectId: authorization.projectId,
       projectSlug: authorization.projectSlug,
       ingestUrl: authorization.ingestUrl,

@@ -612,8 +612,8 @@ Prioridade atual:
 - [x] instrumentar jobs reais do agente Elus para OTLP sem quebrar atendimento em caso de falha de observabilidade;
 - [x] preservar Business Events como evolução sobre o mesmo `traceId`;
 - [x] validar PR Vigia com `Vigia tests` e `Vigia container images` verdes;
-- [ ] integrar PR Vigia #84 e PR Elus #12;
-- [ ] promover Vigia e Elus de forma controlada;
+- [x] integrar PR Vigia #84 e PR Elus #12;
+- [x] promover Vigia e Elus de forma controlada;
 - [ ] executar uma conexão real de organização de teste e confirmar o primeiro trace no Vigia;
 - [ ] validar na jornada real que o usuário não vê/copia API key, endpoint, headers ou project slug;
 - [ ] escolher o primeiro Business Event Elus com evidência real de sucesso e provar `trace -> resultado`.

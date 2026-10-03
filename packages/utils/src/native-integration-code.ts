@@ -5,6 +5,7 @@ import { CryptoError, decrypt, encodeUtf8, encrypt } from "./crypto.ts"
 export interface NativeIntegrationAuthorization {
   readonly version: 1
   readonly integration: "elus"
+  readonly nonce: string
   readonly organizationId: string
   readonly projectId: string
   readonly projectSlug: string
@@ -41,6 +42,7 @@ const decodeAuthorization = (plaintext: string): NativeIntegrationAuthorization 
   if (
     value.version !== 1 ||
     value.integration !== "elus" ||
+    typeof value.nonce !== "string" ||
     typeof value.organizationId !== "string" ||
     typeof value.projectId !== "string" ||
     typeof value.projectSlug !== "string" ||

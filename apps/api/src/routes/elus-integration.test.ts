@@ -50,6 +50,7 @@ describe("Elus native integration exchange", () => {
     const first = await exchange(app, code, verifier)
     expect(first.status).toBe(200)
     expect(await first.json()).toEqual({
+      organizationId: "org_test",
       projectId: "project_test",
       projectSlug: "agente-elus",
       ingestUrl: "https://vigia.example",

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  getVigiaConnectionTraceFilters,
   getVigiaConnectionValues,
   getVigiaFlowisePhoenixValues,
   getVigiaN8nEnvBlock,
@@ -53,9 +54,18 @@ describe("Vigia OTLP connection config", () => {
   })
 
   it("selects the most specific connection instructions for the composed stack", () => {
+    expect(resolveVigiaConnectionSource(["elus"])).toBe("elus")
+    expect(resolveVigiaConnectionSource(["elus", "n8n"])).toBe("elus")
     expect(resolveVigiaConnectionSource(["evolution-api", "n8n", "code-sdk"])).toBe("n8n")
     expect(resolveVigiaConnectionSource(["evolution-api", "flowise", "code-sdk"])).toBe("flowise")
     expect(resolveVigiaConnectionSource(["flowise", "n8n"])).toBe("n8n")
     expect(resolveVigiaConnectionSource(["code-sdk"])).toBe("opentelemetry")
+  })
+
+  it("waits for an Elus trace before marking the native connection active", () => {
+    expect(getVigiaConnectionTraceFilters("elus")).toEqual({
+      serviceNames: [{ op: "in", value: ["elus"] }],
+    })
+    expect(getVigiaConnectionTraceFilters("n8n")).toBeUndefined()
   })
 })

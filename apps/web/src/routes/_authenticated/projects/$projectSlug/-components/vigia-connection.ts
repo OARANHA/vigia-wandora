@@ -1,6 +1,7 @@
 import { VIGIA_PRODUCT } from "../../../../../lib/product.ts"
 
 export const VIGIA_AGENT_STACK_IDS = [
+  "elus",
   "n8n",
   "flowise",
   "openai-agents",

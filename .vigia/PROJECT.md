@@ -477,3 +477,49 @@ Estado atual:
 - nenhum deploy de produção deste slice foi executado ainda.
 
 Critério para fechar o V1: promover os dois lados e confirmar em runtime `Elus -> OTLP -> Vigia -> primeiro trace`, sem chave/endpoint expostos ao usuário.
+
+
+## Validação de produção da integração nativa Elus — 2026-10-03
+
+Este checkpoint substitui o estado preparatório anterior da integração Elus.
+
+Código validado em produção:
+
+- Vigia web: `962972b1889e2ae5d6f79ba1d146ca4dccc5afe6`;
+- Elus app: `fd17c40a4f5fddb438e861a41ec5d4d8f8b27c04`;
+- Elus worker: `9e045231d42214ddeab49fe82a3d8f2e88b6d67f`.
+
+Estado real do runtime:
+
+- a stack `vigia` está ativa no Portainer próprio da VPS Vigia e o `vigia-web` está saudável na revisão final acima;
+- o endpoint público `POST /v1/integrations/elus/exchange` está publicado: body inválido chega à rota e retorna HTTP 400, em vez do 401 da versão antiga;
+- o runtime real do Elus é a **stack 5 do Portainer local** no host `vmi3617290`; ela é a fonte de verdade operacional atual;
+- `elus-app`, `elus-worker`, scheduler e dependências estão saudáveis;
+- `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_URL` e `AI_CRED_AES_KEY` permaneceram presentes após os redeploys;
+- a stack `elus` ID 8 observada no Portainer central está stale/duplicada e **não deve ser usada para promover o runtime atual** sem reconciliação explícita.
+
+Smokes públicos concluídos:
+
+- `https://vigia.wandora.com.br/` -> HTTP 200;
+- `https://app-vigia.wandora.com.br/login` -> HTTP 200;
+- `POST https://vigia.wandora.com.br/v1/integrations/elus/exchange` com body inválido -> HTTP 400;
+- `https://elus.wandora.com.br/` -> HTTP 307 esperado para a navegação atual;
+- `GET /api/v1/integrations/vigia/start?vigia_project=smoke-vigia` sem sessão -> HTTP 307 para `https://elus.wandora.com.br/login?next=...`;
+- `GET /api/v1/integrations/vigia/callback` sem parâmetros -> HTTP 400, comprovando que o callback atravessa o proxy e chega à rota;
+- o onboarding do Vigia só considera a integração Elus ativa após trace com serviço `elus`, evitando falso positivo por traces antigos de outras integrações.
+
+Correções encontradas durante o smoke e já incorporadas:
+
+- o proxy global do Elus passou a liberar somente os endpoints exatos `/start` e `/callback` do handshake;
+- o callback cross-site deixou de depender do cookie de sessão `SameSite=Strict` e usa `state` HMAC + vínculo de sessão + PKCE;
+- o redirect de login usa `NEXT_PUBLIC_APP_URL` lida dinamicamente no runtime para evitar o valor embutido pelo Next.js no build e a origem interna `0.0.0.0:3000`.
+
+Ainda **não está provado ponta a ponta**:
+
+- login/autorização real com uma organização Elus de teste;
+- troca do código server-to-server em uma jornada autenticada completa;
+- primeira execução real do agente Elus chegando ao Vigia e mudando o estado do onboarding;
+- validação visual, nessa jornada real, de que o usuário nunca vê/copia API key, endpoint, headers ou project slug;
+- primeiro Business Event Elus com resultado de negócio comprovado.
+
+Próxima ação objetiva: executar uma conexão autenticada de uma organização Elus de teste, rodar um agente real e confirmar no Vigia o primeiro trace `service.name=elus`. Depois disso o V1 de conexão pode ser considerado fechado e o próximo diferencial passa a ser o primeiro Business Event real.

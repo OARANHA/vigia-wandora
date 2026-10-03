@@ -18,6 +18,7 @@ describe("native integration authorization", () => {
         {
           version: 1,
           integration: "elus",
+          nonce: "nonce-1",
           organizationId: "org_1",
           projectId: "project_1",
           projectSlug: "meu-agente",
@@ -46,6 +47,7 @@ describe("native integration authorization", () => {
         {
           version: 1,
           integration: "elus",
+          nonce: "nonce-1",
           organizationId: "org_1",
           projectId: "project_1",
           projectSlug: "meu-agente",

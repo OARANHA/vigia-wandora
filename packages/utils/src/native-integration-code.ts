@@ -63,16 +63,12 @@ export const readNativeIntegrationAuthorization = (
     const key = yield* deriveKey(masterSecret)
     const encoded = yield* Effect.try({
       try: () => new TextDecoder().decode(base64urlDecode(code)),
-      catch: (cause) => {
-        throw new CryptoError({ operation: "nativeIntegration.decode", cause })
-      },
+      catch: (cause) => new CryptoError({ operation: "nativeIntegration.decode", cause }),
     })
     const plaintext = yield* decrypt(encoded, key)
     return yield* Effect.try({
       try: () => decodeAuthorization(plaintext),
-      catch: (cause) => {
-        throw new CryptoError({ operation: "nativeIntegration.parse", cause })
-      },
+      catch: (cause) => new CryptoError({ operation: "nativeIntegration.parse", cause }),
     })
   })
 

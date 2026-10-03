@@ -264,7 +264,12 @@ export function OnboardingFlow({
       if (cancelled) return
 
       const count = await countTracesByProject({
-        data: { projectId: projectIdRef.current },
+        data: {
+          projectId: projectIdRef.current,
+          ...(connectionSource === "elus"
+            ? { filters: { serviceNames: [{ op: "eq" as const, value: "elus" }] } }
+            : {}),
+        },
       }).catch(() => 0)
 
       if (cancelled) return
@@ -283,7 +288,7 @@ export function OnboardingFlow({
       if (pollTimeout !== undefined) window.clearTimeout(pollTimeout)
       if (redirectTimeout !== undefined) window.clearTimeout(redirectTimeout)
     }
-  }, [step])
+  }, [connectionSource, step])
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-row overflow-hidden bg-background">

@@ -16,7 +16,11 @@ import { countTracesByProject } from "../../../../../domains/traces/traces.funct
 import { getQueryClient } from "../../../../../lib/data/query-client.tsx"
 import { toUserMessage } from "../../../../../lib/errors.ts"
 import { ElusConnection } from "./elus-connection.tsx"
-import { resolveVigiaConnectionSource, type VigiaAgentStackId } from "./vigia-connection.ts"
+import {
+  getVigiaConnectionTraceFilters,
+  resolveVigiaConnectionSource,
+  type VigiaAgentStackId,
+} from "./vigia-connection.ts"
 import { VigiaConnectionInstructions } from "./vigia-connection-instructions.tsx"
 
 export const ONBOARDING_STEPS = ["agent", "channels", "stack", "success", "connect"] as const
@@ -263,8 +267,12 @@ export function OnboardingFlow({
     const poll = async () => {
       if (cancelled) return
 
+      const filters = getVigiaConnectionTraceFilters(connectionSource)
       const count = await countTracesByProject({
-        data: { projectId: projectIdRef.current },
+        data: {
+          projectId: projectIdRef.current,
+          ...(filters ? { filters } : {}),
+        },
       }).catch(() => 0)
 
       if (cancelled) return
@@ -283,7 +291,7 @@ export function OnboardingFlow({
       if (pollTimeout !== undefined) window.clearTimeout(pollTimeout)
       if (redirectTimeout !== undefined) window.clearTimeout(redirectTimeout)
     }
-  }, [step])
+  }, [step, connectionSource])
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-1 flex-row overflow-hidden bg-background">

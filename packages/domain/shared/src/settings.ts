@@ -246,6 +246,7 @@ export const vigiaChannelSchema = z.enum(VIGIA_CHANNEL_IDS)
 export type VigiaChannelId = z.infer<typeof vigiaChannelSchema>
 
 export const VIGIA_BUSINESS_STACK_IDS = [
+  "elus",
   "n8n",
   "evolution-api",
   "flowise",

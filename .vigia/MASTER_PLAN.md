@@ -1,6 +1,6 @@
 # Vigia — Master Plan
 
-Atualizado em: 2026-09-29
+Atualizado em: 2026-10-03
 
 Este documento consolida as decisões tomadas para o Vigia e serve como fonte de verdade de produto, arquitetura, comercialização e execução.
 
@@ -433,11 +433,11 @@ O diferencial que merece código próprio é a combinação de:
 
 ## 14. Próxima ação objetiva
 
-**Usar a Wandora como primeiro emissor/cliente real do Vigia, enviando OTLP + Business Events para o runtime público já validado.**
+**Fechar o V1 de integração nativa Elus -> Vigia e provar a primeira execução real ponta a ponta.**
 
-A investigação confirmou que o Latitude já fornece persistência de scores, metadata, correlação com trace/session/span, analytics técnicos, outbox e descoberta de Sinais. O Vigia adiciona somente o contrato e a apresentação de negócio necessários.
+O dogfood genérico da Wandora continua válido, mas não é a prioridade comercial deste slice. O objetivo imediato é que um cliente que já usa Elus consiga autorizar a conexão sem copiar endpoint, API key, headers, project slug ou configuração OTLP.
 
-Depois da prova em produção de `trace -> Business Event -> Resultado`, o próximo slice deve ser a menor leitura agregada de resultado/impacto útil ao empresário. Como o ClickHouse de scores não materializa metadata arbitrária, essa agregação deve ser desenhada explicitamente, sem duplicar a fonte de verdade de observabilidade.
+O contrato deve permanecer público entre os produtos, com credencial server-side por organização e a mesma invariável de primeiro trace real que já fecha o onboarding do Vigia. Billing, compra e entitlement completos ficam para um slice posterior e devem reutilizar o contrato de conexão, não substituí-lo.
 
 
 ### Checkpoint de preparação do primeiro runtime — 2026-09-28
@@ -557,3 +557,47 @@ MCP, OAuth, Cursor, Claude Code, Codex, GitHub, Slack e demais integrações sã
 ### Billing
 
 Este fluxo não define preços, nomes de planos comerciais nem mapeamento venda -> entitlement. A infraestrutura de billing existente continua reutilizável, mas a autoridade comercial do Vigia deve ser decidida separadamente antes de automatizar plano/limites a partir da venda.
+
+
+## Checkpoint 2026-10-03 — Elus como integração nativa do Vigia
+
+Prioridade comercial atual:
+
+> Elus é integração nativa. Flowise/n8n continuam integrações externas/técnicas.
+
+O V1 foi desenhado para conectar **uma conta Elus existente** a um projeto Vigia sem assistência e sem expor configuração de telemetria ao cliente.
+
+Contrato escolhido:
+
+```text
+Elus admin
+  -> inicia conexão com PKCE + state vinculados a tenant/usuário/sessão
+  -> Vigia autentica o usuário e autoriza o projeto atual
+  -> Vigia emite código curto cifrado, vinculado ao PKCE
+  -> callback server-side do Elus troca o código
+  -> Elus cifra a API key individual do Vigia antes de persistir
+  -> worker Elus envia OTLP JSON com X-Vigia-Project
+  -> primeiro trace real mantém a invariável de ativação do onboarding
+```
+
+Decisões de segurança:
+
+- nenhuma API key do Vigia entra em componente React ou configuração copiada pelo usuário;
+- não existe credencial global compartilhada entre clientes Elus;
+- o código de autorização expira em 5 minutos e é cifrado com a chave mestre do Vigia;
+- a troca exige verifier PKCE;
+- o Elus persiste a credencial por organização usando a cifra server-side já existente;
+- não há banco compartilhado, bypass de autenticação ou dependência de rede Docker entre produtos;
+- telemetria do worker é best-effort e nunca pode derrubar o atendimento.
+
+Business Events permanecem no contrato público `POST /v1/projects/:projectSlug/events`. O adapter Elus já preserva o mesmo `traceId` para que resultados reais futuros — como `lead_qualified`, `appointment_scheduled` ou `sale_created` — possam ser emitidos sem criar uma segunda fonte de verdade. Nenhum evento de sucesso foi inventado no V1 sem evidência real do desfecho.
+
+Estado de validação deste checkpoint:
+
+- PR Vigia #84 aberto e mergeable;
+- `Vigia tests` e `Vigia container images` verdes no head do PR;
+- PR Elus #12 aberto e mergeable;
+- o repositório `crm-wandora` não possui `.github/workflows` na `main`, portanto não existe gate GitHub Actions equivalente a afirmar para o Elus;
+- produção ainda não foi alterada por este slice.
+
+Próximo passo: integrar os PRs, promover os dois runtimes de forma controlada e executar um smoke real `Elus -> Vigia` com uma organização de teste, confirmando a primeira execução no Vigia antes de considerar o V1 concluído. O fluxo futuro `compra Elus -> plano/entitlement -> provisionamento Vigia` deve reutilizar este mesmo contrato de conexão, sem ser acoplado ao billing agora.

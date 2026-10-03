@@ -7,6 +7,9 @@ import { useRouteProject } from "./-route-data.ts"
 const searchSchema = z.object({
   step: z.enum(ONBOARDING_STEPS).optional(),
   source: z.enum(VIGIA_AGENT_STACK_IDS).optional(),
+  elus_state: z.string().min(1).max(4096).optional(),
+  elus_challenge: z.string().regex(/^[A-Za-z0-9_-]{43,128}$/).optional(),
+  elus_connected: z.literal("1").optional(),
 })
 
 export const Route = createFileRoute("/_authenticated/projects/$projectSlug/onboarding")({
@@ -30,6 +33,9 @@ function ProjectOnboardingPage() {
         persistedProjectName={project.name}
         initialStep={search.step}
         initialBusinessProfile={project.settings.businessProfile}
+        elusState={search.elus_state}
+        elusCodeChallenge={search.elus_challenge}
+        elusConnected={search.elus_connected === "1"}
         onOpenProjectTraces={async (targetProjectId) => {
           if (targetProjectId !== project.id) return
           await navigate({ to: "/projects/$projectSlug", params: { projectSlug } })

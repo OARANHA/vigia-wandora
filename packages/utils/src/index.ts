@@ -18,6 +18,13 @@ export {
   toBuffer,
   verifyHmacSha256Hex,
 } from "./crypto.ts"
+export {
+  createPkceChallenge,
+  issueNativeIntegrationAuthorization,
+  readNativeIntegrationAuthorization,
+  verifyNativeIntegrationPkce,
+  type NativeIntegrationAuthorization,
+} from "./native-integration-code.ts"
 export { extractLeadingEmoji } from "./extractLeadingEmoji.ts"
 export {
   cacheHitRate,

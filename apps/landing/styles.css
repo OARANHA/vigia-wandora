@@ -1495,3 +1495,52 @@ a{color:inherit;text-decoration:none}.container{width:min(var(--max),calc(100% -
   }
 }
 
+/* Responsive hero safe area: use the hero section's own padding instead of absolute offsets. */
+.hero.hero-reference{
+  --hero-inline-safe:clamp(60px,7vw,132px);
+  --hero-block-safe:clamp(68px,8vh,96px);
+  box-sizing:border-box;
+  padding:var(--hero-block-safe) var(--hero-inline-safe) clamp(44px,5vh,64px);
+}
+.hero.hero-reference .hero-copy{
+  position:relative;
+  left:auto;
+  top:auto;
+  width:min(500px,38vw);
+  max-width:500px;
+}
+
+@media (min-width:1025px) and (max-width:1280px){
+  .hero.hero-reference{
+    --hero-inline-safe:clamp(60px,7vw,96px);
+    --hero-block-safe:72px;
+  }
+  .hero.hero-reference .hero-copy{
+    width:min(430px,42vw);
+    max-width:430px;
+  }
+}
+
+@media (min-width:761px) and (max-width:1024px){
+  .hero.hero-reference{
+    --hero-inline-safe:clamp(60px,6vw,72px);
+    --hero-block-safe:68px;
+  }
+  .hero.hero-reference .hero-copy{
+    width:min(390px,46vw);
+    max-width:390px;
+  }
+}
+
+@media (max-width:760px){
+  .hero.hero-reference{
+    --hero-inline-safe:24px;
+    --hero-block-safe:64px;
+    padding:var(--hero-block-safe) var(--hero-inline-safe) 88px;
+  }
+  .hero.hero-reference .hero-copy{
+    width:100%;
+    max-width:520px;
+  }
+}
+

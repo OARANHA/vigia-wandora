@@ -314,7 +314,7 @@ COPY --chmod=755 docker/init-db.sh /docker-entrypoint-initdb.d/10-vigia-init-db.
 # ---------------------------------------------------------------------------
 # Target: clickhouse — ClickHouse with the versioned Vigia storage policy
 # ---------------------------------------------------------------------------
-FROM clickhouse/clickhouse-server:26.2 AS clickhouse
+FROM clickhouse/clickhouse-server:26.6 AS clickhouse
 
 COPY --chmod=644 docker/clickhouse/storage.xml /etc/clickhouse-server/config.d/storage.xml
 

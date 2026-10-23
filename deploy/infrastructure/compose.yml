@@ -79,6 +79,16 @@ services:
                 certResolver: letsencrypt
               service: elus-app
 
+            # Site comercial independente. A Stack elus continua intocada.
+            elus360-site:
+              rule: "Host(`elus360.com.br`)"
+              entryPoints:
+                - websecure
+              priority: 100
+              tls:
+                certResolver: letsencrypt
+              service: elus360-site
+
           services:
             vigia-web:
               loadBalancer:
@@ -115,6 +125,12 @@ services:
               loadBalancer:
                 servers:
                   - url: "http://elus-app:3000"
+
+            # Serviço da Stack elus360_site, na rede Docker externa vigia-edge.
+            elus360-site:
+              loadBalancer:
+                servers:
+                  - url: "http://elus360-landing:3000"
 
           serversTransports:
             vigia-portainer-tls:
